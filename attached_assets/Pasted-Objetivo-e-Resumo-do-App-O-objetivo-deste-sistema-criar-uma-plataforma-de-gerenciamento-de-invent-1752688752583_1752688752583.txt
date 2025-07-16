@@ -1,0 +1,39 @@
+Objetivo e Resumo do App
+O objetivo deste sistema é criar uma plataforma de gerenciamento de inventário de estoque que permita o controle detalhado dos produtos e locais de armazenamento. O sistema facilitará o processo de inventário, desde o cadastro inicial de produtos e locais até a execução das contagens e auditorias necessárias para garantir a precisão dos dados. A estrutura do sistema deve suportar a criação de inventários recorrentes e gerenciar o ciclo completo de um inventário, incluindo a correção de divergências e auditoria dos dados.
+
+Descrição Completa do App
+O aplicativo de inventário de estoque oferece uma solução abrangente para empresas gerenciarem seus produtos e locais de armazenamento de maneira eficiente. A plataforma permite cadastrar produtos e locais de estoque com facilidade. Estabelece um fluxo de trabalho para criar inventários com códigos únicos, associar esses inventários a tipos predefinidos (como Anual ou Mensal) e acompanhar seu andamento desde a abertura até o fechamento.
+
+O sistema de inventário contará com três etapas de contagem, garantindo que quaisquer divergências sejam resolvidas antes do fechamento final do inventário. Além disso, ele armazena informações sobre cada operação, incluindo o usuário responsável, permitindo auditorias completas das ações realizadas.
+
+Funcionalidades do App para um MVP
+ * Cadastro de Produtos: Inserção de novos produtos com detalhes necessários (nome, SKU etc.).
+ * Cadastro de Locais de Estoque: Registro de locais onde os produtos são armazenados.
+ * Cadastro de Estoque: Associação de produtos a locais de estoque com quantidades iniciais.
+ * Criação de Inventário: Geração de inventários com um código único e seleção de tipo e status.
+ * Contagens de Inventário: Realização de até três contagens por inventário para validação de dados.
+ * Status do Inventário: Atualização do status do inventário conforme o progresso (Aberto, Em Contagem, etc.).
+ * Auditoria e Logs: Registro de todas as operações realizadas no sistema por cada usuário.
+ * Fechamento de Inventário: Ajuste final dos estoques com base nos resultados do inventário.
+
+Telas Necessárias para o App Funcionar Perfeitamente no MVP
+ * Tela de Login/Registro: Autenticação de usuários via Supabase Auth.
+ * Dashboard Principal: Visão geral dos inventários e ações rápidas.
+ * Tela de Cadastro de Produtos: Formulário para adicionar e editar produtos.
+ * Tela de Cadastro de Locais de Estoque: Formulário para adicionar e editar locais.
+ * Tela de Cadastro de Estoque: Interface para associar produtos a locais e editar quantidades.
+ * Tela de Criação de Inventário: Formulário de criação com opções para tipo, datas e locais.
+ * Tela de Contagem de Inventário: Interface de controle para registrar contagens e ver divergências.
+ * Tela de Revisão de Inventário: Visualização para auditoria e fechamento de inventário.
+ * Tela de Logs: Listagem de todas as operações e auditorias realizadas.
+ 
+Possíveis Funcionalidades Futuras
+ * Relatórios Avançados: Geração de relatórios customizáveis e exportação para formatos como PDF e Excel.
+ * Integração com ERP: Conectar com sistemas de ERP para sincronização automática de dados.
+ * Notificações e Alertas: Alertas automáticos para inventários pendentes ou potenciais divergências.
+ * Análises de Tendência: Previsões baseadas no histórico de inventário e padrões de estoque.
+ * Mobile App: Aplicação mobile complementando a plataforma web para inserção rápida de dados pelo smartphone.
+ 
+Recomendações Técnicas
+ * Frontend: Angular
+ * Backend: C# ou NodeJS
