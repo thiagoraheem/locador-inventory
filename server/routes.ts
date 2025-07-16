@@ -49,11 +49,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get('/api/products', isAuthenticated, async (req, res) => {
     try {
-      const { search, limit, offset } = req.query;
+      const { search, limit, offset, includeInactive } = req.query;
       const products = await storage.getProducts(
         search as string,
         limit ? parseInt(limit as string) : undefined,
-        offset ? parseInt(offset as string) : undefined
+        offset ? parseInt(offset as string) : undefined,
+        includeInactive === 'true'
       );
       res.json(products);
     } catch (error) {

@@ -12,13 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import ProductForm from "@/components/product-form";
 import DataTable from "@/components/data-table";
-import { Plus, Search, Edit, Eye, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Eye, Trash2, RotateCcw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import type { Product } from "@shared/schema";
 
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -38,7 +41,16 @@ export default function Products() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ["/api/products", searchQuery],
+    queryKey: ["/api/products", searchQuery, showInactive],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      if (showInactive) params.set('includeInactive', 'true');
+      
+      const response = await fetch(`/api/products?${params}`);
+      if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
+      return response.json();
+    },
     retry: false,
   });
 
@@ -68,6 +80,37 @@ export default function Products() {
       toast({
         title: "Erro",
         description: "Erro ao excluir produto",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("PUT", `/api/products/${id}`, { isActive: true });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Sucesso",
+        description: "Produto reativado com sucesso!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Erro ao reativar produto",
         variant: "destructive",
       });
     },
@@ -114,14 +157,26 @@ export default function Products() {
           >
             <Edit className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => deleteMutation.mutate(row.id)}
-            disabled={deleteMutation.isPending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {row.isActive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => deleteMutation.mutate(row.id)}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => reactivateMutation.mutate(row.id)}
+              disabled={reactivateMutation.isPending}
+              className="text-green-600 hover:text-green-700"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -153,40 +208,52 @@ export default function Products() {
       
       <div className="space-y-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Lista de Produtos</CardTitle>
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <Input
-                  placeholder="Filtrar produtos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-10"
-                />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              </div>
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setSelectedProduct(null)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Produto
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {selectedProduct ? "Editar Produto" : "Novo Produto"}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <ProductForm
-                    product={selectedProduct}
-                    onSuccess={() => {
-                      setIsFormOpen(false);
-                      setSelectedProduct(null);
-                    }}
+          <CardHeader>
+            <div className="flex flex-row items-center justify-between">
+              <CardTitle>Lista de Produtos</CardTitle>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <Input
+                    placeholder="Filtrar produtos..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64 pl-10"
                   />
-                </DialogContent>
-              </Dialog>
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setSelectedProduct(null)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Produto
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {selectedProduct ? "Editar Produto" : "Novo Produto"}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <ProductForm
+                      product={selectedProduct}
+                      onSuccess={() => {
+                        setIsFormOpen(false);
+                        setSelectedProduct(null);
+                      }}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="show-inactive"
+                checked={showInactive}
+                onCheckedChange={setShowInactive}
+              />
+              <Label htmlFor="show-inactive" className="text-sm text-gray-600">
+                Mostrar produtos desativados
+              </Label>
             </div>
           </CardHeader>
           <CardContent>

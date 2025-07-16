@@ -36,7 +36,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Product operations
-  getProducts(search?: string, limit?: number, offset?: number): Promise<Product[]>;
+  getProducts(search?: string, limit?: number, offset?: number, includeInactive?: boolean): Promise<Product[]>;
   getProduct(id: number): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product>;
@@ -111,18 +111,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Product operations
-  async getProducts(search?: string, limit = 50, offset = 0): Promise<Product[]> {
+  async getProducts(search?: string, limit = 50, offset = 0, includeInactive = false): Promise<Product[]> {
     let query = db.select().from(products);
     
     if (search) {
-      query = query.where(
-        and(
-          like(products.name, `%${search}%`),
-          eq(products.isActive, true)
-        )
-      );
+      if (includeInactive) {
+        query = query.where(like(products.name, `%${search}%`));
+      } else {
+        query = query.where(
+          and(
+            like(products.name, `%${search}%`),
+            eq(products.isActive, true)
+          )
+        );
+      }
     } else {
-      query = query.where(eq(products.isActive, true));
+      if (!includeInactive) {
+        query = query.where(eq(products.isActive, true));
+      }
     }
     
     return query.limit(limit).offset(offset).orderBy(desc(products.createdAt));
@@ -397,7 +403,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(auditLogs.timestamp))
       .limit(1);
 
-    const lastAuditDays = lastAudit 
+    const lastAuditDays = lastAudit && lastAudit.timestamp
       ? Math.floor((Date.now() - lastAudit.timestamp.getTime()) / (1000 * 60 * 60 * 24))
       : 0;
 
