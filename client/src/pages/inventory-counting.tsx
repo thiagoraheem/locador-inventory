@@ -117,6 +117,37 @@ export default function InventoryCounting() {
     },
   });
 
+  const closeInventoryMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/inventories/${inventoryId}/close`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
+      toast({
+        title: "Sucesso",
+        description: "Inventário fechado e estoque atualizado com sucesso!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Erro ao fechar inventário",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (inventoryLoading || itemsLoading) {
     return (
       <div>
@@ -200,37 +231,6 @@ export default function InventoryCounting() {
   const handleStartCounting = () => {
     updateInventoryMutation.mutate('COUNTING');
   };
-
-  const closeInventoryMutation = useMutation({
-    mutationFn: async () => {
-      await apiRequest("POST", `/api/inventories/${inventoryId}/close`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
-      toast({
-        title: "Sucesso",
-        description: "Inventário fechado e estoque atualizado com sucesso!",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Erro",
-        description: "Erro ao fechar inventário",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleFinishInventory = () => {
     closeInventoryMutation.mutate();
