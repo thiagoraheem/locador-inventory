@@ -131,7 +131,15 @@ export default function Products() {
       header: "Categoria",
       accessorKey: "category",
       sortable: true,
-      cell: (value: string) => value || "Sem categoria",
+      cell: (value: any) => {
+        if (typeof value === 'string') {
+          return value || "Sem categoria";
+        }
+        if (value && typeof value === 'object' && value.name) {
+          return value.name;
+        }
+        return "Sem categoria";
+      },
     },
     {
       header: "Status",
