@@ -16,8 +16,9 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Produtos", href: "/products", icon: Package },
+  { name: "Categorias", href: "/categories", icon: Layers },
   { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
-  { name: "Controle de Estoque", href: "/stock", icon: Layers },
+  { name: "Controle de Estoque", href: "/stock", icon: Box },
   { name: "Inventários", href: "/inventories", icon: ClipboardList },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
 ];

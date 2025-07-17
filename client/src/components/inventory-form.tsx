@@ -81,8 +81,8 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       const inventoryPayload = {
         code,
         typeId: data.typeId,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: data.endDate ? new Date(data.endDate).toISOString() : null,
         description: data.description,
         status: 'OPEN',
       };

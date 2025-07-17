@@ -18,8 +18,8 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
-      trend: "+12%",
-      trendText: "vs mês anterior",
+      trend: null,
+      trendText: "produtos ativos",
     },
     {
       title: "Inventários Ativos",
@@ -27,8 +27,8 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       icon: ClipboardList,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
-      trend: "3 pendentes",
-      trendText: "para revisão",
+      trend: null,
+      trendText: "em andamento",
     },
     {
       title: "Locais de Estoque",
@@ -36,17 +36,17 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       icon: Warehouse,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      trend: "100%",
-      trendText: "operacionais",
+      trend: null,
+      trendText: "locais cadastrados",
     },
     {
       title: "Última Auditoria",
-      value: stats.lastAuditDays.toString(),
+      value: stats.lastAuditDays === 0 ? "Hoje" : stats.lastAuditDays.toString(),
       icon: History,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
-      trend: "",
-      trendText: "dias atrás",
+      trend: null,
+      trendText: stats.lastAuditDays === 0 ? "" : "dias atrás",
     },
   ];
 
@@ -71,7 +71,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
                 {card.trend && (
                   <span className="text-green-600 text-sm font-medium">{card.trend}</span>
                 )}
-                <span className="text-gray-600 text-sm ml-2">{card.trendText}</span>
+                <span className="text-gray-600 text-sm">{card.trendText}</span>
               </div>
             </CardContent>
           </Card>

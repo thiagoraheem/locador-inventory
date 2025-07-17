@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertProductSchema,
+  insertCategorySchema,
   insertLocationSchema,
   insertStockSchema,
   insertInventorySchema,
@@ -43,6 +44,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Category routes
+  app.get('/api/categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post('/api/categories', isAuthenticated, async (req: any, res) => {
+    try {
+      const category = await storage.createCategory(req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.put('/api/categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const category = await storage.updateCategory(parseInt(req.params.id), req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete('/api/categories/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteCategory(parseInt(req.params.id));
+      res.json({ message: "Category deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ message: "Failed to delete category" });
     }
   });
 

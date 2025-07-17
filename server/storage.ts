@@ -1,6 +1,7 @@
 import {
   users,
   products,
+  categories,
   locations,
   stock,
   inventoryTypes,
@@ -12,6 +13,8 @@ import {
   type UpsertUser,
   type Product,
   type InsertProduct,
+  type Category,
+  type InsertCategory,
   type Location,
   type InsertLocation,
   type Stock,
@@ -34,6 +37,13 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  // Category operations
+  getCategories(): Promise<Category[]>;
+  getCategory(id: number): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: number, category: Partial<InsertCategory>): Promise<Category>;
+  deleteCategory(id: number): Promise<void>;
 
   // Product operations
   getProducts(search?: string, limit?: number, offset?: number, includeInactive?: boolean): Promise<Product[]>;
@@ -111,9 +121,50 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  // Category operations
+  async getCategories(): Promise<Category[]> {
+    return await db.select().from(categories).where(eq(categories.isActive, true)).orderBy(categories.name);
+  }
+
+  async getCategory(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(categoryData: InsertCategory): Promise<Category> {
+    const [category] = await db.insert(categories).values(categoryData).returning();
+    return category;
+  }
+
+  async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category> {
+    const [category] = await db
+      .update(categories)
+      .set({ ...categoryData, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+      .returning();
+    return category;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await db.update(categories).set({ isActive: false }).where(eq(categories.id, id));
+  }
+
   // Product operations
   async getProducts(search?: string, limit = 50, offset = 0, includeInactive = false): Promise<Product[]> {
-    let query = db.select().from(products);
+    let query = db.select({
+      id: products.id,
+      sku: products.sku,
+      name: products.name,
+      description: products.description,
+      categoryId: products.categoryId,
+      isActive: products.isActive,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
+      category: {
+        id: categories.id,
+        name: categories.name,
+      }
+    }).from(products).leftJoin(categories, eq(products.categoryId, categories.id));
     
     if (search) {
       if (includeInactive) {
@@ -132,7 +183,19 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return query.limit(limit).offset(offset).orderBy(desc(products.createdAt));
+    const results = await query.limit(limit).offset(offset).orderBy(desc(products.createdAt));
+    
+    return results.map(row => ({
+      id: row.id,
+      sku: row.sku,
+      name: row.name,
+      description: row.description,
+      categoryId: row.categoryId,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      category: row.category,
+    }));
   }
 
   async getProduct(id: number): Promise<Product | undefined> {

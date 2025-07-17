@@ -127,11 +127,13 @@ export default function Stock() {
     
     const searchLower = searchQuery.toLowerCase();
     return (
-      item.product.name.toLowerCase().includes(searchLower) ||
-      item.product.sku.toLowerCase().includes(searchLower) ||
-      item.location.name.toLowerCase().includes(searchLower)
+      item.product?.name?.toLowerCase().includes(searchLower) ||
+      item.product?.sku?.toLowerCase().includes(searchLower) ||
+      item.location?.name?.toLowerCase().includes(searchLower)
     );
   }) || [];
+
+  console.log('Stock data:', stock); // Debug log
 
   return (
     <div>

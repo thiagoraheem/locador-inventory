@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";
+import Categories from "@/pages/categories";
 import Locations from "@/pages/locations";
 import Stock from "@/pages/stock";
 import Inventories from "@/pages/inventories";
@@ -27,6 +28,7 @@ function Router() {
         <MainLayout>
           <Route path="/" component={Dashboard} />
           <Route path="/products" component={Products} />
+          <Route path="/categories" component={Categories} />
           <Route path="/locations" component={Locations} />
           <Route path="/stock" component={Stock} />
           <Route path="/inventories" component={Inventories} />
