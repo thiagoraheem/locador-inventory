@@ -385,10 +385,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/inventories', isAuthenticated, async (req: any, res) => {
     try {
-      const inventoryData = insertInventorySchema.parse({
+      // Convert date strings to Date objects before validation
+      const bodyWithDates = {
         ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
         createdBy: req.user.claims.sub,
-      });
+      };
+      
+      const inventoryData = insertInventorySchema.parse(bodyWithDates);
       
       const inventory = await storage.createInventory(inventoryData);
       
