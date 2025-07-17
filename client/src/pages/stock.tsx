@@ -74,18 +74,21 @@ export default function Stock() {
   const columns = [
     {
       header: "SKU",
-      accessorKey: "product.sku",
+      accessorKey: "product",
       sortable: true,
+      cell: (value: any) => value?.sku || "N/A",
     },
     {
       header: "Produto",
-      accessorKey: "product.name",
+      accessorKey: "product",
       sortable: true,
+      cell: (value: any) => value?.name || "N/A",
     },
     {
       header: "Local",
-      accessorKey: "location.name",
+      accessorKey: "location",
       sortable: true,
+      cell: (value: any) => value?.name || "N/A",
     },
     {
       header: "Quantidade",
