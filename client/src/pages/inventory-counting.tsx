@@ -189,10 +189,44 @@ export default function InventoryCounting() {
   };
 
   const getCountingStages = () => {
+    if (!inventoryItems) return [];
+    
+    // Count how many items have each count number
+    const countStats = { first: 0, second: 0, third: 0 };
+    const totalItems = inventoryItems.length;
+    
+    // This would need to be calculated based on actual counts data
+    // For now, we'll base it on inventory status and completion
+    const completedItems = inventoryItems.filter((item: any) => item.status === 'COMPLETED').length;
+    
     const stages = [
-      { id: 1, name: "1ª Contagem", status: "completed", icon: CheckCircle, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
-      { id: 2, name: "2ª Contagem", status: "active", icon: Clock, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
-      { id: 3, name: "3ª Contagem", status: "pending", icon: Lock, color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" },
+      { 
+        id: 1, 
+        name: "1ª Contagem", 
+        status: inventory.status === 'OPEN' ? "pending" : completedItems > 0 ? "completed" : "active",
+        icon: inventory.status === 'OPEN' ? Lock : completedItems > 0 ? CheckCircle : Clock,
+        color: inventory.status === 'OPEN' ? "text-gray-500" : completedItems > 0 ? "text-green-600" : "text-orange-600",
+        bg: inventory.status === 'OPEN' ? "bg-gray-50" : completedItems > 0 ? "bg-green-50" : "bg-orange-50",
+        border: inventory.status === 'OPEN' ? "border-gray-200" : completedItems > 0 ? "border-green-200" : "border-orange-200"
+      },
+      { 
+        id: 2, 
+        name: "2ª Contagem", 
+        status: "pending", 
+        icon: Lock, 
+        color: "text-gray-500", 
+        bg: "bg-gray-50", 
+        border: "border-gray-200" 
+      },
+      { 
+        id: 3, 
+        name: "3ª Contagem", 
+        status: "pending", 
+        icon: Lock, 
+        color: "text-gray-500", 
+        bg: "bg-gray-50", 
+        border: "border-gray-200" 
+      },
     ];
 
     return stages;
@@ -200,8 +234,13 @@ export default function InventoryCounting() {
 
   const calculateProgress = () => {
     if (!inventoryItems || inventoryItems.length === 0) return 0;
-    const completedItems = inventoryItems.filter((item: any) => item.status === 'COMPLETED').length;
-    return Math.round((completedItems / inventoryItems.length) * 100);
+    
+    // Count items that have at least one count recorded
+    const itemsWithCounts = inventoryItems.filter((item: any) => 
+      item.status === 'COUNTING' || item.status === 'COMPLETED'
+    ).length;
+    
+    return Math.round((itemsWithCounts / inventoryItems.length) * 100);
   };
 
   const getDiscrepancies = () => {
@@ -236,15 +275,40 @@ export default function InventoryCounting() {
     closeInventoryMutation.mutate();
   };
 
-  const handleAddCount = () => {
+  const handleAddCount = async () => {
     if (!selectedItem || !countData.quantity) return;
     
-    createCountMutation.mutate({
-      inventoryItemId: selectedItem.id,
-      countNumber: 1, // This should be determined by existing counts
-      quantity: countData.quantity,
-      notes: countData.notes,
-    });
+    try {
+      // Get existing counts for this item to determine next count number
+      const response = await fetch(`/api/inventory-items/${selectedItem.id}/counts`);
+      const existingCounts = await response.json();
+      const nextCountNumber = existingCounts.length + 1;
+      
+      if (nextCountNumber > 3) {
+        toast({
+          title: "Erro",
+          description: "Máximo de 3 contagens por item já foi atingido",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      createCountMutation.mutate({
+        inventoryItemId: selectedItem.id,
+        countNumber: nextCountNumber,
+        quantity: countData.quantity,
+        notes: countData.notes,
+      });
+    } catch (error) {
+      console.error("Error getting counts:", error);
+      // Fallback to count number 1
+      createCountMutation.mutate({
+        inventoryItemId: selectedItem.id,
+        countNumber: 1,
+        quantity: countData.quantity,
+        notes: countData.notes,
+      });
+    }
   };
 
   const columns = [

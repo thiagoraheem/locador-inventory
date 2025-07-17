@@ -165,7 +165,7 @@ export class DatabaseStorage implements IStorage {
         name: categories.name,
       }
     }).from(products).leftJoin(categories, eq(products.categoryId, categories.id));
-    
+
     if (search) {
       if (includeInactive) {
         query = query.where(like(products.name, `%${search}%`));
@@ -182,9 +182,9 @@ export class DatabaseStorage implements IStorage {
         query = query.where(eq(products.isActive, true));
       }
     }
-    
+
     const results = await query.limit(limit).offset(offset).orderBy(desc(products.createdAt));
-    
+
     return results.map(row => ({
       id: row.id,
       sku: row.sku,
@@ -224,7 +224,7 @@ export class DatabaseStorage implements IStorage {
   // Location operations
   async getLocations(search?: string): Promise<Location[]> {
     let query = db.select().from(locations).where(eq(locations.isActive, true));
-    
+
     if (search) {
       query = query.where(
         and(
@@ -233,7 +233,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-    
+
     return query.orderBy(locations.name);
   }
 
@@ -271,7 +271,7 @@ export class DatabaseStorage implements IStorage {
     const conditions = [];
     if (productId) conditions.push(eq(stock.productId, productId));
     if (locationId) conditions.push(eq(stock.locationId, locationId));
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
@@ -363,12 +363,32 @@ export class DatabaseStorage implements IStorage {
       const count = await db.select({ count: sql<number>`count(*)` })
         .from(inventories)
         .where(sql`EXTRACT(YEAR FROM created_at) = ${year} AND EXTRACT(MONTH FROM created_at) = ${month}`);
-      
+
       const nextNumber = (count[0]?.count || 0) + 1;
       inventoryData.code = `INV-${year}${month}-${String(nextNumber).padStart(3, '0')}`;
     }
-    
+
     const [newInventory] = await db.insert(inventories).values(inventoryData).returning();
+
+    // Automatically create inventory items based on current stock
+    const stockItems = await db
+      .select()
+      .from(stock)
+      .leftJoin(products, eq(stock.productId, products.id))
+      .leftJoin(locations, eq(stock.locationId, locations.id))
+      .where(and(eq(products.isActive, true), eq(locations.isActive, true)));
+
+    if (stockItems.length > 0) {
+      const inventoryItemsData = stockItems.map(item => ({
+        inventoryId: newInventory.id,
+        productId: item.stock.productId,
+        locationId: item.stock.locationId,
+        expectedQuantity: item.stock.quantity,
+      }));
+
+      await db.insert(inventoryItems).values(inventoryItemsData).returning();
+    }
+
     return newInventory;
   }
 
@@ -486,6 +506,13 @@ export class DatabaseStorage implements IStorage {
 
   async createCount(count: InsertCount): Promise<Count> {
     const [newCount] = await db.insert(counts).values(count).returning();
+
+    // Update inventory item status to COUNTING after first count
+    await db
+      .update(inventoryItems)
+      .set({ status: 'COUNTING', updatedAt: new Date() })
+      .where(eq(inventoryItems.id, count.inventoryItemId));
+
     return newCount;
   }
 
