@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import InventoryForm from "@/components/inventory-form";
 import DataTable from "@/components/data-table";
-import { Plus, Search, Eye, Play } from "lucide-react";
+import { Plus, Search, Eye, Play, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import type { Inventory } from "@shared/schema";
 
@@ -88,11 +88,18 @@ export default function Inventories() {
       accessorKey: "actions",
       cell: (value: any, row: any) => (
         <div className="flex items-center space-x-2">
-          <Link href={`/inventories/${row.id}/counting`}>
-            <Button variant="ghost" size="sm">
+          <Link href={`/inventory-counting/${row.id}`}>
+            <Button variant="ghost" size="sm" title="Abrir contagem">
               {row.status === 'OPEN' ? <Play className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </Link>
+          {row.status === 'COUNTING' && (
+            <Link href={`/inventory-review/${row.id}`}>
+              <Button variant="ghost" size="sm" title="Revisar inventário">
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
         </div>
       ),
     },

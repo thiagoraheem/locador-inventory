@@ -394,6 +394,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/inventories/:id/close', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.closeInventory(id);
+      
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'CLOSE',
+        entityType: 'INVENTORY',
+        entityId: id.toString(),
+        newValues: { status: 'CLOSED' },
+        metadata: null,
+      });
+      
+      res.json({ message: "Inventory closed successfully" });
+    } catch (error) {
+      console.error("Error closing inventory:", error);
+      res.status(500).json({ message: "Failed to close inventory" });
+    }
+  });
+
   // Inventory items routes
   app.get('/api/inventories/:id/items', isAuthenticated, async (req, res) => {
     try {

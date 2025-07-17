@@ -65,6 +65,7 @@ export interface IStorage {
   getInventory(id: number): Promise<(Inventory & { type: InventoryType; createdByUser: User }) | undefined>;
   createInventory(inventory: InsertInventory): Promise<Inventory>;
   updateInventory(id: number, inventory: Partial<InsertInventory>): Promise<Inventory>;
+  closeInventory(id: number): Promise<void>;
 
   // Inventory item operations
   getInventoryItems(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]>;
@@ -291,7 +292,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInventory(inventory: InsertInventory): Promise<Inventory> {
-    const [newInventory] = await db.insert(inventories).values(inventory).returning();
+    // Generate unique code if not provided
+    let inventoryData = { ...inventory };
+    if (!inventoryData.code) {
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const count = await db.select({ count: sql<number>`count(*)` })
+        .from(inventories)
+        .where(sql`EXTRACT(YEAR FROM created_at) = ${year} AND EXTRACT(MONTH FROM created_at) = ${month}`);
+      
+      const nextNumber = (count[0]?.count || 0) + 1;
+      inventoryData.code = `INV-${year}${month}-${String(nextNumber).padStart(3, '0')}`;
+    }
+    
+    const [newInventory] = await db.insert(inventories).values(inventoryData).returning();
     return newInventory;
   }
 
@@ -302,6 +316,64 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inventories.id, id))
       .returning();
     return updatedInventory;
+  }
+
+  async closeInventory(id: number): Promise<void> {
+    // Get all inventory items with their final quantities
+    const items = await db
+      .select({
+        inventoryItem: inventoryItems,
+        product: products,
+        location: locations,
+      })
+      .from(inventoryItems)
+      .leftJoin(products, eq(inventoryItems.productId, products.id))
+      .leftJoin(locations, eq(inventoryItems.locationId, locations.id))
+      .where(eq(inventoryItems.inventoryId, id));
+
+    // Update stock quantities based on final count results
+    for (const item of items) {
+      if (item.inventoryItem.finalQuantity !== null) {
+        // Find existing stock record
+        const [existingStock] = await db
+          .select()
+          .from(stock)
+          .where(
+            and(
+              eq(stock.productId, item.inventoryItem.productId),
+              eq(stock.locationId, item.inventoryItem.locationId)
+            )
+          );
+
+        if (existingStock) {
+          // Update existing stock
+          await db
+            .update(stock)
+            .set({ 
+              quantity: item.inventoryItem.finalQuantity.toString(),
+              updatedAt: new Date()
+            })
+            .where(eq(stock.id, existingStock.id));
+        } else {
+          // Create new stock record
+          await db.insert(stock).values({
+            productId: item.inventoryItem.productId,
+            locationId: item.inventoryItem.locationId,
+            quantity: item.inventoryItem.finalQuantity.toString(),
+          });
+        }
+      }
+    }
+
+    // Update inventory status to CLOSED
+    await db
+      .update(inventories)
+      .set({ 
+        status: 'CLOSED',
+        endDate: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(inventories.id, id));
   }
 
   // Inventory item operations

@@ -12,6 +12,7 @@ import Locations from "@/pages/locations";
 import Stock from "@/pages/stock";
 import Inventories from "@/pages/inventories";
 import InventoryCounting from "@/pages/inventory-counting";
+import InventoryReview from "@/pages/inventory-review";
 import AuditLogs from "@/pages/audit-logs";
 import MainLayout from "@/components/layout/main-layout";
 
@@ -29,7 +30,8 @@ function Router() {
           <Route path="/locations" component={Locations} />
           <Route path="/stock" component={Stock} />
           <Route path="/inventories" component={Inventories} />
-          <Route path="/inventories/:id/counting" component={InventoryCounting} />
+          <Route path="/inventory-counting/:id" component={InventoryCounting} />
+          <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/audit-logs" component={AuditLogs} />
         </MainLayout>
       )}

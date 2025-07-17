@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import DataTable from "@/components/data-table";
 import { Clock, CheckCircle, Lock, AlertTriangle, Download, Play, Check } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
 export default function InventoryCounting() {
   const [location] = useLocation();
@@ -201,8 +201,39 @@ export default function InventoryCounting() {
     updateInventoryMutation.mutate('COUNTING');
   };
 
+  const closeInventoryMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", `/api/inventories/${inventoryId}/close`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
+      toast({
+        title: "Sucesso",
+        description: "Inventário fechado e estoque atualizado com sucesso!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erro",
+        description: "Erro ao fechar inventário",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFinishInventory = () => {
-    updateInventoryMutation.mutate('CLOSED');
+    closeInventoryMutation.mutate();
   };
 
   const handleAddCount = () => {
@@ -392,6 +423,14 @@ export default function InventoryCounting() {
                 <Download className="h-4 w-4 mr-2" />
                 Exportar Relatório
               </Button>
+              {inventory.status === 'COUNTING' && (
+                <Link href={`/inventory-review/${inventoryId}`}>
+                  <Button variant="outline" size="sm">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Revisar Inventário
+                  </Button>
+                </Link>
+              )}
               {inventory.status === 'OPEN' && (
                 <Button 
                   onClick={handleStartCounting}
@@ -405,10 +444,11 @@ export default function InventoryCounting() {
               {inventory.status === 'COUNTING' && (
                 <Button 
                   onClick={handleFinishInventory}
-                  disabled={updateInventoryMutation.isPending}
+                  disabled={closeInventoryMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
                 >
                   <Check className="h-4 w-4 mr-2" />
-                  Finalizar Inventário
+                  {closeInventoryMutation.isPending ? "Fechando..." : "Fechar Inventário"}
                 </Button>
               )}
             </div>
