@@ -1,6 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   LayoutDashboard, 
   Package, 
@@ -26,6 +29,38 @@ const navigation = [
 export default function Sidebar() {
   const { user } = useAuth();
   const [location] = useLocation();
+  const { toast } = useToast();
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao fazer logout');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      toast({
+        title: "Logout realizado com sucesso",
+        description: "Você foi desconectado do sistema.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro no logout",
+        description: "Houve um problema ao sair do sistema.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <aside className="w-64 bg-white shadow-md border-r border-gray-200 flex flex-col">
@@ -73,31 +108,24 @@ export default function Sidebar() {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center space-x-3 mb-3">
           <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-            {user?.profileImageUrl ? (
-              <img 
-                src={user.profileImageUrl} 
-                alt="Profile" 
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            ) : (
-              <User className="h-4 w-4 text-gray-600" />
-            )}
+            <User className="h-4 w-4 text-gray-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">
-              {user?.firstName} {user?.lastName}
+              {user?.firstName || user?.username} {user?.lastName}
             </p>
-            <p className="text-xs text-gray-600">Administrador</p>
+            <p className="text-xs text-gray-600 capitalize">{user?.role || 'Usuário'}</p>
           </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           className="w-full"
-          onClick={() => window.location.href = '/api/logout'}
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
         >
           <LogOut className="h-4 w-4 mr-2" />
-          Sair
+          {logoutMutation.isPending ? "Saindo..." : "Sair"}
         </Button>
       </div>
     </aside>

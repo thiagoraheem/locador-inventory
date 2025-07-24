@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, hashPassword, verifyPassword, createDefaultAdmin } from "./auth";
 import {
   insertProductSchema,
   insertCategorySchema,
@@ -10,13 +10,17 @@ import {
   insertInventorySchema,
   insertInventoryTypeSchema,
   insertCountSchema,
+  loginSchema,
+  registerSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Initialize default inventory types
+  // Initialize default data
+  createDefaultAdmin();
+  
   const types = await storage.getInventoryTypes();
   if (types.length === 0) {
     await storage.createInventoryType({ name: 'Mensal', description: 'Inventário mensal', isActive: true });
@@ -25,11 +29,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Auth routes
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { username, password } = loginSchema.parse(req.body);
+      
+      const user = await storage.getUserByUsername(username);
+      if (!user || !user.isActive) {
+        return res.status(401).json({ message: "Credenciais inválidas" });
+      }
+
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Credenciais inválidas" });
+      }
+
+      // Create session
+      const session = req.session as any;
+      session.userId = user.id;
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const userData = registerSchema.parse(req.body);
+      
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Nome de usuário já existe" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(userData.email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email já cadastrado" });
+      }
+
+      // Hash password and create user
+      const hashedPassword = await hashPassword(userData.password);
+      const { confirmPassword, ...userDataWithoutConfirm } = userData;
+      
+      const newUser = await storage.createUser({
+        ...userDataWithoutConfirm,
+        password: hashedPassword,
+        role: 'user',
+        isActive: true,
+      });
+
+      // Create session
+      const session = req.session as any;
+      session.userId = newUser.id;
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = newUser;
+      res.status(201).json({ user: userWithoutPassword });
+    } catch (error) {
+      console.error("Error during registration:", error);
+      res.status(500).json({ message: "Erro interno do servidor" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    const session = req.session as any;
+    session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Erro ao fazer logout" });
+      }
+      res.json({ message: "Logout realizado com sucesso" });
+    });
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const { password: _, ...userWithoutPassword } = req.user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
