@@ -41,8 +41,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('👤 Admin user:', adminUser ? 'FOUND' : 'NOT FOUND');
       
       if (adminUser) {
-        const passwordTest = await verifyPassword('admin123', adminUser.password);
-        console.log('🔐 Password test:', passwordTest ? 'VALID' : 'INVALID');
+        console.log('🔐 Admin password hash:', adminUser.password.substring(0, 20) + '...');
+        const passwordTest = await verifyPassword('password', adminUser.password);
+        console.log('🔐 Password test with "password":', passwordTest ? 'VALID' : 'INVALID');
+        const passwordTest2 = await verifyPassword('admin123', adminUser.password);
+        console.log('🔐 Password test with "admin123":', passwordTest2 ? 'VALID' : 'INVALID');
       }
       
       res.json({

@@ -630,17 +630,32 @@ export class MemStorage implements IStorage {
     auditLog: 1,
   };
 
+  private seeded = false;
+
   constructor() {
     this.seedInitialData();
   }
 
-  private seedInitialData() {
-    // Seed with some initial data for testing
+  private async ensureSeeded() {
+    if (!this.seeded) {
+      await this.seedInitialData();
+      this.seeded = true;
+    }
+  }
+
+  private async seedInitialData() {
+    if (this.seeded) return;
+    
+    // Seed with some initial data for testing  
+    // Use bcrypt directly to avoid circular imports
+    const bcrypt = await import('bcrypt');
+    const hashedPassword = await bcrypt.hash("password", 12);
+    
     const defaultUser: User = {
       id: "user1",
       email: "admin@example.com",
       username: "admin",
-      password: "password",
+      password: hashedPassword,
       firstName: "Admin",
       lastName: "User",
       role: "admin",
@@ -693,6 +708,7 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
+    await this.ensureSeeded();
     return Array.from(this.users.values()).find(user => user.username === username);
   }
 
@@ -1244,4 +1260,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
