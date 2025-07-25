@@ -170,8 +170,8 @@ export default function AuditLogs() {
       log.entityType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.entityId.includes(searchQuery);
 
-    const matchesAction = !actionFilter || log.action === actionFilter;
-    const matchesEntity = !entityFilter || log.entityType === entityFilter;
+    const matchesAction = !actionFilter || actionFilter === "all-actions" || log.action === actionFilter;
+    const matchesEntity = !entityFilter || entityFilter === "all-entities" || log.entityType === entityFilter;
 
     return matchesSearch && matchesAction && matchesEntity;
   }) || [];
@@ -214,7 +214,7 @@ export default function AuditLogs() {
                   <SelectValue placeholder="Filtrar por ação" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as ações</SelectItem>
+                  <SelectItem value="all-actions">Todas as ações</SelectItem>
                   <SelectItem value="CREATE">Criar</SelectItem>
                   <SelectItem value="UPDATE">Atualizar</SelectItem>
                   <SelectItem value="DELETE">Excluir</SelectItem>
@@ -226,7 +226,7 @@ export default function AuditLogs() {
                   <SelectValue placeholder="Filtrar por entidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas as entidades</SelectItem>
+                  <SelectItem value="all-entities">Todas as entidades</SelectItem>
                   <SelectItem value="PRODUCT">Produto</SelectItem>
                   <SelectItem value="LOCATION">Local</SelectItem>
                   <SelectItem value="STOCK">Estoque</SelectItem>
