@@ -61,13 +61,16 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return bcrypt.compare(password, hashedPassword);
 }
 
-export function createDefaultAdmin() {
-  // Create default admin user if none exists
-  storage.getUsers().then(async (users) => {
+export async function createDefaultAdmin() {
+  try {
+    // Create default admin user if none exists
+    const users = await storage.getUsers();
     const adminUser = users.find(u => u.role === 'admin');
+    
     if (!adminUser) {
+      console.log('No admin user found, creating default admin...');
       const hashedPassword = await hashPassword('admin123');
-      await storage.createUser({
+      const newAdmin = await storage.createUser({
         id: 'admin-' + Date.now(),
         username: 'admin',
         email: 'admin@inventory.com',
@@ -77,7 +80,23 @@ export function createDefaultAdmin() {
         role: 'admin',
         isActive: true,
       });
-      console.log('Default admin user created: admin/admin123');
+      console.log('✅ Default admin user created successfully:', {
+        id: newAdmin.id,
+        username: newAdmin.username,
+        email: newAdmin.email,
+        role: newAdmin.role
+      });
+      console.log('🔑 Login credentials: admin/admin123');
+    } else {
+      console.log('✅ Admin user already exists:', {
+        id: adminUser.id,
+        username: adminUser.username,
+        email: adminUser.email,
+        role: adminUser.role,
+        isActive: adminUser.isActive
+      });
     }
-  }).catch(console.error);
+  } catch (error) {
+    console.error('❌ Error creating default admin:', error);
+  }
 }

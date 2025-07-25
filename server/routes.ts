@@ -19,7 +19,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Initialize default data
-  createDefaultAdmin();
+  await createDefaultAdmin();
   
   const types = await storage.getInventoryTypes();
   if (types.length === 0) {
@@ -27,6 +27,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await storage.createInventoryType({ name: 'Anual', description: 'Inventário anual', isActive: true });
     await storage.createInventoryType({ name: 'Especial', description: 'Inventário especial', isActive: true });
   }
+
+  // Admin verification endpoint (temporary)
+  app.get('/api/debug/admin', async (req, res) => {
+    try {
+      const adminUser = await storage.getUserByUsername('admin');
+      if (!adminUser) {
+        return res.json({ 
+          exists: false, 
+          message: "Admin user not found" 
+        });
+      }
+
+      // Test password verification
+      const isValidPassword = await verifyPassword('admin123', adminUser.password);
+      
+      res.json({
+        exists: true,
+        isActive: adminUser.isActive,
+        passwordValid: isValidPassword,
+        user: {
+          id: adminUser.id,
+          username: adminUser.username,
+          email: adminUser.email,
+          role: adminUser.role,
+          firstName: adminUser.firstName,
+          lastName: adminUser.lastName
+        }
+      });
+    } catch (error) {
+      console.error("Error checking admin:", error);
+      res.status(500).json({ error: "Failed to check admin user" });
+    }
+  });
 
   // Auth routes
   app.post('/api/auth/login', async (req, res) => {
