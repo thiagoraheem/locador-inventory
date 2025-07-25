@@ -5,7 +5,7 @@ import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
-import connectPg from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { storage } from "./storage";
 
 if (!process.env.REPLIT_DOMAINS) {
@@ -24,20 +24,16 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  const MemoryStoreSession = MemoryStore(session);
   
   // Generate a secure session secret if not provided
   const sessionSecret = process.env.SESSION_SECRET || 'As/uEgJuzwRP7JcjDoNcVY41F75KCSNg/c9jew8VIzQ=';
   
   return session({
     secret: sessionSecret,
-    store: sessionStore,
+    store: new MemoryStoreSession({
+      checkPeriod: sessionTtl // prune expired entries every 1 week
+    }),
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -64,9 +60,12 @@ async function upsertUser(
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
+    username: claims["email"], // Use email as username for Replit auth
+    password: "", // No password needed for OAuth users
     firstName: claims["first_name"],
     lastName: claims["last_name"],
-    profileImageUrl: claims["profile_image_url"],
+    role: "user",
+    isActive: true,
   });
 }
 
