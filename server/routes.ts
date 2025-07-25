@@ -18,16 +18,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Initialize default data
-  await createDefaultAdmin();
-  
-  const types = await storage.getInventoryTypes();
-  if (types.length === 0) {
-    await storage.createInventoryType({ name: 'Mensal', description: 'Inventário mensal', isActive: true });
-    await storage.createInventoryType({ name: 'Anual', description: 'Inventário anual', isActive: true });
-    await storage.createInventoryType({ name: 'Especial', description: 'Inventário especial', isActive: true });
-  }
-
   // Database setup endpoint (temporary - for development)
   app.post('/api/setup-database', async (req, res) => {
     try {
@@ -64,39 +54,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Database test error:", error);
       res.status(500).json({ error: "Database test failed", details: error.message });
-    }
-  });
-
-  // Admin verification endpoint (temporary)
-  app.get('/api/debug/admin', async (req, res) => {
-    try {
-      const adminUser = await storage.getUserByUsername('admin');
-      if (!adminUser) {
-        return res.json({ 
-          exists: false, 
-          message: "Admin user not found" 
-        });
-      }
-
-      // Test password verification
-      const isValidPassword = await verifyPassword('admin123', adminUser.password);
-      
-      res.json({
-        exists: true,
-        isActive: adminUser.isActive,
-        passwordValid: isValidPassword,
-        user: {
-          id: adminUser.id,
-          username: adminUser.username,
-          email: adminUser.email,
-          role: adminUser.role,
-          firstName: adminUser.firstName,
-          lastName: adminUser.lastName
-        }
-      });
-    } catch (error) {
-      console.error("Error checking admin:", error);
-      res.status(500).json({ error: "Failed to check admin user" });
     }
   });
 
