@@ -192,7 +192,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {inventoryTypes?.map((type: any) => (
+                    {inventoryTypes?.filter((type: any) => type.id).map((type: any) => (
                       <SelectItem key={type.id} value={type.id.toString()}>
                         {type.name}
                       </SelectItem>

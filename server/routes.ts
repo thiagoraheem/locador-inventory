@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+// import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertProductSchema,
   insertCategorySchema,
@@ -12,9 +12,15 @@ import {
   insertCountSchema,
 } from "@shared/schema";
 
+// Mock authentication middleware for local development
+const isAuthenticated = (req, res, next) => next();
+
+// Helper function to get user ID (mock for local development)
+const getUserId = (req: any) => 'dev-user-1';
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Auth middleware - desabilitado para desenvolvimento local
+  // await setupAuth(app);
 
   // Initialize default inventory types
   const types = await storage.getInventoryTypes();
@@ -27,9 +33,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      // Mock user para desenvolvimento local
+      const mockUser = {
+        id: 'dev-user-1',
+        email: 'dev@localhost.com',
+        firstName: 'Desenvolvedor',
+        lastName: 'Local',
+        profileImageUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      res.json(mockUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -125,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const product = await storage.createProduct(productData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CREATE',
         entityType: 'PRODUCT',
         entityId: product.id.toString(),
@@ -152,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const product = await storage.updateProduct(id, productData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'UPDATE',
         entityType: 'PRODUCT',
         entityId: id.toString(),
@@ -179,7 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteProduct(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'DELETE',
         entityType: 'PRODUCT',
         entityId: id.toString(),
@@ -213,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.createLocation(locationData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CREATE',
         entityType: 'LOCATION',
         entityId: location.id.toString(),
@@ -240,7 +254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.updateLocation(id, locationData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'UPDATE',
         entityType: 'LOCATION',
         entityId: id.toString(),
@@ -267,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteLocation(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'DELETE',
         entityType: 'LOCATION',
         entityId: id.toString(),
@@ -304,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stock = await storage.createStock(stockData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CREATE',
         entityType: 'STOCK',
         entityId: stock.id.toString(),
@@ -331,7 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stock = await storage.updateStock(id, stockData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'UPDATE',
         entityType: 'STOCK',
         entityId: id.toString(),
@@ -390,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
-        createdBy: req.user.claims.sub,
+        createdBy: getUserId(req),
       };
       
       const inventoryData = insertInventorySchema.parse(bodyWithDates);
@@ -398,7 +412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventory = await storage.createInventory(inventoryData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CREATE',
         entityType: 'INVENTORY',
         entityId: inventory.id.toString(),
@@ -425,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventory = await storage.updateInventory(id, inventoryData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'UPDATE',
         entityType: 'INVENTORY',
         entityId: id.toString(),
@@ -447,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.closeInventory(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CLOSE',
         entityType: 'INVENTORY',
         entityId: id.toString(),
@@ -490,13 +504,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const countData = insertCountSchema.parse({
         ...req.body,
-        countedBy: req.user.claims.sub,
+        countedBy: getUserId(req),
       });
       
       const count = await storage.createCount(countData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req),
         action: 'CREATE',
         entityType: 'COUNT',
         entityId: count.id.toString(),
