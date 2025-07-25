@@ -403,7 +403,7 @@ export class DatabaseStorage implements IStorage {
 
     if (activeProducts.length > 0 && activeLocations.length > 0) {
       const inventoryItemsData = [];
-      
+
       for (const product of activeProducts) {
         for (const location of activeLocations) {
           // Get current stock quantity if exists
@@ -411,9 +411,9 @@ export class DatabaseStorage implements IStorage {
             .select()
             .from(stock)
             .where(and(eq(stock.productId, product.id), eq(stock.locationId, location.id)));
-          
+
           const expectedQuantity = stockItem ? stockItem.quantity : "0";
-          
+
           inventoryItemsData.push({
             inventoryId: newInventory.id,
             productId: product.id,
@@ -547,14 +547,46 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async createCount(count: InsertCount): Promise<Count> {
-    const [newCount] = await db.insert(counts).values(count).returning();
+  async createCount(countData: InsertCount): Promise<Count> {
+    const [newCount] = await db.insert(counts).values(countData).returning();
 
-    // Update inventory item status to COUNTING after first count
+    // Get all counts for this inventory item to calculate final quantity
+    const allCounts = await db
+      .select()
+      .from(counts)
+      .where(eq(counts.inventoryItemId, countData.inventoryItemId))
+      .orderBy(counts.countNumber);
+
+    let status = 'COUNTING';
+    let finalQuantity = null;
+
+    if (allCounts.length >= 2) {
+      // Calculate final quantity based on count logic
+      const quantities = allCounts.map(count => parseFloat(count.quantity));
+
+      if (allCounts.length === 2) {
+        // Check if first two counts match
+        if (Math.abs(quantities[0] - quantities[1]) <= 0.01) {
+          finalQuantity = quantities[0].toString();
+          status = 'COMPLETED';
+        }
+      } else if (allCounts.length === 3) {
+        // Use median of three counts
+        const sortedQuantities = [...quantities].sort((a, b) => a - b);
+        finalQuantity = sortedQuantities[1].toString();
+        status = 'COMPLETED';
+      }
+    }
+
+    // Update inventory item with status and final quantity
     await db
       .update(inventoryItems)
-      .set({ status: 'COUNTING', updatedAt: new Date() })
-      .where(eq(inventoryItems.id, count.inventoryItemId));
+      .set({ 
+        status, 
+        finalQuantity,
+        updatedAt: new Date() 
+      })
+      .where(eq(inventoryItems.id, countData.inventoryItemId));
 
     return newCount;
   }
@@ -633,7 +665,7 @@ export class MemStorage implements IStorage {
   private inventoryItems: Map<number, InventoryItem & { product: Product; location: Location }> = new Map();
   private counts: Map<number, Count & { countedByUser: User }> = new Map();
   private auditLogs: Map<number, AuditLog & { user: User }> = new Map();
-  
+
   private nextId = {
     category: 1,
     product: 1,
@@ -661,12 +693,12 @@ export class MemStorage implements IStorage {
 
   private async seedInitialData() {
     if (this.seeded) return;
-    
+
     // Seed with some initial data for testing  
     // Use bcrypt directly to avoid circular imports
     const bcrypt = await import('bcrypt');
     const hashedPassword = await bcrypt.hash("password", 12);
-    
+
     const defaultUser: User = {
       id: "user1",
       email: "admin@example.com",
@@ -746,7 +778,7 @@ export class MemStorage implements IStorage {
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
     const existingUser = this.users.get(id);
     if (!existingUser) throw new Error("User not found");
-    
+
     const updatedUser = {
       ...existingUser,
       ...userData,
@@ -794,7 +826,7 @@ export class MemStorage implements IStorage {
   async updateCategory(id: number, categoryData: Partial<InsertCategory>): Promise<Category> {
     const existing = this.categories.get(id);
     if (!existing) throw new Error("Category not found");
-    
+
     const updated = {
       ...existing,
       ...categoryData,
@@ -814,18 +846,18 @@ export class MemStorage implements IStorage {
   // Product operations
   async getProducts(search?: string, limit = 50, offset = 0, includeInactive = false): Promise<Product[]> {
     let products = Array.from(this.products.values());
-    
+
     if (!includeInactive) {
       products = products.filter(p => p.isActive);
     }
-    
+
     if (search) {
       products = products.filter(p => 
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.sku.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     return products
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(offset, offset + limit)
@@ -856,7 +888,7 @@ export class MemStorage implements IStorage {
   async updateProduct(id: number, productData: Partial<InsertProduct>): Promise<Product> {
     const existing = this.products.get(id);
     if (!existing) throw new Error("Product not found");
-    
+
     const updated = {
       ...existing,
       ...productData,
@@ -876,14 +908,14 @@ export class MemStorage implements IStorage {
   // Location operations
   async getLocations(search?: string): Promise<Location[]> {
     let locations = Array.from(this.locations.values()).filter(loc => loc.isActive);
-    
+
     if (search) {
       locations = locations.filter(loc => 
         loc.name.toLowerCase().includes(search.toLowerCase()) ||
         loc.code.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
+
     return locations.sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -904,8 +936,8 @@ export class MemStorage implements IStorage {
 
   async updateLocation(id: number, locationData: Partial<InsertLocation>): Promise<Location> {
     const existing = this.locations.get(id);
-    if (!existing) throw new Error("Location not found");
-    
+if (!existing) throw new Error("Location not found");
+
     const updated = {
       ...existing,
       ...locationData,
@@ -925,15 +957,15 @@ export class MemStorage implements IStorage {
   // Stock operations
   async getStock(productId?: number, locationId?: number): Promise<(Stock & { product: Product; location: Location })[]> {
     let stockItems = Array.from(this.stock.values());
-    
+
     if (productId) {
       stockItems = stockItems.filter(item => item.productId === productId);
     }
-    
+
     if (locationId) {
       stockItems = stockItems.filter(item => item.locationId === locationId);
     }
-    
+
     return stockItems;
   }
 
@@ -952,7 +984,7 @@ export class MemStorage implements IStorage {
   async createStock(stockData: InsertStock): Promise<Stock> {
     const product = this.products.get(stockData.productId);
     const location = this.locations.get(stockData.locationId);
-    
+
     if (!product || !location) {
       throw new Error("Product or location not found");
     }
@@ -969,14 +1001,14 @@ export class MemStorage implements IStorage {
       product,
       location,
     });
-    
+
     return stock;
   }
 
   async updateStock(id: number, stockData: Partial<InsertStock>): Promise<Stock> {
     const existing = this.stock.get(id);
     if (!existing) throw new Error("Stock not found");
-    
+
     const updated = {
       ...existing,
       ...stockData,
@@ -1014,11 +1046,11 @@ export class MemStorage implements IStorage {
   // Inventory operations
   async getInventories(status?: string): Promise<(Inventory & { type: InventoryType; createdByUser: User })[]> {
     let inventories = Array.from(this.inventories.values());
-    
+
     if (status) {
       inventories = inventories.filter(inv => inv.status === status);
     }
-    
+
     return inventories.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -1029,7 +1061,7 @@ export class MemStorage implements IStorage {
   async createInventory(inventoryData: InsertInventory): Promise<Inventory> {
     const type = this.inventoryTypes.get(inventoryData.typeId);
     const user = this.users.get(inventoryData.createdBy);
-    
+
     if (!type || !user) {
       throw new Error("Inventory type or user not found");
     }
@@ -1060,16 +1092,16 @@ export class MemStorage implements IStorage {
     // Auto-create inventory items for all active products in all active locations
     const activeProducts = Array.from(this.products.values()).filter(p => p.isActive);
     const activeLocations = Array.from(this.locations.values()).filter(l => l.isActive);
-    
+
     for (const product of activeProducts) {
       for (const location of activeLocations) {
         // Find existing stock for this product-location combination
         const stockItem = Array.from(this.stock.values()).find(
           s => s.productId === product.id && s.locationId === location.id
         );
-        
+
         const expectedQuantity = stockItem ? stockItem.quantity : "0";
-        
+
         const itemId = this.nextId.inventoryItem++;
         this.inventoryItems.set(itemId, {
           id: itemId,
@@ -1086,14 +1118,14 @@ export class MemStorage implements IStorage {
         });
       }
     }
-    
+
     return inventory;
   }
 
   async updateInventory(id: number, inventoryData: Partial<InsertInventory>): Promise<Inventory> {
     const existing = this.inventories.get(id);
     if (!existing) throw new Error("Inventory not found");
-    
+
     const updated = {
       ...existing,
       ...inventoryData,
@@ -1120,13 +1152,13 @@ export class MemStorage implements IStorage {
 
     // Update stock based on final quantities
     const items = Array.from(this.inventoryItems.values()).filter(item => item.inventoryId === id);
-    
+
     for (const item of items) {
       if (item.finalQuantity !== null) {
         const stockItems = Array.from(this.stock.values()).filter(
           stock => stock.productId === item.productId && stock.locationId === item.locationId
         );
-        
+
         if (stockItems.length > 0) {
           const stockItem = stockItems[0];
           this.stock.set(stockItem.id, {
@@ -1155,7 +1187,7 @@ export class MemStorage implements IStorage {
   async createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem> {
     const product = this.products.get(itemData.productId);
     const location = this.locations.get(itemData.locationId);
-    
+
     if (!product || !location) {
       throw new Error("Product or location not found");
     }
@@ -1172,14 +1204,14 @@ export class MemStorage implements IStorage {
       product,
       location,
     });
-    
+
     return item;
   }
 
   async updateInventoryItem(id: number, itemData: Partial<InsertInventoryItem>): Promise<InventoryItem> {
     const existing = this.inventoryItems.get(id);
     if (!existing) throw new Error("Inventory item not found");
-    
+
     const updated = {
       ...existing,
       ...itemData,
@@ -1221,16 +1253,41 @@ export class MemStorage implements IStorage {
       countedByUser: user,
     });
 
-    // Update inventory item status
+    // Get all counts for this inventory item to calculate final quantity
+    const allCounts = Array.from(this.counts.values()).filter(c => c.inventoryItemId === countData.inventoryItemId);
+
+    let status = 'COUNTING';
+    let finalQuantity: string | null = null;
+
+    if (allCounts.length >= 2) {
+      // Calculate final quantity based on count logic
+      const quantities = allCounts.map(count => parseFloat(count.quantity));
+
+      if (allCounts.length === 2) {
+        // Check if first two counts match
+        if (Math.abs(quantities[0] - quantities[1]) <= 0.01) {
+          finalQuantity = quantities[0].toString();
+          status = 'COMPLETED';
+        }
+      } else if (allCounts.length === 3) {
+        // Use median of three counts
+        const sortedQuantities = [...quantities].sort((a, b) => a - b);
+        finalQuantity = sortedQuantities[1].toString();
+        status = 'COMPLETED';
+      }
+    }
+
+    // Update inventory item with status and final quantity
     const item = this.inventoryItems.get(countData.inventoryItemId);
     if (item) {
       this.inventoryItems.set(item.id, {
         ...item,
-        status: 'COUNTING',
+        status: status,
+        finalQuantity: finalQuantity,
         updatedAt: new Date(),
       });
     }
-    
+
     return count;
   }
 
@@ -1255,7 +1312,7 @@ export class MemStorage implements IStorage {
       ...log,
       user,
     });
-    
+
     return log;
   }
 
@@ -1269,12 +1326,12 @@ export class MemStorage implements IStorage {
     const totalProducts = Array.from(this.products.values()).filter(p => p.isActive).length;
     const activeInventories = Array.from(this.inventories.values()).filter(inv => inv.status === 'OPEN').length;
     const stockLocations = Array.from(this.locations.values()).filter(loc => loc.isActive).length;
-    
+
     const auditLogs = Array.from(this.auditLogs.values());
     const lastAudit = auditLogs.length > 0 
       ? auditLogs.reduce((latest, log) => log.timestamp > latest.timestamp ? log : latest)
       : null;
-    
+
     const lastAuditDays = lastAudit 
       ? Math.floor((Date.now() - lastAudit.timestamp.getTime()) / (1000 * 60 * 60 * 24))
       : 0;

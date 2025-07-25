@@ -191,41 +191,46 @@ export default function InventoryCounting() {
   const getCountingStages = () => {
     if (!inventoryItems) return [];
     
-    // Count how many items have each count number
-    const countStats = { first: 0, second: 0, third: 0 };
     const totalItems = inventoryItems.length;
-    
-    // This would need to be calculated based on actual counts data
-    // For now, we'll base it on inventory status and completion
     const completedItems = inventoryItems.filter((item: any) => item.status === 'COMPLETED').length;
+    const countingItems = inventoryItems.filter((item: any) => item.status === 'COUNTING').length;
+    const pendingItems = inventoryItems.filter((item: any) => item.status === 'PENDING').length;
+    
+    // Calculate progress for each stage
+    const firstCountProgress = Math.round(((totalItems - pendingItems) / totalItems) * 100);
+    const secondCountProgress = countingItems > 0 ? Math.round((countingItems / totalItems) * 100) : 0;
+    const thirdCountProgress = completedItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
     
     const stages = [
       { 
         id: 1, 
         name: "1ª Contagem", 
-        status: inventory.status === 'OPEN' ? "pending" : completedItems > 0 ? "completed" : "active",
-        icon: inventory.status === 'OPEN' ? Lock : completedItems > 0 ? CheckCircle : Clock,
-        color: inventory.status === 'OPEN' ? "text-gray-500" : completedItems > 0 ? "text-green-600" : "text-orange-600",
-        bg: inventory.status === 'OPEN' ? "bg-gray-50" : completedItems > 0 ? "bg-green-50" : "bg-orange-50",
-        border: inventory.status === 'OPEN' ? "border-gray-200" : completedItems > 0 ? "border-green-200" : "border-orange-200"
+        status: inventory.status === 'OPEN' ? "pending" : firstCountProgress > 0 ? "active" : "pending",
+        icon: inventory.status === 'OPEN' ? Lock : firstCountProgress > 0 ? Clock : Lock,
+        color: inventory.status === 'OPEN' ? "text-gray-500" : firstCountProgress > 0 ? "text-orange-600" : "text-gray-500",
+        bg: inventory.status === 'OPEN' ? "bg-gray-50" : firstCountProgress > 0 ? "bg-orange-50" : "bg-gray-50",
+        border: inventory.status === 'OPEN' ? "border-gray-200" : firstCountProgress > 0 ? "border-orange-200" : "border-gray-200",
+        progress: firstCountProgress
       },
       { 
         id: 2, 
         name: "2ª Contagem", 
-        status: "pending", 
-        icon: Lock, 
-        color: "text-gray-500", 
-        bg: "bg-gray-50", 
-        border: "border-gray-200" 
+        status: countingItems > 0 ? "active" : "pending",
+        icon: countingItems > 0 ? Clock : Lock,
+        color: countingItems > 0 ? "text-blue-600" : "text-gray-500",
+        bg: countingItems > 0 ? "bg-blue-50" : "bg-gray-50",
+        border: countingItems > 0 ? "border-blue-200" : "border-gray-200",
+        progress: secondCountProgress
       },
       { 
         id: 3, 
         name: "3ª Contagem", 
-        status: "pending", 
-        icon: Lock, 
-        color: "text-gray-500", 
-        bg: "bg-gray-50", 
-        border: "border-gray-200" 
+        status: completedItems > 0 ? "completed" : "pending",
+        icon: completedItems > 0 ? CheckCircle : Lock,
+        color: completedItems > 0 ? "text-green-600" : "text-gray-500",
+        bg: completedItems > 0 ? "bg-green-50" : "bg-gray-50",
+        border: completedItems > 0 ? "border-green-200" : "border-gray-200",
+        progress: thirdCountProgress
       },
     ];
 
@@ -275,6 +280,8 @@ export default function InventoryCounting() {
     closeInventoryMutation.mutate();
   };
 
+  const [existingCounts, setExistingCounts] = useState<any[]>([]);
+
   const handleAddCount = async () => {
     if (!selectedItem || !countData.quantity) return;
     
@@ -311,6 +318,24 @@ export default function InventoryCounting() {
     }
   };
 
+  // Load existing counts when dialog opens
+  useEffect(() => {
+    const loadExistingCounts = async () => {
+      if (selectedItem && isCountDialogOpen) {
+        try {
+          const response = await fetch(`/api/inventory-items/${selectedItem.id}/counts`);
+          const counts = await response.json();
+          setExistingCounts(counts);
+        } catch (error) {
+          console.error("Error loading existing counts:", error);
+          setExistingCounts([]);
+        }
+      }
+    };
+
+    loadExistingCounts();
+  }, [selectedItem, isCountDialogOpen]);
+
   const columns = [
     {
       header: "SKU",
@@ -331,6 +356,21 @@ export default function InventoryCounting() {
       cell: (value: any, row: any) => row.location?.name || "-",
     },
     // Removed expected quantity column for blind counting
+    {
+      header: "Contagens",
+      accessorKey: "counts",
+      cell: (value: any, row: any) => {
+        // This would need to be populated with actual count data
+        // For now, we'll show a placeholder based on status
+        if (row.status === 'PENDING') {
+          return <span className="text-gray-400 text-sm">-</span>;
+        } else if (row.status === 'COUNTING') {
+          return <span className="text-blue-600 text-sm">1-2 contagens</span>;
+        } else {
+          return <span className="text-green-600 text-sm">Finalizado</span>;
+        }
+      },
+    },
     {
       header: "Qtd. Final",
       accessorKey: "finalQuantity",
@@ -526,9 +566,11 @@ export default function InventoryCounting() {
 
         {/* Count Dialog */}
         <Dialog open={isCountDialogOpen} onOpenChange={setIsCountDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Registrar Contagem</DialogTitle>
+              <DialogTitle>
+                Registrar {existingCounts.length === 0 ? "1ª" : existingCounts.length === 1 ? "2ª" : "3ª"} Contagem
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {selectedItem && (
@@ -536,7 +578,33 @@ export default function InventoryCounting() {
                   <p className="text-sm font-medium">{selectedItem.product.name}</p>
                   <p className="text-xs text-gray-600">SKU: {selectedItem.product.sku}</p>
                   <p className="text-xs text-gray-600">Local: {selectedItem.location.name}</p>
-                  {/* Expected quantity hidden for blind counting */}
+                  <p className="text-xs text-gray-600">Status: {
+                    selectedItem.status === 'PENDING' ? 'Pendente' :
+                    selectedItem.status === 'COUNTING' ? 'Em Contagem' : 'Concluído'
+                  }</p>
+                </div>
+              )}
+
+              {existingCounts.length > 0 && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-blue-800 mb-2">Contagens Anteriores:</p>
+                  <div className="space-y-1">
+                    {existingCounts.map((count, index) => (
+                      <div key={count.id} className="flex justify-between text-xs text-blue-700">
+                        <span>{index + 1}ª Contagem:</span>
+                        <span className="font-medium">{parseFloat(count.quantity).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {existingCounts.length === 2 && (
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p className="text-xs text-blue-600">
+                        {Math.abs(parseFloat(existingCounts[0].quantity) - parseFloat(existingCounts[1].quantity)) <= 0.01 
+                          ? "✓ Contagens coincidem - uma 3ª contagem é opcional" 
+                          : "⚠ Contagens divergem - uma 3ª contagem é necessária"}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -549,6 +617,7 @@ export default function InventoryCounting() {
                   value={countData.quantity}
                   onChange={(e) => setCountData(prev => ({ ...prev, quantity: e.target.value }))}
                   placeholder="0"
+                  autoFocus
                 />
               </div>
               
@@ -569,9 +638,11 @@ export default function InventoryCounting() {
                 </Button>
                 <Button 
                   onClick={handleAddCount}
-                  disabled={!countData.quantity || createCountMutation.isPending}
+                  disabled={!countData.quantity || createCountMutation.isPending || existingCounts.length >= 3}
                 >
-                  {createCountMutation.isPending ? "Salvando..." : "Registrar Contagem"}
+                  {createCountMutation.isPending ? "Salvando..." : 
+                   existingCounts.length >= 3 ? "Máximo atingido" :
+                   "Registrar Contagem"}
                 </Button>
               </div>
             </div>
