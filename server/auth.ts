@@ -63,13 +63,20 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 
 export async function createDefaultAdmin() {
   try {
-    // Create default admin user if none exists
-    const users = await storage.getUsers();
-    const adminUser = users.find(u => u.role === 'admin');
+    console.log('🔍 Checking for admin user...');
+    
+    // Try to get admin user by username
+    const adminUser = await storage.getUserByUsername('admin');
     
     if (!adminUser) {
-      console.log('No admin user found, creating default admin...');
+      console.log('❌ No admin user found, creating default admin...');
       const hashedPassword = await hashPassword('admin123');
+      
+      // Test the password hashing
+      console.log('🔐 Testing password hash...');
+      const testVerify = await verifyPassword('admin123', hashedPassword);
+      console.log('✓ Password verification test:', testVerify ? 'PASSED' : 'FAILED');
+      
       const newAdmin = await storage.createUser({
         id: 'admin-' + Date.now(),
         username: 'admin',
@@ -80,13 +87,23 @@ export async function createDefaultAdmin() {
         role: 'admin',
         isActive: true,
       });
+      
       console.log('✅ Default admin user created successfully:', {
         id: newAdmin.id,
         username: newAdmin.username,
         email: newAdmin.email,
-        role: newAdmin.role
+        role: newAdmin.role,
+        isActive: newAdmin.isActive
       });
       console.log('🔑 Login credentials: admin/admin123');
+      
+      // Verify the created user immediately
+      const verifyCreated = await storage.getUserByUsername('admin');
+      if (verifyCreated) {
+        const passwordCheck = await verifyPassword('admin123', verifyCreated.password);
+        console.log('✓ Created user verification:', passwordCheck ? 'PASSED' : 'FAILED');
+      }
+      
     } else {
       console.log('✅ Admin user already exists:', {
         id: adminUser.id,
@@ -95,8 +112,20 @@ export async function createDefaultAdmin() {
         role: adminUser.role,
         isActive: adminUser.isActive
       });
+      
+      // Test the existing password
+      const passwordTest = await verifyPassword('admin123', adminUser.password);
+      console.log('🔐 Existing admin password test:', passwordTest ? 'VALID' : 'INVALID');
+      
+      if (!passwordTest) {
+        console.log('🔄 Updating admin password...');
+        const newHashedPassword = await hashPassword('admin123');
+        await storage.updateUser(adminUser.id, { password: newHashedPassword });
+        console.log('✅ Admin password updated successfully');
+      }
     }
   } catch (error) {
-    console.error('❌ Error creating default admin:', error);
+    console.error('❌ Error in createDefaultAdmin:', error);
+    console.error('Stack trace:', error.stack);
   }
 }

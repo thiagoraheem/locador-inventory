@@ -28,6 +28,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await storage.createInventoryType({ name: 'Especial', description: 'Inventário especial', isActive: true });
   }
 
+  // Database setup endpoint (temporary - for development)
+  app.post('/api/setup-database', async (req, res) => {
+    try {
+      const { setupDatabase } = await import('./setup-database');
+      await setupDatabase();
+      res.json({ message: "Database setup completed successfully" });
+    } catch (error) {
+      console.error("Error setting up database:", error);
+      res.status(500).json({ error: "Failed to setup database" });
+    }
+  });
+
+  // Database test endpoint
+  app.get('/api/test-database', async (req, res) => {
+    try {
+      console.log('🔍 Testing database connection...');
+      const users = await storage.getUsers();
+      console.log('📊 Users found:', users.length);
+      
+      const adminUser = await storage.getUserByUsername('admin');
+      console.log('👤 Admin user:', adminUser ? 'FOUND' : 'NOT FOUND');
+      
+      if (adminUser) {
+        const passwordTest = await verifyPassword('admin123', adminUser.password);
+        console.log('🔐 Password test:', passwordTest ? 'VALID' : 'INVALID');
+      }
+      
+      res.json({
+        connected: true,
+        usersCount: users.length,
+        adminExists: !!adminUser,
+        adminPasswordValid: adminUser ? await verifyPassword('admin123', adminUser.password) : false
+      });
+    } catch (error) {
+      console.error("Database test error:", error);
+      res.status(500).json({ error: "Database test failed", details: error.message });
+    }
+  });
+
   // Admin verification endpoint (temporary)
   app.get('/api/debug/admin', async (req, res) => {
     try {
