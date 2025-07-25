@@ -316,16 +316,19 @@ export default function InventoryCounting() {
       header: "SKU",
       accessorKey: "product.sku",
       sortable: true,
+      cell: (value: any, row: any) => row.product?.sku || "-",
     },
     {
       header: "Produto",
       accessorKey: "product.name",
       sortable: true,
+      cell: (value: any, row: any) => row.product?.name || "-",
     },
     {
       header: "Local",
       accessorKey: "location.name",
       sortable: true,
+      cell: (value: any, row: any) => row.location?.name || "-",
     },
     // Removed expected quantity column for blind counting
     {

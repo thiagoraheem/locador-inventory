@@ -501,16 +501,20 @@ export class DatabaseStorage implements IStorage {
   // Inventory item operations
   async getInventoryItems(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
     const results = await db
-      .select()
+      .select({
+        inventoryItem: inventoryItems,
+        product: products,
+        location: locations,
+      })
       .from(inventoryItems)
       .leftJoin(products, eq(inventoryItems.productId, products.id))
       .leftJoin(locations, eq(inventoryItems.locationId, locations.id))
       .where(eq(inventoryItems.inventoryId, inventoryId));
 
     return results.map(result => ({
-      ...result.inventory_items,
-      product: result.products!,
-      location: result.locations!,
+      ...result.inventoryItem,
+      product: result.product!,
+      location: result.location!,
     }));
   }
 
