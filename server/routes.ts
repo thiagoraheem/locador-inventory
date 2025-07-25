@@ -236,7 +236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const product = await storage.createProduct(productData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CREATE',
         entityType: 'PRODUCT',
         entityId: product.id.toString(),
@@ -263,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const product = await storage.updateProduct(id, productData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'UPDATE',
         entityType: 'PRODUCT',
         entityId: id.toString(),
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteProduct(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'DELETE',
         entityType: 'PRODUCT',
         entityId: id.toString(),
@@ -324,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.createLocation(locationData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CREATE',
         entityType: 'LOCATION',
         entityId: location.id.toString(),
@@ -351,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.updateLocation(id, locationData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'UPDATE',
         entityType: 'LOCATION',
         entityId: id.toString(),
@@ -378,7 +378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteLocation(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'DELETE',
         entityType: 'LOCATION',
         entityId: id.toString(),
@@ -415,7 +415,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stock = await storage.createStock(stockData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CREATE',
         entityType: 'STOCK',
         entityId: stock.id.toString(),
@@ -442,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stock = await storage.updateStock(id, stockData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'UPDATE',
         entityType: 'STOCK',
         entityId: id.toString(),
@@ -501,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
-        createdBy: req.user.claims.sub,
+        createdBy: req.user.id,
       };
       
       const inventoryData = insertInventorySchema.parse(bodyWithDates);
@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventory = await storage.createInventory(inventoryData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CREATE',
         entityType: 'INVENTORY',
         entityId: inventory.id.toString(),
@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventory = await storage.updateInventory(id, inventoryData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'UPDATE',
         entityType: 'INVENTORY',
         entityId: id.toString(),
@@ -558,7 +558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.closeInventory(id);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CLOSE',
         entityType: 'INVENTORY',
         entityId: id.toString(),
@@ -601,13 +601,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const countData = insertCountSchema.parse({
         ...req.body,
-        countedBy: req.user.claims.sub,
+        countedBy: req.user.id,
       });
       
       const count = await storage.createCount(countData);
       
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: 'CREATE',
         entityType: 'COUNT',
         entityId: count.id.toString(),
