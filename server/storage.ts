@@ -397,23 +397,35 @@ export class DatabaseStorage implements IStorage {
 
     const [newInventory] = await db.insert(inventories).values(inventoryData).returning();
 
-    // Automatically create inventory items based on current stock
-    const stockItems = await db
-      .select()
-      .from(stock)
-      .leftJoin(products, eq(stock.productId, products.id))
-      .leftJoin(locations, eq(stock.locationId, locations.id))
-      .where(and(eq(products.isActive, true), eq(locations.isActive, true)));
+    // Create inventory items for all active products in all active locations
+    const activeProducts = await db.select().from(products).where(eq(products.isActive, true));
+    const activeLocations = await db.select().from(locations).where(eq(locations.isActive, true));
 
-    if (stockItems.length > 0) {
-      const inventoryItemsData = stockItems.map(item => ({
-        inventoryId: newInventory.id,
-        productId: item.stock.productId,
-        locationId: item.stock.locationId,
-        expectedQuantity: item.stock.quantity,
-      }));
+    if (activeProducts.length > 0 && activeLocations.length > 0) {
+      const inventoryItemsData = [];
+      
+      for (const product of activeProducts) {
+        for (const location of activeLocations) {
+          // Get current stock quantity if exists
+          const [stockItem] = await db
+            .select()
+            .from(stock)
+            .where(and(eq(stock.productId, product.id), eq(stock.locationId, location.id)));
+          
+          const expectedQuantity = stockItem ? stockItem.quantity : "0";
+          
+          inventoryItemsData.push({
+            inventoryId: newInventory.id,
+            productId: product.id,
+            locationId: location.id,
+            expectedQuantity: expectedQuantity,
+          });
+        }
+      }
 
-      await db.insert(inventoryItems).values(inventoryItemsData).returning();
+      if (inventoryItemsData.length > 0) {
+        await db.insert(inventoryItems).values(inventoryItemsData).returning();
+      }
     }
 
     return newInventory;
@@ -1041,22 +1053,34 @@ export class MemStorage implements IStorage {
       createdByUser: user,
     });
 
-    // Auto-create inventory items based on current stock
-    const stockItems = Array.from(this.stock.values());
-    for (const stockItem of stockItems) {
-      this.inventoryItems.set(this.nextId.inventoryItem++, {
-        id: this.nextId.inventoryItem,
-        inventoryId: inventory.id,
-        productId: stockItem.productId,
-        locationId: stockItem.locationId,
-        expectedQuantity: stockItem.quantity,
-        finalQuantity: null,
-        status: "PENDING",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        product: stockItem.product,
-        location: stockItem.location,
-      });
+    // Auto-create inventory items for all active products in all active locations
+    const activeProducts = Array.from(this.products.values()).filter(p => p.isActive);
+    const activeLocations = Array.from(this.locations.values()).filter(l => l.isActive);
+    
+    for (const product of activeProducts) {
+      for (const location of activeLocations) {
+        // Find existing stock for this product-location combination
+        const stockItem = Array.from(this.stock.values()).find(
+          s => s.productId === product.id && s.locationId === location.id
+        );
+        
+        const expectedQuantity = stockItem ? stockItem.quantity : "0";
+        
+        const itemId = this.nextId.inventoryItem++;
+        this.inventoryItems.set(itemId, {
+          id: itemId,
+          inventoryId: inventory.id,
+          productId: product.id,
+          locationId: location.id,
+          expectedQuantity: expectedQuantity,
+          finalQuantity: null,
+          status: "PENDING",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          product: product,
+          location: location,
+        });
+      }
     }
     
     return inventory;

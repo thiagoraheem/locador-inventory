@@ -154,7 +154,7 @@ export default function InventoryReview() {
       sortable: true,
     },
     {
-      header: "Qtd. Esperada",
+      header: "Qtd. Sistema",
       accessorKey: "expectedQuantity",
       sortable: true,
       cell: (value: string) => parseFloat(value || "0").toLocaleString(),

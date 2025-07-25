@@ -251,9 +251,9 @@ export default function InventoryCounting() {
     let underCount = 0;
 
     inventoryItems.forEach((item: any) => {
-      if (item.finalQuantity && item.expectedQuantity) {
+      if (item.finalQuantity !== null && item.finalQuantity !== undefined && item.expectedQuantity) {
         const final = parseFloat(item.finalQuantity);
-        const expected = parseFloat(item.expectedQuantity);
+        const expected = parseFloat(item.expectedQuantity || "0");
         const diff = final - expected;
         
         if (diff !== 0) {
@@ -327,12 +327,7 @@ export default function InventoryCounting() {
       accessorKey: "location.name",
       sortable: true,
     },
-    {
-      header: "Qtd. Esperada",
-      accessorKey: "expectedQuantity",
-      sortable: true,
-      cell: (value: string) => parseFloat(value || "0").toLocaleString(),
-    },
+    // Removed expected quantity column for blind counting
     {
       header: "Qtd. Final",
       accessorKey: "finalQuantity",
@@ -538,7 +533,7 @@ export default function InventoryCounting() {
                   <p className="text-sm font-medium">{selectedItem.product.name}</p>
                   <p className="text-xs text-gray-600">SKU: {selectedItem.product.sku}</p>
                   <p className="text-xs text-gray-600">Local: {selectedItem.location.name}</p>
-                  <p className="text-xs text-gray-600">Qtd. Esperada: {parseFloat(selectedItem.expectedQuantity || "0").toLocaleString()}</p>
+                  {/* Expected quantity hidden for blind counting */}
                 </div>
               )}
               
