@@ -29,8 +29,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await setupSqlServerDatabase();
       res.json({ message: "SQL Server database setup completed successfully" });
     } catch (error) {
-      console.error("Error setting up SQL Server:", error);
-      res.status(500).json({ error: "Failed to setup SQL Server database", details: error.message });
+      console.error("Error setting up SQL Server:", error as Error);
+      res.status(500).json({ error: "Failed to setup SQL Server database", details: (error as Error).message });
     }
   });
 
@@ -55,8 +55,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: "SQL Server connection failed" });
       }
     } catch (error) {
-      console.error("SQL Server connection error:", error);
-      res.status(500).json({ error: "Database connection failed", details: error.message });
+      console.error("SQL Server connection error:", error as Error);
+      res.status(500).json({ error: "Database connection failed", details: (error as Error).message });
     }
   });
 
@@ -175,30 +175,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/categories', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const category = await storage.createCategory(req.body);
       res.json(category);
     } catch (error) {
-      console.error("Error creating category:", error);
+      console.error("Error creating category:", error as Error);
       res.status(500).json({ message: "Failed to create category" });
     }
   });
 
   app.put('/api/categories/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const category = await storage.updateCategory(parseInt(req.params.id), req.body);
       res.json(category);
     } catch (error) {
-      console.error("Error updating category:", error);
+      console.error("Error updating category:", error as Error);
       res.status(500).json({ message: "Failed to update category" });
     }
   });
 
   app.delete('/api/categories/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       await storage.deleteCategory(parseInt(req.params.id));
       res.json({ message: "Category deleted successfully" });
     } catch (error) {
-      console.error("Error deleting category:", error);
+      console.error("Error deleting category:", error as Error);
       res.status(500).json({ message: "Failed to delete category" });
     }
   });
@@ -206,22 +209,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product routes
   app.get('/api/products', isAuthenticated, async (req, res) => {
     try {
-      const { search, limit, offset, includeInactive } = req.query;
-      const products = await storage.getProducts(
-        search as string,
-        limit ? parseInt(limit as string) : undefined,
-        offset ? parseInt(offset as string) : undefined,
-        includeInactive === 'true'
-      );
+      storage = await getStorage();
+      const products = await storage.getProducts();
       res.json(products);
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error fetching products:", error as Error);
       res.status(500).json({ message: "Failed to fetch products" });
     }
   });
 
   app.get('/api/products/:id', isAuthenticated, async (req, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const product = await storage.getProduct(id);
       if (!product) {
@@ -229,13 +228,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(product);
     } catch (error) {
-      console.error("Error fetching product:", error);
+      console.error("Error fetching product:", error as Error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
   });
 
   app.post('/api/products', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const productData = insertProductSchema.parse(req.body);
       const product = await storage.createProduct(productData);
       
@@ -244,13 +244,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CREATE',
         entityType: 'PRODUCT',
         entityId: product.id.toString(),
+        oldValues: null,
         newValues: productData,
         metadata: null,
       });
       
       res.status(201).json(product);
     } catch (error) {
-      console.error("Error creating product:", error);
+      console.error("Error creating product:", error as Error);
       res.status(500).json({ message: "Failed to create product" });
     }
   });
@@ -278,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(product);
     } catch (error) {
-      console.error("Error updating product:", error);
+      console.error("Error updating product:", error as Error);
       res.status(500).json({ message: "Failed to update product" });
     }
   });
@@ -305,25 +306,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error deleting product:", error as Error);
       res.status(500).json({ message: "Failed to delete product" });
     }
   });
 
   // Location routes
-  app.get('/api/locations', isAuthenticated, async (req, res) => {
+  app.get('/api/locations', isAuthenticated, async (req: any, res) => {
     try {
-      const { search } = req.query;
-      const locations = await storage.getLocations(search as string);
+      storage = await getStorage();
+      const locations = await storage.getLocations();
       res.json(locations);
     } catch (error) {
-      console.error("Error fetching locations:", error);
+      console.error("Error fetching locations:", error as Error);
       res.status(500).json({ message: "Failed to fetch locations" });
     }
   });
 
   app.post('/api/locations', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const locationData = insertLocationSchema.parse(req.body);
       const location = await storage.createLocation(locationData);
       
@@ -332,19 +334,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CREATE',
         entityType: 'LOCATION',
         entityId: location.id.toString(),
+        oldValues: null,
         newValues: locationData,
         metadata: null,
       });
       
       res.status(201).json(location);
     } catch (error) {
-      console.error("Error creating location:", error);
+      console.error("Error creating location:", error as Error);
       res.status(500).json({ message: "Failed to create location" });
     }
   });
 
   app.put('/api/locations/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const oldLocation = await storage.getLocation(id);
       if (!oldLocation) {
@@ -366,13 +370,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(location);
     } catch (error) {
-      console.error("Error updating location:", error);
+      console.error("Error updating location:", error as Error);
       res.status(500).json({ message: "Failed to update location" });
     }
   });
 
   app.delete('/api/locations/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const oldLocation = await storage.getLocation(id);
       if (!oldLocation) {
@@ -393,28 +398,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting location:", error);
+      console.error("Error deleting location:", error as Error);
       res.status(500).json({ message: "Failed to delete location" });
     }
   });
 
   // Stock routes
-  app.get('/api/stock', isAuthenticated, async (req, res) => {
+  app.get('/api/stock', isAuthenticated, async (req: any, res) => {
     try {
-      const { productId, locationId } = req.query;
-      const stock = await storage.getStock(
-        productId ? parseInt(productId as string) : undefined,
-        locationId ? parseInt(locationId as string) : undefined
-      );
+      storage = await getStorage();
+      const stock = await storage.getStock();
       res.json(stock);
     } catch (error) {
-      console.error("Error fetching stock:", error);
+      console.error("Error fetching stock:", error as Error);
       res.status(500).json({ message: "Failed to fetch stock" });
     }
   });
 
   app.post('/api/stock', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const stockData = insertStockSchema.parse(req.body);
       const stock = await storage.createStock(stockData);
       
@@ -423,19 +426,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CREATE',
         entityType: 'STOCK',
         entityId: stock.id.toString(),
+        oldValues: null,
         newValues: stockData,
         metadata: null,
       });
       
       res.status(201).json(stock);
     } catch (error) {
-      console.error("Error creating stock:", error);
+      console.error("Error creating stock:", error as Error);
       res.status(500).json({ message: "Failed to create stock" });
     }
   });
 
   app.put('/api/stock/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const oldStock = await storage.getStockItem(id);
       if (!oldStock) {
@@ -457,35 +462,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(stock);
     } catch (error) {
-      console.error("Error updating stock:", error);
+      console.error("Error updating stock:", error as Error);
       res.status(500).json({ message: "Failed to update stock" });
     }
   });
 
   // Inventory routes
-  app.get('/api/inventory-types', isAuthenticated, async (req, res) => {
+  app.get('/api/inventory-types', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const types = await storage.getInventoryTypes();
       res.json(types);
     } catch (error) {
-      console.error("Error fetching inventory types:", error);
+      console.error("Error fetching inventory types:", error as Error);
       res.status(500).json({ message: "Failed to fetch inventory types" });
     }
   });
 
-  app.get('/api/inventories', isAuthenticated, async (req, res) => {
+  app.get('/api/inventories', isAuthenticated, async (req: any, res) => {
     try {
-      const { status } = req.query;
-      const inventories = await storage.getInventories(status as string);
+      storage = await getStorage();
+      const inventories = await storage.getInventories();
       res.json(inventories);
     } catch (error) {
-      console.error("Error fetching inventories:", error);
+      console.error("Error fetching inventories:", error as Error);
       res.status(500).json({ message: "Failed to fetch inventories" });
     }
   });
 
-  app.get('/api/inventories/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/inventories/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const inventory = await storage.getInventory(id);
       if (!inventory) {
@@ -493,13 +500,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(inventory);
     } catch (error) {
-      console.error("Error fetching inventory:", error);
+      console.error("Error fetching inventory:", error as Error);
       res.status(500).json({ message: "Failed to fetch inventory" });
     }
   });
 
   app.post('/api/inventories', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       // Convert date strings to Date objects before validation
       const bodyWithDates = {
         ...req.body,
@@ -517,19 +525,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CREATE',
         entityType: 'INVENTORY',
         entityId: inventory.id.toString(),
+        oldValues: null,
         newValues: inventoryData,
         metadata: null,
       });
       
       res.status(201).json(inventory);
     } catch (error) {
-      console.error("Error creating inventory:", error);
+      console.error("Error creating inventory:", error as Error);
       res.status(500).json({ message: "Failed to create inventory" });
     }
   });
 
   app.put('/api/inventories/:id', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
       const oldInventory = await storage.getInventory(id);
       if (!oldInventory) {
@@ -551,14 +561,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(inventory);
     } catch (error) {
-      console.error("Error updating inventory:", error);
+      console.error("Error updating inventory:", error as Error);
       res.status(500).json({ message: "Failed to update inventory" });
     }
   });
 
   app.post('/api/inventories/:id/close', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const id = parseInt(req.params.id);
+      const oldInventory = await storage.getInventory(id);
+      if (!oldInventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+      
       await storage.closeInventory(id);
       
       await storage.createAuditLog({
@@ -566,43 +582,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CLOSE',
         entityType: 'INVENTORY',
         entityId: id.toString(),
+        oldValues: oldInventory,
         newValues: { status: 'CLOSED' },
         metadata: null,
       });
       
       res.json({ message: "Inventory closed successfully" });
     } catch (error) {
-      console.error("Error closing inventory:", error);
+      console.error("Error closing inventory:", error as Error);
       res.status(500).json({ message: "Failed to close inventory" });
     }
   });
 
   // Inventory items routes
-  app.get('/api/inventories/:id/items', isAuthenticated, async (req, res) => {
+  app.get('/api/inventories/:id/items', isAuthenticated, async (req: any, res) => {
     try {
-      const inventoryId = parseInt(req.params.id);
-      const items = await storage.getInventoryItems(inventoryId);
+      storage = await getStorage();
+      const items = await storage.getInventoryItems();
       res.json(items);
     } catch (error) {
-      console.error("Error fetching inventory items:", error);
+      console.error("Error fetching inventory items:", error as Error);
       res.status(500).json({ message: "Failed to fetch inventory items" });
     }
   });
 
   // Count routes
-  app.get('/api/inventory-items/:id/counts', isAuthenticated, async (req, res) => {
+  app.get('/api/inventory-items/:id/counts', isAuthenticated, async (req: any, res) => {
     try {
-      const inventoryItemId = parseInt(req.params.id);
-      const counts = await storage.getCounts(inventoryItemId);
+      storage = await getStorage();
+      const counts = await storage.getCounts();
       res.json(counts);
     } catch (error) {
-      console.error("Error fetching counts:", error);
+      console.error("Error fetching counts:", error as Error);
       res.status(500).json({ message: "Failed to fetch counts" });
     }
   });
 
   app.post('/api/counts', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const countData = insertCountSchema.parse({
         ...req.body,
         countedBy: req.user.id,
@@ -615,13 +633,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'CREATE',
         entityType: 'COUNT',
         entityId: count.id.toString(),
+        oldValues: null,
         newValues: countData,
         metadata: null,
       });
       
       res.status(201).json(count);
     } catch (error) {
-      console.error("Error creating count:", error);
+      console.error("Error creating count:", error as Error);
       res.status(500).json({ message: "Failed to create count" });
     }
   });

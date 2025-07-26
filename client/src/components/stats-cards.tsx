@@ -32,7 +32,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Locais de Estoque",
-      value: stats.stockLocations.toString(),
+      value: stats.stockLocations?.toString() || "0",
       icon: Warehouse,
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -41,7 +41,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Última Auditoria",
-      value: stats.lastAuditDays === 0 ? "Hoje" : stats.lastAuditDays.toString(),
+      value: stats.lastAuditDays === 0 ? "Hoje" : (stats.lastAuditDays?.toString() || "N/A"),
       icon: History,
       color: "text-purple-600",
       bgColor: "bg-purple-50",

@@ -139,6 +139,63 @@ export class SimpleStorage {
     }));
   }
 
+  async createCategory(categoryData: Omit<InsertCategory, 'id'>): Promise<Category> {
+    const request = this.pool.request();
+    await request
+      .input('name', categoryData.name)
+      .input('description', categoryData.description || null)
+      .input('isActive', categoryData.isActive !== false)
+      .input('createdAt', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        INSERT INTO categories (name, description, isActive, createdAt, updatedAt)
+        VALUES (@name, @description, @isActive, @createdAt, @updatedAt)
+      `);
+
+    const result = await this.pool.request()
+      .input('name', categoryData.name)
+      .query('SELECT * FROM categories WHERE name = @name');
+    
+    const category = result.recordset[0];
+    return {
+      ...category,
+      createdAt: new Date(category.createdAt).getTime(),
+      updatedAt: new Date(category.updatedAt).getTime(),
+    };
+  }
+
+  async updateCategory(id: number, categoryData: Partial<Omit<InsertCategory, 'id'>>): Promise<Category> {
+    const request = this.pool.request();
+    await request
+      .input('id', id)
+      .input('name', categoryData.name)
+      .input('description', categoryData.description)
+      .input('isActive', categoryData.isActive)
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE categories 
+        SET name = @name, description = @description, isActive = @isActive, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM categories WHERE id = @id');
+    
+    const category = result.recordset[0];
+    return {
+      ...category,
+      createdAt: new Date(category.createdAt).getTime(),
+      updatedAt: new Date(category.updatedAt).getTime(),
+    };
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await this.pool.request()
+      .input('id', id)
+      .query('DELETE FROM categories WHERE id = @id');
+  }
+
   // Products operations  
   async getProducts(): Promise<(Product & { category?: Category })[]> {
     const result = await this.pool.request().query(`
@@ -168,6 +225,82 @@ export class SimpleStorage {
     }));
   }
 
+  async getProduct(id: number): Promise<Product | null> {
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM products WHERE id = @id');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const product = result.recordset[0];
+    return {
+      ...product,
+      createdAt: product.createdAt ? new Date(product.createdAt).getTime() : Date.now(),
+      updatedAt: product.updatedAt ? new Date(product.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async createProduct(productData: Omit<InsertProduct, 'id'>): Promise<Product> {
+    const request = this.pool.request();
+    await request
+      .input('sku', productData.sku)
+      .input('name', productData.name)
+      .input('description', productData.description || null)
+      .input('categoryId', productData.categoryId || null)
+      .input('isActive', productData.isActive !== false)
+      .input('createdAt', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        INSERT INTO products (sku, name, description, categoryId, isActive, createdAt, updatedAt)
+        VALUES (@sku, @name, @description, @categoryId, @isActive, @createdAt, @updatedAt)
+      `);
+
+    const result = await this.pool.request()
+      .input('sku', productData.sku)
+      .query('SELECT * FROM products WHERE sku = @sku');
+    
+    const product = result.recordset[0];
+    return {
+      ...product,
+      createdAt: new Date(product.createdAt).getTime(),
+      updatedAt: new Date(product.updatedAt).getTime(),
+    };
+  }
+
+  async updateProduct(id: number, productData: Partial<Omit<InsertProduct, 'id'>>): Promise<Product> {
+    const request = this.pool.request();
+    await request
+      .input('id', id)
+      .input('sku', productData.sku)
+      .input('name', productData.name)
+      .input('description', productData.description)
+      .input('categoryId', productData.categoryId)
+      .input('isActive', productData.isActive)
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE products 
+        SET sku = @sku, name = @name, description = @description, categoryId = @categoryId, isActive = @isActive, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM products WHERE id = @id');
+    
+    const product = result.recordset[0];
+    return {
+      ...product,
+      createdAt: new Date(product.createdAt).getTime(),
+      updatedAt: new Date(product.updatedAt).getTime(),
+    };
+  }
+
+  async deleteProduct(id: number): Promise<void> {
+    await this.pool.request()
+      .input('id', id)
+      .query('DELETE FROM products WHERE id = @id');
+  }
+
   // Locations operations
   async getLocations(): Promise<Location[]> {
     const result = await this.pool.request().query('SELECT * FROM locations ORDER BY name');
@@ -176,6 +309,80 @@ export class SimpleStorage {
       createdAt: loc.createdAt ? new Date(loc.createdAt).getTime() : Date.now(),
       updatedAt: loc.updatedAt ? new Date(loc.updatedAt).getTime() : Date.now(),
     }));
+  }
+
+  async getLocation(id: number): Promise<Location | null> {
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM locations WHERE id = @id');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const location = result.recordset[0];
+    return {
+      ...location,
+      createdAt: location.createdAt ? new Date(location.createdAt).getTime() : Date.now(),
+      updatedAt: location.updatedAt ? new Date(location.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async createLocation(locationData: Omit<InsertLocation, 'id'>): Promise<Location> {
+    const request = this.pool.request();
+    await request
+      .input('code', locationData.code)
+      .input('name', locationData.name)
+      .input('description', locationData.description || null)
+      .input('isActive', locationData.isActive !== false)
+      .input('createdAt', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        INSERT INTO locations (code, name, description, isActive, createdAt, updatedAt)
+        VALUES (@code, @name, @description, @isActive, @createdAt, @updatedAt)
+      `);
+
+    const result = await this.pool.request()
+      .input('code', locationData.code)
+      .query('SELECT * FROM locations WHERE code = @code');
+    
+    const location = result.recordset[0];
+    return {
+      ...location,
+      createdAt: new Date(location.createdAt).getTime(),
+      updatedAt: new Date(location.updatedAt).getTime(),
+    };
+  }
+
+  async updateLocation(id: number, locationData: Partial<Omit<InsertLocation, 'id'>>): Promise<Location> {
+    const request = this.pool.request();
+    await request
+      .input('id', id)
+      .input('code', locationData.code)
+      .input('name', locationData.name)
+      .input('description', locationData.description)
+      .input('isActive', locationData.isActive)
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE locations 
+        SET code = @code, name = @name, description = @description, isActive = @isActive, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM locations WHERE id = @id');
+    
+    const location = result.recordset[0];
+    return {
+      ...location,
+      createdAt: new Date(location.createdAt).getTime(),
+      updatedAt: new Date(location.updatedAt).getTime(),
+    };
+  }
+
+  async deleteLocation(id: number): Promise<void> {
+    await this.pool.request()
+      .input('id', id)
+      .query('DELETE FROM locations WHERE id = @id');
   }
 
   // Stock operations
@@ -217,6 +424,73 @@ export class SimpleStorage {
     }));
   }
 
+  async getStockItem(id: number): Promise<Stock | null> {
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM stock WHERE id = @id');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const stock = result.recordset[0];
+    return {
+      ...stock,
+      createdAt: stock.createdAt ? new Date(stock.createdAt).getTime() : Date.now(),
+      updatedAt: stock.updatedAt ? new Date(stock.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async createStock(stockData: Omit<InsertStock, 'id'>): Promise<Stock> {
+    const request = this.pool.request();
+    await request
+      .input('productId', stockData.productId)
+      .input('locationId', stockData.locationId)
+      .input('quantity', stockData.quantity || 0)
+      .input('createdAt', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        INSERT INTO stock (productId, locationId, quantity, createdAt, updatedAt)
+        VALUES (@productId, @locationId, @quantity, @createdAt, @updatedAt)
+      `);
+
+    const result = await this.pool.request()
+      .input('productId', stockData.productId)
+      .input('locationId', stockData.locationId)
+      .query('SELECT * FROM stock WHERE productId = @productId AND locationId = @locationId');
+    
+    const stock = result.recordset[0];
+    return {
+      ...stock,
+      createdAt: new Date(stock.createdAt).getTime(),
+      updatedAt: new Date(stock.updatedAt).getTime(),
+    };
+  }
+
+  async updateStock(id: number, stockData: Partial<Omit<InsertStock, 'id'>>): Promise<Stock> {
+    const request = this.pool.request();
+    await request
+      .input('id', id)
+      .input('productId', stockData.productId)
+      .input('locationId', stockData.locationId)
+      .input('quantity', stockData.quantity)
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE stock 
+        SET productId = @productId, locationId = @locationId, quantity = @quantity, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM stock WHERE id = @id');
+    
+    const stock = result.recordset[0];
+    return {
+      ...stock,
+      createdAt: new Date(stock.createdAt).getTime(),
+      updatedAt: new Date(stock.updatedAt).getTime(),
+    };
+  }
+
   // Inventories operations
   async getInventories(): Promise<Inventory[]> {
     const result = await this.pool.request().query('SELECT * FROM inventories ORDER BY startDate DESC');
@@ -227,6 +501,99 @@ export class SimpleStorage {
       startDate: inv.startDate ? new Date(inv.startDate).getTime() : Date.now(),
       endDate: inv.endDate ? new Date(inv.endDate).getTime() : null,
     }));
+  }
+
+  async getInventory(id: number): Promise<Inventory | null> {
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM inventories WHERE id = @id');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const inventory = result.recordset[0];
+    return {
+      ...inventory,
+      createdAt: inventory.createdAt ? new Date(inventory.createdAt).getTime() : Date.now(),
+      updatedAt: inventory.updatedAt ? new Date(inventory.updatedAt).getTime() : Date.now(),
+      startDate: inventory.startDate ? new Date(inventory.startDate).getTime() : Date.now(),
+      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+    };
+  }
+
+  async createInventory(inventoryData: Omit<InsertInventory, 'id'>): Promise<Inventory> {
+    const request = this.pool.request();
+    await request
+      .input('code', inventoryData.code)
+      .input('typeId', inventoryData.typeId)
+      .input('status', inventoryData.status || 'OPEN')
+      .input('startDate', new Date(inventoryData.startDate))
+      .input('endDate', inventoryData.endDate ? new Date(inventoryData.endDate) : null)
+      .input('description', inventoryData.description || null)
+      .input('createdBy', inventoryData.createdBy)
+      .input('createdAt', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        INSERT INTO inventories (code, typeId, status, startDate, endDate, description, createdBy, createdAt, updatedAt)
+        VALUES (@code, @typeId, @status, @startDate, @endDate, @description, @createdBy, @createdAt, @updatedAt)
+      `);
+
+    const result = await this.pool.request()
+      .input('code', inventoryData.code)
+      .query('SELECT * FROM inventories WHERE code = @code');
+    
+    const inventory = result.recordset[0];
+    return {
+      ...inventory,
+      createdAt: new Date(inventory.createdAt).getTime(),
+      updatedAt: new Date(inventory.updatedAt).getTime(),
+      startDate: new Date(inventory.startDate).getTime(),
+      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+    };
+  }
+
+  async updateInventory(id: number, inventoryData: Partial<Omit<InsertInventory, 'id'>>): Promise<Inventory> {
+    const request = this.pool.request();
+    await request
+      .input('id', id)
+      .input('code', inventoryData.code)
+      .input('typeId', inventoryData.typeId)
+      .input('status', inventoryData.status)
+      .input('startDate', inventoryData.startDate ? new Date(inventoryData.startDate) : null)
+      .input('endDate', inventoryData.endDate ? new Date(inventoryData.endDate) : null)
+      .input('description', inventoryData.description)
+      .input('createdBy', inventoryData.createdBy)
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE inventories 
+        SET code = @code, typeId = @typeId, status = @status, startDate = @startDate, endDate = @endDate, description = @description, createdBy = @createdBy, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    const result = await this.pool.request()
+      .input('id', id)
+      .query('SELECT * FROM inventories WHERE id = @id');
+    
+    const inventory = result.recordset[0];
+    return {
+      ...inventory,
+      createdAt: new Date(inventory.createdAt).getTime(),
+      updatedAt: new Date(inventory.updatedAt).getTime(),
+      startDate: new Date(inventory.startDate).getTime(),
+      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+    };
+  }
+
+  async closeInventory(id: number): Promise<void> {
+    await this.pool.request()
+      .input('id', id)
+      .input('status', 'CLOSED')
+      .input('endDate', new Date())
+      .input('updatedAt', new Date())
+      .query(`
+        UPDATE inventories 
+        SET status = @status, endDate = @endDate, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
   }
 
   // Inventory Types
@@ -257,5 +624,63 @@ export class SimpleStorage {
         INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
         VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, GETDATE())
       `);
+  }
+
+  // Alias for audit logging
+  async createAuditLog(log: InsertAuditLog): Promise<void> {
+    return this.logAction(log);
+  }
+
+  // Additional methods needed by routes
+  async getInventoryTypes(): Promise<InventoryType[]> {
+    const result = await this.pool.request().query('SELECT * FROM inventory_types ORDER BY name');
+    return result.recordset.map(type => ({
+      ...type,
+      createdAt: type.createdAt ? new Date(type.createdAt).getTime() : Date.now(),
+      updatedAt: type.updatedAt ? new Date(type.updatedAt).getTime() : Date.now(),
+    }));
+  }
+
+  async getInventoryItems(): Promise<InventoryItem[]> {
+    const result = await this.pool.request().query('SELECT * FROM inventory_items ORDER BY id');
+    return result.recordset.map(item => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+    }));
+  }
+
+  async getCounts(): Promise<Count[]> {
+    const result = await this.pool.request().query('SELECT * FROM counts ORDER BY countedAt DESC');
+    return result.recordset.map(count => ({
+      ...count,
+      countedAt: count.countedAt ? new Date(count.countedAt).getTime() : Date.now(),
+    }));
+  }
+
+  async createCount(countData: Omit<InsertCount, 'id'>): Promise<Count> {
+    const request = this.pool.request();
+    await request
+      .input('inventoryItemId', countData.inventoryItemId)
+      .input('countNumber', countData.countNumber)
+      .input('quantity', countData.quantity)
+      .input('countedBy', countData.countedBy)
+      .input('countedAt', new Date())
+      .input('notes', countData.notes || null)
+      .query(`
+        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt, notes)
+        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt, @notes)
+      `);
+
+    const result = await this.pool.request()
+      .input('inventoryItemId', countData.inventoryItemId)
+      .input('countNumber', countData.countNumber)
+      .query('SELECT * FROM counts WHERE inventoryItemId = @inventoryItemId AND countNumber = @countNumber');
+    
+    const count = result.recordset[0];
+    return {
+      ...count,
+      countedAt: new Date(count.countedAt).getTime(),
+    };
   }
 }
