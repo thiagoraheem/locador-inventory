@@ -1,8 +1,6 @@
 
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import * as schema from "@shared/schema";
 import sql from 'mssql';
+import { SimpleStorage } from './simple-storage';
 
 // SQL Server configuration
 const sqlServerConfig = {
@@ -23,12 +21,8 @@ const sqlServerConfig = {
   },
 };
 
-// For now, use in-memory SQLite
-const sqlite = new Database(':memory:');
-export const db = drizzle(sqlite, { schema });
-
-// SQL Server pool for raw queries when needed
-let sqlServerPool: any = null;
+let sqlServerPool: sql.ConnectionPool | null = null;
+let storage: SimpleStorage | null = null;
 
 export const getSqlServerPool = async () => {
   if (!sqlServerPool) {
@@ -37,4 +31,12 @@ export const getSqlServerPool = async () => {
     console.log('Connected to SQL Server database');
   }
   return sqlServerPool;
+};
+
+export const getStorage = async () => {
+  if (!storage) {
+    const pool = await getSqlServerPool();
+    storage = new SimpleStorage(pool);
+  }
+  return storage;
 };

@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { getStorage } from "./db";
 import { setupAuth, isAuthenticated, hashPassword, verifyPassword, createDefaultAdmin } from "./auth";
 import {
   insertProductSchema,
@@ -18,45 +18,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Database setup endpoint (temporary - for development)
-  app.post('/api/setup-database', async (req, res) => {
+  // Initialize SQL Server storage
+  let storage = await getStorage();
+
+  // Database setup endpoint
+  app.post('/api/setup-sqlserver', async (req, res) => {
     try {
-      const { setupDatabase } = await import('./setup-database');
-      await setupDatabase();
-      res.json({ message: "Database setup completed successfully" });
+      console.log('🔧 Setting up SQL Server database...');
+      const { setupSqlServerDatabase } = await import('./setup-sqlserver');
+      await setupSqlServerDatabase();
+      res.json({ message: "SQL Server database setup completed successfully" });
     } catch (error) {
-      console.error("Error setting up database:", error);
-      res.status(500).json({ error: "Failed to setup database" });
+      console.error("Error setting up SQL Server:", error);
+      res.status(500).json({ error: "Failed to setup SQL Server database", details: error.message });
     }
   });
 
   // Database test endpoint
   app.get('/api/test-database', async (req, res) => {
     try {
-      console.log('🔍 Testing database connection...');
-      const users = await storage.getUsers();
-      console.log('📊 Users found:', users.length);
+      console.log('🔍 Testing SQL Server connection...');
+      const { testSqlServerConnection } = await import('./setup-sqlserver');
+      const connected = await testSqlServerConnection();
       
-      const adminUser = await storage.getUserByUsername('admin');
-      console.log('👤 Admin user:', adminUser ? 'FOUND' : 'NOT FOUND');
-      
-      if (adminUser) {
-        console.log('🔐 Admin password hash:', adminUser.password.substring(0, 20) + '...');
-        const passwordTest = await verifyPassword('password', adminUser.password);
-        console.log('🔐 Password test with "password":', passwordTest ? 'VALID' : 'INVALID');
-        const passwordTest2 = await verifyPassword('admin123', adminUser.password);
-        console.log('🔐 Password test with "admin123":', passwordTest2 ? 'VALID' : 'INVALID');
+      if (connected) {
+        storage = await getStorage();
+        const stats = await storage.getDashboardStats();
+        console.log('📊 Database stats:', stats);
+        
+        res.json({
+          connected: true,
+          stats,
+          message: 'SQL Server connection successful'
+        });
+      } else {
+        res.status(500).json({ error: "SQL Server connection failed" });
       }
-      
-      res.json({
-        connected: true,
-        usersCount: users.length,
-        adminExists: !!adminUser,
-        adminPasswordValid: adminUser ? await verifyPassword('admin123', adminUser.password) : false
-      });
     } catch (error) {
-      console.error("Database test error:", error);
-      res.status(500).json({ error: "Database test failed", details: error.message });
+      console.error("SQL Server connection error:", error);
+      res.status(500).json({ error: "Database connection failed", details: error.message });
     }
   });
 
@@ -65,6 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { username, password } = loginSchema.parse(req.body);
       
+      storage = await getStorage();
       const user = await storage.getUserByUsername(username);
       if (!user || !user.isActive) {
         return res.status(401).json({ message: "Credenciais inválidas" });
@@ -92,6 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = registerSchema.parse(req.body);
       
+      storage = await getStorage();
       // Check if username or email already exists
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
@@ -150,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes
   app.get('/api/dashboard/stats', isAuthenticated, async (req, res) => {
     try {
+      storage = await getStorage();
       const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
@@ -161,6 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Category routes
   app.get('/api/categories', isAuthenticated, async (req: any, res) => {
     try {
+      storage = await getStorage();
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {

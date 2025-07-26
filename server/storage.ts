@@ -30,7 +30,7 @@ import {
   type AuditLog,
   type InsertAuditLog,
 } from "@shared/schema";
-import { db } from "./db";
+// import { db } from "./db"; // Deprecated - using SQL Server storage now
 import { eq, desc, like, and, sql } from "drizzle-orm";
 
 export interface IStorage {

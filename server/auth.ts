@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import MemoryStore from "memorystore";
-import { storage } from "./storage";
+import { getStorage } from "./db";
 import { loginSchema, registerSchema } from "@shared/schema";
 
 export function getSession() {
@@ -39,17 +39,23 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Verify user still exists and is active
-  const user = await storage.getUser(session.userId);
-  if (!user || !user.isActive) {
-    // Clear invalid session
-    session.destroy(() => {});
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+  try {
+    // Verify user still exists and is active
+    const storage = await getStorage();
+    const user = await storage.getUser(session.userId);
+    if (!user || !user.isActive) {
+      // Clear invalid session
+      session.destroy(() => {});
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
-  // Attach user to request
-  (req as any).user = user;
-  next();
+    // Attach user to request
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -65,12 +71,13 @@ export async function createDefaultAdmin() {
   try {
     console.log('🔍 Checking for admin user...');
     
+    const storage = await getStorage();
     // Try to get admin user by username
     const adminUser = await storage.getUserByUsername('admin');
     
     if (!adminUser) {
       console.log('❌ No admin user found, creating default admin...');
-      const hashedPassword = await hashPassword('admin123');
+      const hashedPassword = await hashPassword('password');
       
       // Test the password hashing
       console.log('🔐 Testing password hash...');
@@ -78,7 +85,6 @@ export async function createDefaultAdmin() {
       console.log('✓ Password verification test:', testVerify ? 'PASSED' : 'FAILED');
       
       const newAdmin = await storage.createUser({
-        id: 'admin-' + Date.now(),
         username: 'admin',
         email: 'admin@inventory.com',
         password: hashedPassword,
