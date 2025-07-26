@@ -123,8 +123,9 @@ export class SimpleStorage {
     return {
       totalProducts: productsResult.recordset[0].count,
       totalCategories: categoriesResult.recordset[0].count,
-      totalLocations: locationsResult.recordset[0].count,
+      stockLocations: locationsResult.recordset[0].count,
       activeInventories: inventoriesResult.recordset[0].count,
+      lastAuditDays: 0, // Placeholder - implement audit tracking later
     };
   }
 
