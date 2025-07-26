@@ -1,14 +1,18 @@
-import { defineConfig } from "drizzle-kit";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
-}
+import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   out: "./migrations",
   schema: "./shared/schema.ts",
-  dialect: "postgresql",
+  dialect: "mssql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    server: '54.232.194.197',
+    database: 'inventory',
+    user: 'usrInventory',
+    password: 'inv@2025',
+    options: {
+      encrypt: false,
+      trustServerCertificate: true,
+    },
   },
 });

@@ -1,145 +1,132 @@
-import {
-  pgTable,
-  text,
-  varchar,
-  timestamp,
-  jsonb,
-  index,
-  serial,
-  integer,
-  decimal,
-  boolean,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage table (required for Replit Auth)
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: text("sid").primaryKey(),
+    sess: text("sess").notNull(),
+    expire: integer("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique().notNull(),
-  username: varchar("username").unique().notNull(),
-  password: varchar("password").notNull(), // Will store hashed password
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  role: varchar("role").default("user"), // user, admin
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().notNull(),
+  email: text("email").unique().notNull(),
+  username: text("username").unique().notNull(),
+  password: text("password").notNull(), // Will store hashed password
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  role: text("role").default("user"), // user, admin
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Products table
 // Categories
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull().unique(),
+export const categories = sqliteTable("categories", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull().unique(),
   description: text("description"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
-export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  sku: varchar("sku", { length: 100 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
+export const products = sqliteTable("products", {
+  id: integer("id").primaryKey(),
+  sku: text("sku").notNull().unique(),
+  name: text("name").notNull(),
   description: text("description"),
   categoryId: integer("category_id").references(() => categories.id),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Storage locations table
-export const locations = pgTable("locations", {
-  id: serial("id").primaryKey(),
-  code: varchar("code", { length: 50 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
+export const locations = sqliteTable("locations", {
+  id: integer("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
   description: text("description"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Stock association between products and locations
-export const stock = pgTable("stock", {
-  id: serial("id").primaryKey(),
+export const stock = sqliteTable("stock", {
+  id: integer("id").primaryKey(),
   productId: integer("product_id").references(() => products.id).notNull(),
   locationId: integer("location_id").references(() => locations.id).notNull(),
-  quantity: decimal("quantity", { precision: 10, scale: 2 }).default("0"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  quantity: real("quantity").default(0),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Inventory types
-export const inventoryTypes = pgTable("inventory_types", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 100 }).notNull().unique(),
+export const inventoryTypes = sqliteTable("inventory_types", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull().unique(),
   description: text("description"),
-  isActive: boolean("is_active").default(true),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
 });
 
 // Inventories
-export const inventories = pgTable("inventories", {
-  id: serial("id").primaryKey(),
-  code: varchar("code", { length: 100 }).notNull().unique(),
+export const inventories = sqliteTable("inventories", {
+  id: integer("id").primaryKey(),
+  code: text("code").notNull().unique(),
   typeId: integer("type_id").references(() => inventoryTypes.id).notNull(),
-  status: varchar("status", { length: 50 }).default("OPEN"), // OPEN, COUNTING, CLOSED
-  startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date"),
+  status: text("status").default("OPEN"), // OPEN, COUNTING, CLOSED
+  startDate: integer("start_date").notNull(),
+  endDate: integer("end_date"),
   description: text("description"),
-  createdBy: varchar("created_by").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdBy: text("created_by").references(() => users.id).notNull(),
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Inventory items (products to be counted in each inventory)
-export const inventoryItems = pgTable("inventory_items", {
-  id: serial("id").primaryKey(),
+export const inventoryItems = sqliteTable("inventory_items", {
+  id: integer("id").primaryKey(),
   inventoryId: integer("inventory_id").references(() => inventories.id).notNull(),
   productId: integer("product_id").references(() => products.id).notNull(),
   locationId: integer("location_id").references(() => locations.id).notNull(),
-  expectedQuantity: decimal("expected_quantity", { precision: 10, scale: 2 }).default("0"),
-  finalQuantity: decimal("final_quantity", { precision: 10, scale: 2 }),
-  status: varchar("status", { length: 50 }).default("PENDING"), // PENDING, COUNTING, COMPLETED
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  expectedQuantity: real("expected_quantity").default(0),
+  finalQuantity: real("final_quantity"),
+  status: text("status").default("PENDING"), // PENDING, COUNTING, COMPLETED
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
 });
 
 // Counting records (up to 3 counts per inventory item)
-export const counts = pgTable("counts", {
-  id: serial("id").primaryKey(),
+export const counts = sqliteTable("counts", {
+  id: integer("id").primaryKey(),
   inventoryItemId: integer("inventory_item_id").references(() => inventoryItems.id).notNull(),
   countNumber: integer("count_number").notNull(), // 1, 2, or 3
-  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
-  countedBy: varchar("counted_by").references(() => users.id).notNull(),
-  countedAt: timestamp("counted_at").defaultNow(),
+  quantity: real("quantity").notNull(),
+  countedBy: text("counted_by").references(() => users.id).notNull(),
+  countedAt: integer("counted_at"),
   notes: text("notes"),
 });
 
 // Audit logs
-export const auditLogs = pgTable("audit_logs", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  action: varchar("action", { length: 100 }).notNull(),
-  entityType: varchar("entity_type", { length: 100 }).notNull(),
-  entityId: varchar("entity_id", { length: 100 }).notNull(),
-  oldValues: jsonb("old_values"),
-  newValues: jsonb("new_values"),
-  metadata: jsonb("metadata"),
-  timestamp: timestamp("timestamp").defaultNow(),
+export const auditLogs = sqliteTable("audit_logs", {
+  id: integer("id").primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  oldValues: text("old_values"),
+  newValues: text("new_values"),
+  metadata: text("metadata"),
+  timestamp: integer("timestamp"),
 });
 
 // Relations

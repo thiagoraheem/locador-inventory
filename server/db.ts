@@ -1,15 +1,35 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+
+import { drizzle } from 'drizzle-orm/node-postgres';
+import sql from 'mssql';
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const config = {
+  server: '54.232.194.197',
+  database: 'inventory',
+  user: 'usrInventory',
+  password: 'inv@2025',
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
+    connectTimeout: 720000,
+    requestTimeout: 720000,
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
+};
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+let pool: sql.ConnectionPool;
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export const getPool = async () => {
+  if (!pool) {
+    pool = new sql.ConnectionPool(config);
+    await pool.connect();
+  }
+  return pool;
+};
+
+// Para compatibilidade com Drizzle, você precisará de um adapter
+export const db = drizzle(pool, { schema });
