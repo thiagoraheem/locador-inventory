@@ -27,7 +27,6 @@ export const users = sqliteTable("users", {
   updatedAt: integer("updated_at"),
 });
 
-// Products table
 // Categories
 export const categories = sqliteTable("categories", {
   id: integer("id").primaryKey(),

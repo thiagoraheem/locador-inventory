@@ -1,9 +1,11 @@
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import sql from 'mssql';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 import * as schema from "@shared/schema";
+import sql from 'mssql';
 
-const config = {
+// SQL Server configuration
+const sqlServerConfig = {
   server: '54.232.194.197',
   database: 'inventory',
   user: 'usrInventory',
@@ -21,15 +23,18 @@ const config = {
   },
 };
 
-let pool: sql.ConnectionPool;
+// For now, use in-memory SQLite
+const sqlite = new Database(':memory:');
+export const db = drizzle(sqlite, { schema });
 
-export const getPool = async () => {
-  if (!pool) {
-    pool = new sql.ConnectionPool(config);
-    await pool.connect();
+// SQL Server pool for raw queries when needed
+let sqlServerPool: any = null;
+
+export const getSqlServerPool = async () => {
+  if (!sqlServerPool) {
+    sqlServerPool = new sql.ConnectionPool(sqlServerConfig);
+    await sqlServerPool.connect();
+    console.log('Connected to SQL Server database');
   }
-  return pool;
+  return sqlServerPool;
 };
-
-// Para compatibilidade com Drizzle, você precisará de um adapter
-export const db = drizzle(pool, { schema });
