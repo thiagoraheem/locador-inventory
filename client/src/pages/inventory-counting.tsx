@@ -23,6 +23,7 @@ export default function InventoryCounting() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isCountDialogOpen, setIsCountDialogOpen] = useState(false);
   const [countData, setCountData] = useState({ quantity: "", notes: "" });
+  const [existingCounts, setExistingCounts] = useState<any[]>([]);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -279,8 +280,6 @@ export default function InventoryCounting() {
   const handleFinishInventory = () => {
     closeInventoryMutation.mutate();
   };
-
-  const [existingCounts, setExistingCounts] = useState<any[]>([]);
 
   const handleAddCount = async () => {
     if (!selectedItem || !countData.quantity) return;
