@@ -23,6 +23,8 @@ const navigation = [
   { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
   { name: "Controle de Estoque", href: "/stock", icon: Box },
   { name: "Inventários", href: "/inventories", icon: ClipboardList },
+  { name: "Empresas", href: "/companies", icon: LayoutDashboard },
+  { name: "Controle de Patrimônio", href: "/stock-items", icon: Package },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
   { name: "Usuários", href: "/users", icon: User },
 ];

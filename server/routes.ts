@@ -776,6 +776,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Companies routes (read-only)
+  app.get('/api/companies', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const companies = await storage.getCompanies();
+      res.json(companies);
+    } catch (error) {
+      console.error("Error fetching companies:", error as Error);
+      res.status(500).json({ message: "Failed to fetch companies" });
+    }
+  });
+
+  // Stock Items routes (read-only)
+  app.get('/api/stock-items', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const stockItems = await storage.getStockItems();
+      res.json(stockItems);
+    } catch (error) {
+      console.error("Error fetching stock items:", error as Error);
+      res.status(500).json({ message: "Failed to fetch stock items" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

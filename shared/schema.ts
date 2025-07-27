@@ -310,3 +310,68 @@ export type Count = typeof counts.$inferSelect;
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// Additional types that might be needed
+export type AuditLogWithDetails = AuditLog & {
+  user?: User;
+};
+
+// New entities based on reverse engineering - Views from SQL Server (using simple types)
+export interface Company {
+  id: number;
+  name: string;
+  cnpj?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StockItem {
+  id: number;
+  assetTag: string;
+  description: string;
+  category?: string;
+  location?: string;
+  companyId?: number;
+  acquisitionDate?: number;
+  costValue?: number;
+  currentValue?: number;
+  condition?: string;
+  serialNumber?: string;
+  brand?: string;
+  model?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export const insertCompanySchema = z.object({
+  name: z.string().min(1),
+  cnpj: z.string().optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const insertStockItemSchema = z.object({
+  assetTag: z.string().min(1),
+  description: z.string().min(1),
+  category: z.string().optional(),
+  location: z.string().optional(),
+  companyId: z.number().optional(),
+  acquisitionDate: z.number().optional(),
+  costValue: z.number().optional(),
+  currentValue: z.number().optional(),
+  condition: z.string().default("Bom"),
+  serialNumber: z.string().optional(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type InsertStockItem = z.infer<typeof insertStockItemSchema>;

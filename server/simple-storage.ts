@@ -20,6 +20,8 @@ import type {
   InsertCount,
   AuditLog,
   InsertAuditLog,
+  Company,
+  StockItem,
 } from '@shared/schema';
 
 export class SimpleStorage {
@@ -752,6 +754,26 @@ export class SimpleStorage {
     await this.pool.request()
       .input('id', sql.VarChar, id)
       .query('UPDATE users SET isActive = 0, updatedAt = GETDATE() WHERE id = @id');
+  }
+
+  // Company management methods
+  async getCompanies(): Promise<Company[]> {
+    const result = await this.pool.request().query('SELECT * FROM companies ORDER BY name');
+    return result.recordset.map(company => ({
+      ...company,
+      createdAt: company.createdAt ? new Date(company.createdAt).getTime() : Date.now(),
+      updatedAt: company.updatedAt ? new Date(company.updatedAt).getTime() : Date.now(),
+    }));
+  }
+
+  // Stock Items management methods
+  async getStockItems(): Promise<StockItem[]> {
+    const result = await this.pool.request().query('SELECT * FROM stock_items ORDER BY assetTag');
+    return result.recordset.map(item => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+    }));
   }
 
   async getInventoryItems(): Promise<InventoryItem[]> {
