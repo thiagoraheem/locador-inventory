@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import DataTable from "@/components/data-table";
+import CategoryFilter from "@/components/category-filter";
 import { Search, Eye } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import type { Product } from "@shared/schema";
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -47,6 +49,21 @@ export default function Products() {
     },
     retry: false,
   });
+
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    
+    let filtered = products;
+    
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(product => 
+        product.categoryId && product.categoryId.toString() === selectedCategory
+      );
+    }
+    
+    return filtered;
+  }, [products, selectedCategory]);
 
 
 
@@ -135,7 +152,12 @@ export default function Products() {
           <CardHeader className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <CardTitle>Lista de Produtos</CardTitle>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                <CategoryFilter
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  placeholder="Filtrar por categoria"
+                />
                 <div className="relative">
                   <Input
                     placeholder="Filtrar produtos..."
@@ -161,7 +183,7 @@ export default function Products() {
           <CardContent className="p-4 sm:p-6">
             <div className="table-container">
               <DataTable
-                data={products || []}
+                data={filteredProducts || []}
                 columns={columns}
                 searchQuery={searchQuery}
                 isLoading={productsLoading}

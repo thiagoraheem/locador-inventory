@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -11,12 +11,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import DataTable from "@/components/data-table";
+import CategoryFilter from "@/components/category-filter";
 import { Search, Eye, Package2 } from "lucide-react";
 import type { StockItem } from "@shared/schema";
 
 export default function StockItems() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -48,6 +50,21 @@ export default function StockItems() {
     },
     retry: false,
   });
+
+  const filteredStockItems = useMemo(() => {
+    if (!stockItems) return [];
+    
+    let filtered = stockItems;
+    
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(item => 
+        item.category && item.category.toLowerCase().includes(selectedCategory.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [stockItems, selectedCategory]);
 
   const columns = [
     {
@@ -173,7 +190,12 @@ export default function StockItems() {
                 <Package2 className="h-5 w-5 mr-2" />
                 Lista de Itens Patrimoniais
               </CardTitle>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                <CategoryFilter
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  placeholder="Filtrar por categoria"
+                />
                 <div className="relative">
                   <Input
                     placeholder="Filtrar itens..."
@@ -199,7 +221,7 @@ export default function StockItems() {
           <CardContent className="p-4 sm:p-6">
             <div className="table-container">
               <DataTable
-                data={stockItems || []}
+                data={filteredStockItems || []}
                 columns={columns}
                 searchQuery={searchQuery}
                 isLoading={stockItemsLoading}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -11,12 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import StockForm from "@/components/stock-form";
 import DataTable from "@/components/data-table";
+import CategoryFilter from "@/components/category-filter";
 import { Plus, Search, Edit, Trash2 } from "lucide-react";
 
 export default function Stock() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStock, setSelectedStock] = useState<any>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -39,6 +41,22 @@ export default function Stock() {
     queryKey: ["/api/stock"],
     retry: false,
   });
+
+  const filteredStock = useMemo(() => {
+    if (!stock) return [];
+    
+    let filtered = stock;
+    
+    // Filter by category - assuming stock items have a category field
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(item => 
+        item.product && item.product.categoryId && 
+        item.product.categoryId.toString() === selectedCategory
+      );
+    }
+    
+    return filtered;
+  }, [stock, selectedCategory]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -124,18 +142,6 @@ export default function Stock() {
     },
   ];
 
-  // Filter stock based on search
-  const filteredStock = stock?.filter((item: any) => {
-    if (!searchQuery) return true;
-    
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      item.product?.name?.toLowerCase().includes(searchLower) ||
-      item.product?.sku?.toLowerCase().includes(searchLower) ||
-      item.location?.name?.toLowerCase().includes(searchLower)
-    );
-  }) || [];
-
   console.log('Stock data:', stock); // Debug log
 
   return (
@@ -146,7 +152,12 @@ export default function Stock() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Itens em Estoque</CardTitle>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+              <CategoryFilter
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                placeholder="Filtrar por categoria"
+              />
               <div className="relative">
                 <Input
                   placeholder="Filtrar estoque..."
@@ -182,7 +193,7 @@ export default function Stock() {
           </CardHeader>
           <CardContent>
             <DataTable
-              data={filteredStock}
+              data={filteredStock || []}
               columns={columns}
               searchQuery={searchQuery}
               isLoading={stockLoading}
