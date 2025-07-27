@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import { 
   LayoutDashboard, 
   Package, 
@@ -17,7 +18,14 @@ import {
   Box,
   Building,
   Package2,
-  X
+  X,
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  FileText,
+  BarChart3,
+  Users,
+  FolderOpen
 } from "lucide-react";
 
 interface SidebarProps {
@@ -26,23 +34,110 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-const navigation = [
+interface NavigationItem {
+  name: string;
+  href?: string;
+  icon: any;
+  children?: NavigationItem[];
+}
+
+const navigation: NavigationItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Produtos", href: "/products", icon: Package },
-  { name: "Categorias", href: "/categories", icon: Layers },
-  { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
+  {
+    name: "Cadastros",
+    icon: FolderOpen,
+    children: [
+      { name: "Usuários", href: "/users", icon: User },
+      { name: "Empresas", href: "/companies", icon: Building },
+      { name: "Categorias", href: "/categories", icon: Layers },
+      { name: "Produtos", href: "/products", icon: Package },
+      { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
+      { name: "Controle de Patrimônio", href: "/stock-items", icon: Package2 },
+    ]
+  },
   { name: "Controle de Estoque", href: "/stock", icon: Box },
-  { name: "Inventários", href: "/inventories", icon: ClipboardList },
-  { name: "Empresas", href: "/companies", icon: Building },
-  { name: "Controle de Patrimônio", href: "/stock-items", icon: Package2 },
+  {
+    name: "Inventários",
+    icon: ClipboardList,
+    children: [
+      { name: "Parâmetros / Regras", href: "/inventory-parameters", icon: Settings },
+      { name: "Inventários", href: "/inventories", icon: ClipboardList },
+      {
+        name: "Contagens",
+        icon: BarChart3,
+        children: [
+          { name: "Listagem", href: "/inventory-counts", icon: FileText },
+          { name: "Por CP", href: "/inventory-counts-cp", icon: FileText },
+        ]
+      },
+      { name: "Mesa de Controle", href: "/control-desk", icon: Settings },
+      { name: "Relatórios", href: "/inventory-reports", icon: BarChart3 },
+    ]
+  },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
-  { name: "Usuários", href: "/users", icon: User },
 ];
 
 export default function Sidebar({ isOpen = true, isMobile = false, onClose }: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemName) 
+        ? prev.filter(name => name !== itemName)
+        : [...prev, itemName]
+    );
+  };
+
+  const renderNavigationItem = (item: NavigationItem, level: number = 0) => {
+    const isExpanded = expandedItems.includes(item.name);
+    const hasChildren = item.children && item.children.length > 0;
+    const isActive = item.href && location === item.href;
+    const Icon = item.icon;
+    
+    return (
+      <div key={item.name} className={`${level > 0 ? 'ml-4' : ''}`}>
+        {item.href ? (
+          <Link href={item.href}>
+            <a
+              onClick={isMobile ? onClose : undefined}
+              className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                isActive
+                  ? "text-primary bg-primary/10 border-r-2 border-primary"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </div>
+            </a>
+          </Link>
+        ) : (
+          <button
+            onClick={() => toggleExpanded(item.name)}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-600 hover:bg-gray-50"
+          >
+            <div className="flex items-center space-x-3">
+              <Icon className="w-4 h-4" />
+              <span>{item.name}</span>
+            </div>
+            {hasChildren && (
+              isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+            )}
+          </button>
+        )}
+        
+        {hasChildren && isExpanded && (
+          <div className="mt-1 space-y-1">
+            {item.children!.map(child => renderNavigationItem(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -103,30 +198,9 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
 
       {/* Navigation Menu */}
       <nav className="flex-1 py-4">
-        <ul className="space-y-1 px-4">
-          {navigation.map((item) => {
-            const isActive = location === item.href;
-            const Icon = item.icon;
-            
-            return (
-              <li key={item.name}>
-                <Link href={item.href}>
-                  <a
-                    onClick={isMobile ? onClose : undefined}
-                    className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? "text-primary bg-primary/10 border-r-2 border-primary"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-                  </a>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="space-y-1 px-4">
+          {navigation.map(item => renderNavigationItem(item))}
+        </div>
       </nav>
 
       {/* User Profile Section */}

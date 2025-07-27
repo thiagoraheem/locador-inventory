@@ -27,6 +27,9 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✓ **Database Reverse Engineering**: Analyzed SQL Server views and created new screens for Companies and Stock Items  
 ✓ **Companies Screen**: View-only interface for company data with filters and mobile optimization
 ✓ **Stock Items Screen**: Asset control interface showing patrimonial items with cost values and condition status
+✓ **Mobile Menu**: Hamburger menu implemented for mobile devices with overlay and smooth animations
+✓ **Global Search**: Functional search system across Products, Categories, Locations, Companies, and Stock Items
+✓ **Menu Reorganization**: Hierarchical menu structure with collapsible sections for Cadastros and Inventários
 
 ## User Preferences
 
