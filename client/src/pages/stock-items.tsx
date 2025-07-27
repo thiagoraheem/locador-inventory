@@ -51,7 +51,7 @@ export default function StockItems() {
 
   const columns = [
     {
-      header: "Tag Patrimonial",
+      header: "SKU/Tag",
       accessorKey: "assetTag",
       sortable: true,
     },
@@ -70,17 +70,24 @@ export default function StockItems() {
       header: "Localização",
       accessorKey: "location",
       sortable: true,
-      cell: (value: string) => value || "Não informado",
+      cell: (value: any, row: StockItem) => {
+        if (row.locationCode && row.location) {
+          return `${row.locationCode} - ${row.location}`;
+        }
+        return value || "Não informado";
+      },
     },
     {
-      header: "Marca/Modelo",
-      accessorKey: "brand",
+      header: "Quantidade",
+      accessorKey: "quantity",
       sortable: true,
-      cell: (value: any, row: StockItem) => {
-        const brand = row.brand || "";
-        const model = row.model || "";
-        return `${brand} ${model}`.trim() || "Não informado";
-      },
+      cell: (value: number) => value || 0,
+    },
+    {
+      header: "SKU/Série",
+      accessorKey: "serialNumber",
+      sortable: true,
+      cell: (value: string) => value || "Não informado",
     },
     {
       header: "Valor de Custo",

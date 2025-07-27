@@ -766,11 +766,42 @@ export class SimpleStorage {
     }));
   }
 
-  // Stock Items management methods
+  // Stock Items management methods - Query with joins to get product, category and location descriptions
   async getStockItems(): Promise<StockItem[]> {
-    const result = await this.pool.request().query('SELECT * FROM stock_items ORDER BY assetTag');
+    const result = await this.pool.request().query(`
+      SELECT 
+        s.id,
+        s.productId,
+        s.locationId,
+        s.quantity,
+        p.sku as assetTag,
+        p.name as description,
+        c.name as category,
+        l.name as location,
+        l.code as locationCode,
+        p.costValue,
+        p.costValue as currentValue,
+        CASE 
+          WHEN s.quantity > 0 THEN 'Bom'
+          ELSE 'Indisponível'
+        END as condition,
+        p.sku as serialNumber,
+        '' as brand,
+        '' as model,
+        CASE WHEN s.quantity > 0 THEN 1 ELSE 0 END as isActive,
+        s.createdAt,
+        s.updatedAt
+      FROM stock s
+      LEFT JOIN products p ON s.productId = p.id
+      LEFT JOIN categories c ON p.categoryId = c.id  
+      LEFT JOIN locations l ON s.locationId = l.id
+      ORDER BY p.sku
+    `);
+    
     return result.recordset.map(item => ({
       ...item,
+      companyId: 3, // Default company based on database
+      acquisitionDate: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
       createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
       updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
     }));

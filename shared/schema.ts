@@ -331,10 +331,14 @@ export interface Company {
 
 export interface StockItem {
   id: number;
+  productId?: number;
+  locationId?: number;
+  quantity?: number;
   assetTag: string;
   description: string;
   category?: string;
   location?: string;
+  locationCode?: string;
   companyId?: number;
   acquisitionDate?: number;
   costValue?: number;
