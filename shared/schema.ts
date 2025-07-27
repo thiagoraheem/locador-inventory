@@ -43,6 +43,7 @@ export const products = sqliteTable("products", {
   name: text("name").notNull(),
   description: text("description"),
   categoryId: integer("category_id").references(() => categories.id),
+  costValue: real("cost_value"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
   createdAt: integer("created_at"),
   updatedAt: integer("updated_at"),

@@ -61,6 +61,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Migration endpoint for adding costValue column
+  app.post('/api/migrate-cost-value', async (req, res) => {
+    try {
+      console.log('🔄 Running costValue migration...');
+      const { addCostValueColumn } = await import('./migrate-add-cost-value');
+      await addCostValueColumn();
+      res.json({ message: "costValue column migration completed successfully" });
+    } catch (error) {
+      console.error("Error running costValue migration:", error as Error);
+      res.status(500).json({ error: "Failed to run costValue migration", details: (error as Error).message });
+    }
+  });
+
   // Auth routes
   app.post('/api/auth/login', async (req, res) => {
     try {

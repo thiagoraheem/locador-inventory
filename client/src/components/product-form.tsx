@@ -21,6 +21,7 @@ import { z } from "zod";
 
 const formSchema = insertProductSchema.extend({
   isActive: z.boolean().default(true),
+  costValue: z.number().optional(),
 });
 
 interface ProductFormProps {
@@ -123,6 +124,26 @@ export default function ProductForm({ product, onSuccess }: ProductFormProps) {
               <FormLabel>Nome do Produto *</FormLabel>
               <FormControl>
                 <Input placeholder="Ex: Notebook Dell Inspiron 15" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="costValue"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Valor do Bem</FormLabel>
+              <FormControl>
+                <Input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="0.00" 
+                  {...field}
+                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
