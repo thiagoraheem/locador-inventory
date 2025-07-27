@@ -9,11 +9,13 @@ import { loginSchema, type LoginData } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Globe } from "lucide-react";
+import { useReplitIP } from "@/hooks/useReplitIP";
 
 export default function LoginPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const { toast } = useToast();
+  const { data: ipData, isLoading: ipLoading } = useReplitIP();
 
   const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -125,10 +127,22 @@ export default function LoginPage() {
             </form>
           </Form>
           
-          <div className="mt-4 text-center text-sm">
-            <span className="text-muted-foreground">
-              Usuário padrão: <strong>admin</strong> / Senha: <strong>admin123</strong>
-            </span>
+          <div className="mt-4 space-y-2 text-center text-sm">
+            <div>
+              <span className="text-muted-foreground">
+                Usuário padrão: <strong>admin</strong> / Senha: <strong>admin123</strong>
+              </span>
+            </div>
+            <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 border-t pt-2">
+              <Globe className="h-3 w-3" />
+              <span>
+                IP do Replit: {ipLoading ? (
+                  <span className="animate-pulse">Carregando...</span>
+                ) : (
+                  <strong className="font-mono">{ipData?.outboundIP || 'Não disponível'}</strong>
+                )}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
