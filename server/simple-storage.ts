@@ -641,6 +641,120 @@ export class SimpleStorage {
     }));
   }
 
+  // User management methods
+  async getUsers(): Promise<User[]> {
+    const result = await this.pool.request().query('SELECT * FROM users ORDER BY username');
+    return result.recordset.map(user => ({
+      ...user,
+      createdAt: user.createdAt ? new Date(user.createdAt).getTime() : Date.now(),
+      updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
+    }));
+  }
+
+  async getUser(id: string): Promise<User | null> {
+    const result = await this.pool.request()
+      .input('id', sql.VarChar, id)
+      .query('SELECT * FROM users WHERE id = @id');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const user = result.recordset[0];
+    return {
+      ...user,
+      createdAt: user.createdAt ? new Date(user.createdAt).getTime() : Date.now(),
+      updatedAt: user.updatedAt ? new Date(user.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash(user.password, 10);
+    
+    const result = await this.pool.request()
+      .input('id', sql.VarChar, user.id || `user${Date.now()}`)
+      .input('username', sql.VarChar, user.username)
+      .input('email', sql.VarChar, user.email)
+      .input('firstName', sql.VarChar, user.firstName)
+      .input('lastName', sql.VarChar, user.lastName)
+      .input('role', sql.VarChar, user.role)
+      .input('isActive', sql.Bit, user.isActive)
+      .input('password', sql.VarChar, hashedPassword)
+      .query(`
+        INSERT INTO users (id, username, email, firstName, lastName, role, isActive, password)
+        OUTPUT INSERTED.*
+        VALUES (@id, @username, @email, @firstName, @lastName, @role, @isActive, @password)
+      `);
+
+    const newUser = result.recordset[0];
+    return {
+      ...newUser,
+      createdAt: newUser.createdAt ? new Date(newUser.createdAt).getTime() : Date.now(),
+      updatedAt: newUser.updatedAt ? new Date(newUser.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    const setParts = [];
+    const request = this.pool.request().input('id', sql.VarChar, id);
+
+    if (updates.username !== undefined) {
+      setParts.push('username = @username');
+      request.input('username', sql.VarChar, updates.username);
+    }
+    if (updates.email !== undefined) {
+      setParts.push('email = @email');
+      request.input('email', sql.VarChar, updates.email);
+    }
+    if (updates.firstName !== undefined) {
+      setParts.push('firstName = @firstName');
+      request.input('firstName', sql.VarChar, updates.firstName);
+    }
+    if (updates.lastName !== undefined) {
+      setParts.push('lastName = @lastName');
+      request.input('lastName', sql.VarChar, updates.lastName);
+    }
+    if (updates.role !== undefined) {
+      setParts.push('role = @role');
+      request.input('role', sql.VarChar, updates.role);
+    }
+    if (updates.isActive !== undefined) {
+      setParts.push('isActive = @isActive');
+      request.input('isActive', sql.Bit, updates.isActive);
+    }
+    if (updates.password !== undefined) {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(updates.password, 10);
+      setParts.push('password = @password');
+      request.input('password', sql.VarChar, hashedPassword);
+    }
+
+    setParts.push('updatedAt = GETDATE()');
+
+    const result = await request.query(`
+      UPDATE users 
+      SET ${setParts.join(', ')}
+      OUTPUT INSERTED.*
+      WHERE id = @id
+    `);
+
+    if (result.recordset.length === 0) {
+      throw new Error('User not found');
+    }
+
+    const updatedUser = result.recordset[0];
+    return {
+      ...updatedUser,
+      createdAt: updatedUser.createdAt ? new Date(updatedUser.createdAt).getTime() : Date.now(),
+      updatedAt: updatedUser.updatedAt ? new Date(updatedUser.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await this.pool.request()
+      .input('id', sql.VarChar, id)
+      .query('UPDATE users SET isActive = 0, updatedAt = GETDATE() WHERE id = @id');
+  }
+
   async getInventoryItems(): Promise<InventoryItem[]> {
     const result = await this.pool.request().query('SELECT * FROM inventory_items ORDER BY id');
     return result.recordset.map(item => ({

@@ -24,6 +24,7 @@ const navigation = [
   { name: "Controle de Estoque", href: "/stock", icon: Box },
   { name: "Inventários", href: "/inventories", icon: ClipboardList },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
+  { name: "Usuários", href: "/users", icon: User },
 ];
 
 export default function Sidebar() {

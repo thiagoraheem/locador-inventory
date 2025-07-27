@@ -646,17 +646,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit log routes
-  app.get('/api/audit-logs', isAuthenticated, async (req, res) => {
+  app.get('/api/audit-logs', isAuthenticated, async (req: any, res) => {
     try {
-      const { limit, offset } = req.query;
-      const logs = await storage.getAuditLogs(
-        limit ? parseInt(limit as string) : undefined,
-        offset ? parseInt(offset as string) : undefined
-      );
+      storage = await getStorage();
+      const logs = await storage.getAuditLogs();
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching audit logs:", error);
+      console.error("Error fetching audit logs:", error as Error);
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // User management routes
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const users = await storage.getUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error as Error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const userData = insertUserSchema.parse(req.body);
+      const user = await storage.createUser(userData);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: 'CREATE',
+        entityType: 'USER',
+        entityId: user.id.toString(),
+        oldValues: null,
+        newValues: userData,
+        metadata: null,
+      });
+      
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("Error creating user:", error as Error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const id = req.params.id;
+      const oldUser = await storage.getUser(id);
+      if (!oldUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const userData = insertUserSchema.partial().parse(req.body);
+      const user = await storage.updateUser(id, userData);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: 'UPDATE',
+        entityType: 'USER',
+        entityId: id,
+        oldValues: oldUser,
+        newValues: userData,
+        metadata: null,
+      });
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating user:", error as Error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const id = req.params.id;
+      const oldUser = await storage.getUser(id);
+      if (!oldUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      await storage.deleteUser(id);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: 'DELETE',
+        entityType: 'USER',
+        entityId: id,
+        oldValues: oldUser,
+        newValues: null,
+        metadata: null,
+      });
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error as Error);
+      res.status(500).json({ message: "Failed to delete user" });
     }
   });
 

@@ -20,7 +20,10 @@ This is a full-stack inventory management system built with React/TypeScript fro
 
 ## User Request (July 27, 2025)
 
-→ **View-Only Screens**: Modified Products, Categories, and Stock Locations screens to be read-only interfaces. These screens now display data without create/edit/delete options, preparing for when database tables are converted to Views.
+✓ **View-Only Screens**: Modified Products, Categories, and Stock Locations screens to be read-only interfaces
+✓ **Cost Value Field**: Added "Valor do Bem" column to Products screen (costValue field from database)
+✓ **Mobile Optimization**: Enhanced responsive design with mobile-friendly navigation and touch-optimized controls
+→ **User Management**: Creating comprehensive user management system with role-based permissions (Admin, Consulta, Contador, Gerente, Supervisor)
 
 ## User Preferences
 

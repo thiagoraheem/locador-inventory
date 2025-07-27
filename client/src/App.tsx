@@ -16,6 +16,7 @@ import Inventories from "@/pages/inventories";
 import InventoryCounting from "@/pages/inventory-counting";
 import InventoryReview from "@/pages/inventory-review";
 import AuditLogs from "@/pages/audit-logs";
+import Users from "@/pages/users";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
@@ -44,6 +45,7 @@ function Router() {
           <Route path="/inventory-counting/:id" component={InventoryCounting} />
           <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/audit-logs" component={AuditLogs} />
+          <Route path="/users" component={Users} />
         </MainLayout>
       )}
       <Route component={NotFound} />

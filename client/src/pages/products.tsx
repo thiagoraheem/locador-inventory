@@ -76,6 +76,18 @@ export default function Products() {
       },
     },
     {
+      header: "Valor do Bem",
+      accessorKey: "costValue",
+      sortable: true,
+      cell: (value: number) => {
+        if (value == null) return "R$ 0,00";
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(value);
+      },
+    },
+    {
       header: "Status",
       accessorKey: "isActive",
       cell: (value: boolean) => (
@@ -108,7 +120,7 @@ export default function Products() {
   }
 
   return (
-    <div>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <Header title="Produtos" subtitle="Visualização de produtos do estoque (somente leitura)" />
       
       <div className="space-y-6">
@@ -119,9 +131,9 @@ export default function Products() {
           </AlertDescription>
         </Alert>
         
-        <Card>
-          <CardHeader>
-            <div className="flex flex-row items-center justify-between">
+        <Card className="mobile-card">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <CardTitle>Lista de Produtos</CardTitle>
               <div className="flex items-center space-x-3">
                 <div className="relative">
@@ -129,30 +141,32 @@ export default function Products() {
                     placeholder="Filtrar produtos..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64 pl-10"
+                    className="w-full sm:w-64 pl-10"
                   />
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 mt-4 sm:mt-0">
               <Switch
                 id="show-inactive"
                 checked={showInactive}
                 onCheckedChange={setShowInactive}
               />
-              <Label htmlFor="show-inactive" className="text-sm text-gray-600">
+              <Label htmlFor="show-inactive" className="text-sm text-gray-600 text-responsive">
                 Mostrar produtos desativados
               </Label>
             </div>
           </CardHeader>
-          <CardContent>
-            <DataTable
-              data={products || []}
-              columns={columns}
-              searchQuery={searchQuery}
-              isLoading={productsLoading}
-            />
+          <CardContent className="p-4 sm:p-6">
+            <div className="table-container">
+              <DataTable
+                data={products || []}
+                columns={columns}
+                searchQuery={searchQuery}
+                isLoading={productsLoading}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>

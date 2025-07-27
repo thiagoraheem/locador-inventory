@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Responsive table handling */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobile-friendly cards */
+  .mobile-card {
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+  }
+  
+  /* Responsive navigation */
+  .sidebar-mobile {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-mobile.open {
+    transform: translateX(0);
+  }
+  
+  /* Touch-friendly buttons */
+  .btn-mobile {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Responsive text */
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);
