@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { nanoid } from 'nanoid';
+import bcrypt from 'bcrypt';
 import type {
   User,
   InsertUser,
@@ -667,7 +668,6 @@ export class SimpleStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const bcrypt = require('bcrypt');
     const hashedPassword = await bcrypt.hash(user.password, 10);
     
     const result = await this.pool.request()
@@ -722,7 +722,6 @@ export class SimpleStorage {
       request.input('isActive', sql.Bit, updates.isActive);
     }
     if (updates.password !== undefined) {
-      const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(updates.password, 10);
       setParts.push('password = @password');
       request.input('password', sql.VarChar, hashedPassword);
