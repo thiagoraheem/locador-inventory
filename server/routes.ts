@@ -10,6 +10,7 @@ import {
   insertInventorySchema,
   insertInventoryTypeSchema,
   insertCountSchema,
+  insertUserSchema,
   loginSchema,
   registerSchema,
 } from "@shared/schema";
