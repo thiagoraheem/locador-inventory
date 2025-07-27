@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
   Package, 
@@ -13,8 +14,17 @@ import {
   History,
   LogOut,
   User,
-  Box
+  Box,
+  Building,
+  Package2,
+  X
 } from "lucide-react";
+
+interface SidebarProps {
+  isOpen?: boolean;
+  isMobile?: boolean;
+  onClose?: () => void;
+}
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -23,13 +33,13 @@ const navigation = [
   { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
   { name: "Controle de Estoque", href: "/stock", icon: Box },
   { name: "Inventários", href: "/inventories", icon: ClipboardList },
-  { name: "Empresas", href: "/companies", icon: LayoutDashboard },
-  { name: "Controle de Patrimônio", href: "/stock-items", icon: Package },
+  { name: "Empresas", href: "/companies", icon: Building },
+  { name: "Controle de Patrimônio", href: "/stock-items", icon: Package2 },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
   { name: "Usuários", href: "/users", icon: User },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = true, isMobile = false, onClose }: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
@@ -66,17 +76,28 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="w-64 bg-white shadow-md border-r border-gray-200 flex flex-col">
+    <aside className={cn(
+      "w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col min-h-screen transition-transform duration-300 ease-in-out",
+      isMobile ? "fixed top-0 left-0 z-30" : "relative",
+      isMobile && !isOpen ? "-translate-x-full" : "translate-x-0"
+    )}>
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Box className="h-4 w-4 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Box className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">InventoryPro</h1>
+              <p className="text-xs text-gray-600">Sistema de Estoque</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">InventoryPro</h1>
-            <p className="text-xs text-gray-600">Sistema de Estoque</p>
-          </div>
+          {isMobile && (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -91,6 +112,7 @@ export default function Sidebar() {
               <li key={item.name}>
                 <Link href={item.href}>
                   <a
+                    onClick={isMobile ? onClose : undefined}
                     className={`flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       isActive
                         ? "text-primary bg-primary/10 border-r-2 border-primary"
