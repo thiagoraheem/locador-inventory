@@ -77,7 +77,7 @@ export async function createDefaultAdmin() {
     
     if (!adminUser) {
       console.log('❌ No admin user found, creating default admin...');
-      const hashedPassword = await hashPassword('password');
+      const hashedPassword = await hashPassword('admin123');
       
       // Test the password hashing
       console.log('🔐 Testing password hash...');
