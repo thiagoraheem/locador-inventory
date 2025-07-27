@@ -1,6 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import authRoutes from "./routes";
+import { setupAuth } from "./replitAuth";
+import { setupSqlServerDatabase } from "./setup-sqlserver";
+import checkIpRoutes from "./check-ip";
 
 const app = express();
 app.use(express.json());
@@ -55,6 +59,9 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  app.use("/api", authRoutes);
+  app.use("/api", checkIpRoutes);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
