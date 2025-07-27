@@ -672,8 +672,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/users', isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
-      const userData = insertUserSchema.parse(req.body);
-      const user = await storage.createUser(userData);
+      
+      // Hash password if provided
+      const userData = { ...req.body };
+      if (userData.password) {
+        userData.password = await hashPassword(userData.password);
+      }
+      
+      // Validate the user data (excluding password confirmation if present)
+      const { confirmPassword, ...userDataToValidate } = userData;
+      const validatedData = insertUserSchema.parse(userDataToValidate);
+      
+      const user = await storage.createUser(validatedData);
       
       await storage.createAuditLog({
         userId: req.user.id,
@@ -681,14 +691,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: 'USER',
         entityId: user.id.toString(),
         oldValues: null,
-        newValues: userData,
+        newValues: { ...validatedData, password: '[REDACTED]' },
         metadata: null,
       });
       
-      res.status(201).json(user);
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
     } catch (error) {
       console.error("Error creating user:", error as Error);
-      res.status(500).json({ message: "Failed to create user" });
+      res.status(500).json({ message: "Failed to create user", details: (error as Error).message });
     }
   });
 
@@ -701,23 +713,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const userData = insertUserSchema.partial().parse(req.body);
-      const user = await storage.updateUser(id, userData);
+      // Hash password if provided
+      const userData = { ...req.body };
+      if (userData.password && userData.password.trim() !== '') {
+        userData.password = await hashPassword(userData.password);
+      } else {
+        // Remove password field if empty
+        delete userData.password;
+      }
+      
+      // Remove confirmPassword if present
+      const { confirmPassword, ...userDataToValidate } = userData;
+      const validatedData = insertUserSchema.partial().parse(userDataToValidate);
+      
+      const user = await storage.updateUser(id, validatedData);
       
       await storage.createAuditLog({
         userId: req.user.id,
         action: 'UPDATE',
         entityType: 'USER',
         entityId: id,
-        oldValues: oldUser,
-        newValues: userData,
+        oldValues: { ...oldUser, password: '[REDACTED]' },
+        newValues: { ...validatedData, password: validatedData.password ? '[REDACTED]' : undefined },
         metadata: null,
       });
       
-      res.json(user);
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error updating user:", error as Error);
-      res.status(500).json({ message: "Failed to update user" });
+      res.status(500).json({ message: "Failed to update user", details: (error as Error).message });
     }
   });
 
