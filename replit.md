@@ -18,6 +18,10 @@ This is a full-stack inventory management system built with React/TypeScript fro
 
 **Current Login Credentials**: username: `admin`, password: `password`
 
+## User Request (July 27, 2025)
+
+→ **View-Only Screens**: Modified Products, Categories, and Stock Locations screens to be read-only interfaces. These screens now display data without create/edit/delete options, preparing for when database tables are converted to Views.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
