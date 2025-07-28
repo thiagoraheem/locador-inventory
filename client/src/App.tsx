@@ -42,7 +42,11 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={LoginPage} />
+        <>
+          <Route path="/" component={LoginPage} />
+          <Route path="/login" component={LoginPage} />
+          <Route component={LoginPage} />
+        </>
       ) : isContador ? (
         // Contador users get only the mobile counting interface
         <div>

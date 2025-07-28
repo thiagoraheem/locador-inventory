@@ -89,6 +89,9 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Menu Integration**: Adicionada tela "Contagem de Itens" no submenu Inventários → Contagens
 ✅ **Status Logic**: Status baseado no preenchimento das colunas count1/count2/count3 (NULL = pendente, preenchido = contado)
 ✅ **Blind Counting Interface**: Usuários veem apenas itens pendentes e não visualizam estoque esperado durante contagem
+✅ **Tela Móvel de Contagem**: Interface responsiva baseada no design fornecido para dispositivos móveis
+✅ **Redirecionamento Automático**: Usuários "Contador" são automaticamente direcionados para tela móvel
+✅ **Logout Fix**: Corrigido redirecionamento após logout para retornar corretamente à tela de login
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

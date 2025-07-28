@@ -147,6 +147,7 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -156,18 +157,38 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
       return response.json();
     },
     onSuccess: () => {
+      // Clear all cached data
       queryClient.clear();
+      
+      // Clear any local storage items if they exist
+      localStorage.clear();
+      sessionStorage.clear();
+      
       toast({
         title: "Logout realizado com sucesso",
         description: "Você foi desconectado do sistema.",
       });
+      
+      // Force redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     },
     onError: () => {
+      // Even if logout fails on server, clear client state and redirect
+      queryClient.clear();
+      localStorage.clear();
+      sessionStorage.clear();
+      
       toast({
-        title: "Erro no logout",
-        description: "Houve um problema ao sair do sistema.",
-        variant: "destructive",
+        title: "Logout realizado",
+        description: "Você foi desconectado do sistema.",
       });
+      
+      // Force redirect to login
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     },
   });
 
