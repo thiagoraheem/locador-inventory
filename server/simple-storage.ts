@@ -378,10 +378,10 @@ export class SimpleStorage {
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
       .input("status", inventoryData.status || "OPEN")
-      .input("startDate", new Date(inventoryData.startDate))
+      .input("startDate", typeof inventoryData.startDate === 'number' ? new Date(inventoryData.startDate) : new Date(inventoryData.startDate))
       .input(
         "endDate",
-        inventoryData.endDate ? new Date(inventoryData.endDate) : null,
+        inventoryData.endDate ? (typeof inventoryData.endDate === 'number' ? new Date(inventoryData.endDate) : new Date(inventoryData.endDate)) : null,
       )
       .input("description", inventoryData.description || null)
       .input("createdBy", inventoryData.createdBy)

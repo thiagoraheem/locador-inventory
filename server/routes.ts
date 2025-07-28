@@ -294,18 +294,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       storage = await getStorage();
       
       // Prepare data with proper formatting and date conversion
-      const inventoryData = {
+      const inventoryData: any = {
         code: req.body.code,
         typeId: req.body.typeId,
         startDate: typeof req.body.startDate === 'string' ? new Date(req.body.startDate).getTime() : req.body.startDate,
-        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate).getTime() : req.body.endDate) : null,
-        predictedEndDate: req.body.predictedEndDate ? (typeof req.body.predictedEndDate === 'string' ? new Date(req.body.predictedEndDate).getTime() : req.body.predictedEndDate) : null,
-        description: req.body.description || null,
         status: req.body.status || 'open',
         createdBy: req.user.id,
       };
 
-      const validatedData = insertInventorySchema.parse(inventoryData);
+      // Only add optional fields if they have values
+      if (req.body.endDate) {
+        inventoryData.endDate = typeof req.body.endDate === 'string' ? new Date(req.body.endDate).getTime() : req.body.endDate;
+      }
+      
+      if (req.body.predictedEndDate) {
+        inventoryData.predictedEndDate = typeof req.body.predictedEndDate === 'string' ? new Date(req.body.predictedEndDate).getTime() : req.body.predictedEndDate;
+      }
+      
+      if (req.body.description) {
+        inventoryData.description = req.body.description;
+      }
+
+      // Use partial validation to allow optional fields
+      const validatedData = insertInventorySchema.partial().parse(inventoryData);
 
       const inventory = await storage.createInventory(validatedData);
 
@@ -314,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { selectedLocationIds, selectedCategoryIds } = req.body;
         
         // Get stock data for selected locations and categories
-        const stockItems = await storage.getAllStock();
+        const stockItems = await storage.getStock();
         const products = await storage.getAllProducts();
         
         for (const locationId of selectedLocationIds) {
