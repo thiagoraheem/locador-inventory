@@ -80,8 +80,11 @@ export default function Inventories() {
     {
       header: "Criado por",
       accessorKey: "createdByUser.firstName",
-      cell: (value: string, row: any) => 
-        `${row.createdByUser.firstName || ''} ${row.createdByUser.lastName || ''}`.trim() || row.createdByUser.email,
+      cell: (value: string, row: any) => {
+        if (!row.createdByUser) return 'N/A';
+        const fullName = `${row.createdByUser.firstName || ''} ${row.createdByUser.lastName || ''}`.trim();
+        return fullName || row.createdByUser.email || 'N/A';
+      },
     },
     {
       header: "Ações",
