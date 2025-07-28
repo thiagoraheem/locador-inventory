@@ -1067,4 +1067,41 @@ export class SimpleStorage {
       throw error;
     }
   }
+
+  async deleteInventory(id: number): Promise<void> {
+    // Delete related records first (counts must be deleted before inventory_items)
+    await this.pool.request()
+      .input('inventoryId1', id)
+      .query('DELETE FROM counts WHERE inventoryItemId IN (SELECT id FROM inventory_items WHERE inventoryId = @inventoryId1)');
+
+    // Delete inventory items
+    await this.pool.request()
+      .input('inventoryId2', id)
+      .query('DELETE FROM inventory_items WHERE inventoryId = @inventoryId2');
+
+    // Finally delete the inventory itself
+    await this.pool.request()
+      .input('inventoryId3', id)
+      .query('DELETE FROM inventories WHERE id = @inventoryId3');
+  }
+
+  async createAuditLog(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
+    const request = this.pool.request();
+    const result = await request
+      .input("userId", auditLog.userId)
+      .input("action", auditLog.action)
+      .input("entityType", auditLog.entityType)
+      .input("entityId", auditLog.entityId)
+      .input("oldValues", auditLog.oldValues)
+      .input("newValues", auditLog.newValues)
+      .input("metadata", auditLog.metadata)
+      .input("timestamp", Date.now())
+      .query(`
+        INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
+        OUTPUT INSERTED.*
+        VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, @timestamp)
+      `);
+
+    return result.recordset[0];
+  }
 }

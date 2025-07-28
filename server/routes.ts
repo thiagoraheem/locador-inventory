@@ -1037,8 +1037,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "DELETE_INVENTORY",
         entityType: "INVENTORY",
         entityId: inventoryId.toString(),
-        oldValues: { inventory: inventory },
-        newValues: null,
+        oldValues: JSON.stringify(inventory),
+        newValues: undefined,
         metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
       });
 
