@@ -90,45 +90,18 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       const inventoryPayload = {
         code,
         typeId: data.typeId,
-        startDate: new Date(data.startDate),
-        endDate: data.endDate ? new Date(data.endDate) : null,
+        startDate: new Date(data.startDate).getTime(),
+        endDate: data.endDate ? new Date(data.endDate).getTime() : null,
+        predictedEndDate: data.predictedEndDate ? new Date(data.predictedEndDate).getTime() : null,
         description: data.description,
-        status: 'OPEN',
+        status: 'open',
+        selectedLocationIds: data.selectedLocationIds,
+        selectedCategoryIds: data.selectedCategoryIds,
       };
 
       const response = await apiRequest("POST", "/api/inventories", inventoryPayload);
       const inventory = await response.json();
-
-      // Create inventory items for selected locations and categories
-      const selectedLocations = data.selectedLocationIds;
-      const inventoryItems = [];
-
-      const selectedCategories = data.selectedCategoryIds;
-
-      for (const locationId of selectedLocations) {
-        // Get stock items for this location
-        const locationStock = Array.isArray(stock) ? stock.filter((item: any) => item.locationId === locationId) : [];
-        
-        for (const stockItem of locationStock) {
-          // Check if product is in selected categories
-          const product = Array.isArray(products) ? products.find((p: any) => p.id === stockItem.productId) : null;
-          if (product && selectedCategories.includes(product.categoryId)) {
-            inventoryItems.push({
-              inventoryId: inventory.id,
-              productId: stockItem.productId,
-              locationId: stockItem.locationId,
-              expectedQuantity: stockItem.quantity,
-              status: 'PENDING',
-            });
-          }
-        }
-      }
-
-      // Create inventory items
-      for (const item of inventoryItems) {
-        await apiRequest("POST", "/api/inventory-items", item);
-      }
-
+      
       return inventory;
     },
     onSuccess: () => {

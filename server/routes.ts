@@ -292,19 +292,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventories", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
-      // Convert date strings to Date objects before validation
-      const bodyWithDates = {
-        ...req.body,
-        startDate: req.body.startDate
-          ? new Date(req.body.startDate)
-          : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      
+      // Prepare data with proper formatting and date conversion
+      const inventoryData = {
+        code: req.body.code,
+        typeId: req.body.typeId,
+        startDate: typeof req.body.startDate === 'string' ? new Date(req.body.startDate).getTime() : req.body.startDate,
+        endDate: req.body.endDate ? (typeof req.body.endDate === 'string' ? new Date(req.body.endDate).getTime() : req.body.endDate) : null,
+        predictedEndDate: req.body.predictedEndDate ? (typeof req.body.predictedEndDate === 'string' ? new Date(req.body.predictedEndDate).getTime() : req.body.predictedEndDate) : null,
+        description: req.body.description || null,
+        status: req.body.status || 'open',
         createdBy: req.user.id,
       };
 
-      const inventoryData = insertInventorySchema.parse(bodyWithDates);
+      const validatedData = insertInventorySchema.parse(inventoryData);
 
-      const inventory = await storage.createInventory(inventoryData);
+      const inventory = await storage.createInventory(validatedData);
+
+      // Create inventory items if locations and categories are provided
+      if (req.body.selectedLocationIds && req.body.selectedCategoryIds) {
+        const { selectedLocationIds, selectedCategoryIds } = req.body;
+        
+        // Get stock data for selected locations and categories
+        const stockItems = await storage.getAllStock();
+        const products = await storage.getAllProducts();
+        
+        for (const locationId of selectedLocationIds) {
+          const locationStock = stockItems.filter((item: any) => item.locationId === locationId);
+          
+          for (const stockItem of locationStock) {
+            const product = products.find((p: any) => p.id === stockItem.productId);
+            if (product && selectedCategoryIds.includes(product.categoryId)) {
+              await storage.createInventoryItem({
+                inventoryId: inventory.id,
+                productId: stockItem.productId,
+                locationId: stockItem.locationId,
+                expectedQuantity: stockItem.quantity,
+                status: 'pending',
+              });
+            }
+          }
+        }
+      }
 
       await storage.createAuditLog({
         userId: req.user.id,
@@ -312,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityType: "INVENTORY",
         entityId: inventory.id.toString(),
         oldValues: null,
-        newValues: inventoryData,
+        newValues: validatedData,
         metadata: null,
       });
 
