@@ -61,14 +61,29 @@ export interface InventoryType {
   isActive: boolean;
 }
 
+// Inventory status enum - expanded for multi-stage counting process
+export type InventoryStatus = 
+  | "planning"      // Planejamento inicial
+  | "open"         // Aberto para contagem
+  | "count1"       // 1ª contagem em andamento
+  | "count2"       // 2ª contagem em andamento
+  | "count3"       // 3ª contagem em andamento
+  | "audit"        // Em auditoria
+  | "divergence"   // Divergência identificada
+  | "closed"       // Fechado/Concluído
+  | "cancelled";   // Cancelado
+
 export interface Inventory {
   id: number;
   code: string;
   typeId: number;
-  status: string;
+  status: InventoryStatus;
   startDate: number;
   endDate?: number;
+  predictedEndDate?: number;
   description?: string;
+  selectedLocationIds?: number[];  // JSON array of selected location IDs
+  selectedCategoryIds?: number[];  // JSON array of selected category IDs
   createdBy: string;
   createdAt: number;
   updatedAt: number;
@@ -82,6 +97,22 @@ export interface InventoryItem {
   expectedQuantity: number;
   finalQuantity?: number;
   status: string;
+  // Multiple count fields
+  count1?: number;
+  count2?: number;
+  count3?: number;
+  count4?: number;
+  difference?: number;
+  accuracy?: number;
+  // Count audit fields
+  count1By?: string;
+  count2By?: string;
+  count3By?: string;
+  count4By?: string;
+  count1At?: number;
+  count2At?: number;
+  count3At?: number;
+  count4At?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -106,6 +137,50 @@ export interface AuditLog {
   newValues?: string;
   metadata?: string;
   timestamp: number;
+}
+
+// New interface for stock item inventory control
+export interface InventoryStockItem {
+  id: number;
+  inventoryId: number;
+  stockItemId: number;
+  expectedQuantity: number;
+  finalQuantity?: number;
+  status: string;
+  // Multiple count fields
+  count1?: number;
+  count2?: number;
+  count3?: number;
+  count4?: number;
+  difference?: number;
+  accuracy?: number;
+  // Count audit fields
+  count1By?: string;
+  count2By?: string;
+  count3By?: string;
+  count4By?: string;
+  count1At?: number;
+  count2At?: number;
+  count3At?: number;
+  count4At?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Control Panel Statistics interface
+export interface ControlPanelStats {
+  totalInventories: number;
+  activeInventories: number;
+  itemsInProgress: number;
+  itemsCompleted: number;
+  accuracyRate: number;
+  divergenceCount: number;
+  countingProgress: {
+    count1: number;
+    count2: number;
+    count3: number;
+    audit: number;
+  };
 }
 
 // Zod schemas for validation
@@ -153,13 +228,22 @@ export const insertInventoryTypeSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
+// Inventory status validation
+export const inventoryStatusSchema = z.enum([
+  "planning", "open", "count1", "count2", "count3", 
+  "audit", "divergence", "closed", "cancelled"
+]);
+
 export const insertInventorySchema = z.object({
   code: z.string().optional(),
   typeId: z.number(),
-  status: z.string().default("OPEN"),
+  status: inventoryStatusSchema.default("planning"),
   startDate: z.number(),
   endDate: z.number().optional(),
+  predictedEndDate: z.number().optional(),
   description: z.string().optional(),
+  selectedLocationIds: z.array(z.number()).optional(),
+  selectedCategoryIds: z.array(z.number()).optional(),
   createdBy: z.string(),
 });
 
@@ -170,6 +254,22 @@ export const insertInventoryItemSchema = z.object({
   expectedQuantity: z.number().default(0),
   finalQuantity: z.number().optional(),
   status: z.string().default("PENDING"),
+  // Count fields validation
+  count1: z.number().optional(),
+  count2: z.number().optional(),
+  count3: z.number().optional(),
+  count4: z.number().optional(),
+  difference: z.number().optional(),
+  accuracy: z.number().min(0).max(100).optional(),
+  // Count audit fields
+  count1By: z.string().optional(),
+  count2By: z.string().optional(),
+  count3By: z.string().optional(),
+  count4By: z.string().optional(),
+  count1At: z.number().optional(),
+  count2At: z.number().optional(),
+  count3At: z.number().optional(),
+  count4At: z.number().optional(),
 });
 
 export const insertCountSchema = z.object({
@@ -178,6 +278,31 @@ export const insertCountSchema = z.object({
   quantity: z.number(),
   countedBy: z.string(),
   notes: z.string().optional(),
+});
+
+// New schema for stock item inventory control
+export const insertInventoryStockItemSchema = z.object({
+  inventoryId: z.number(),
+  stockItemId: z.number(),
+  expectedQuantity: z.number().default(0),
+  finalQuantity: z.number().optional(),
+  status: z.string().default("PENDING"),
+  // Count fields validation
+  count1: z.number().optional(),
+  count2: z.number().optional(),
+  count3: z.number().optional(),
+  count4: z.number().optional(),
+  difference: z.number().optional(),
+  accuracy: z.number().min(0).max(100).optional(),
+  // Count audit fields
+  count1By: z.string().optional(),
+  count2By: z.string().optional(),
+  count3By: z.string().optional(),
+  count4By: z.string().optional(),
+  count1At: z.number().optional(),
+  count2At: z.number().optional(),
+  count3At: z.number().optional(),
+  count4At: z.number().optional(),
 });
 
 export const insertAuditLogSchema = z.object({

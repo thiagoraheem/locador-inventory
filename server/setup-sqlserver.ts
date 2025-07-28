@@ -84,16 +84,19 @@ export async function setupSqlServerDatabase() {
           isActive BIT DEFAULT 1
       );
 
-      -- Inventories table
+      -- Inventories table (updated with new fields)
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventories' AND xtype='U')
       CREATE TABLE inventories (
           id INT IDENTITY(1,1) PRIMARY KEY,
           code NVARCHAR(50) UNIQUE NOT NULL,
           typeId INT NOT NULL,
-          status NVARCHAR(50) DEFAULT 'OPEN',
+          status NVARCHAR(50) DEFAULT 'planning',
           startDate DATETIME2 NOT NULL,
           endDate DATETIME2,
+          predictedEndDate DATETIME2,
           description NVARCHAR(1000),
+          selectedLocationIds NVARCHAR(MAX), -- JSON array
+          selectedCategoryIds NVARCHAR(MAX), -- JSON array
           createdBy NVARCHAR(255) NOT NULL,
           createdAt DATETIME2,
           updatedAt DATETIME2,
@@ -101,7 +104,7 @@ export async function setupSqlServerDatabase() {
           FOREIGN KEY (createdBy) REFERENCES users(id)
       );
 
-      -- Inventory items table
+      -- Inventory items table (updated with count fields)
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventory_items' AND xtype='U')
       CREATE TABLE inventory_items (
           id INT IDENTITY(1,1) PRIMARY KEY,
@@ -111,11 +114,31 @@ export async function setupSqlServerDatabase() {
           expectedQuantity REAL DEFAULT 0,
           finalQuantity REAL,
           status NVARCHAR(50) DEFAULT 'PENDING',
+          -- Multiple count fields
+          count1 REAL,
+          count2 REAL,
+          count3 REAL,
+          count4 REAL,
+          difference REAL,
+          accuracy REAL,
+          -- Count audit fields
+          count1By NVARCHAR(255),
+          count2By NVARCHAR(255),
+          count3By NVARCHAR(255),
+          count4By NVARCHAR(255),
+          count1At DATETIME2,
+          count2At DATETIME2,
+          count3At DATETIME2,
+          count4At DATETIME2,
           createdAt DATETIME2,
           updatedAt DATETIME2,
           FOREIGN KEY (inventoryId) REFERENCES inventories(id),
           FOREIGN KEY (productId) REFERENCES products(id),
-          FOREIGN KEY (locationId) REFERENCES locations(id)
+          FOREIGN KEY (locationId) REFERENCES locations(id),
+          FOREIGN KEY (count1By) REFERENCES users(id),
+          FOREIGN KEY (count2By) REFERENCES users(id),
+          FOREIGN KEY (count3By) REFERENCES users(id),
+          FOREIGN KEY (count4By) REFERENCES users(id)
       );
 
       -- Counts table
@@ -145,6 +168,40 @@ export async function setupSqlServerDatabase() {
           metadata NVARCHAR(MAX),
           timestamp DATETIME2 DEFAULT GETDATE(),
           FOREIGN KEY (userId) REFERENCES users(id)
+      );
+
+      -- New table: Inventory Stock Items (for patrimônio control)
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventory_stock_items' AND xtype='U')
+      CREATE TABLE inventory_stock_items (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          inventoryId INT NOT NULL,
+          stockItemId INT NOT NULL,
+          expectedQuantity REAL DEFAULT 0,
+          finalQuantity REAL,
+          status NVARCHAR(50) DEFAULT 'PENDING',
+          -- Multiple count fields
+          count1 REAL,
+          count2 REAL,
+          count3 REAL,
+          count4 REAL,
+          difference REAL,
+          accuracy REAL,
+          -- Count audit fields
+          count1By NVARCHAR(255),
+          count2By NVARCHAR(255),
+          count3By NVARCHAR(255),
+          count4By NVARCHAR(255),
+          count1At DATETIME2,
+          count2At DATETIME2,
+          count3At DATETIME2,
+          count4At DATETIME2,
+          createdAt DATETIME2,
+          updatedAt DATETIME2,
+          FOREIGN KEY (inventoryId) REFERENCES inventories(id),
+          FOREIGN KEY (count1By) REFERENCES users(id),
+          FOREIGN KEY (count2By) REFERENCES users(id),
+          FOREIGN KEY (count3By) REFERENCES users(id),
+          FOREIGN KEY (count4By) REFERENCES users(id)
       );
 
       -- Sessions table for auth
