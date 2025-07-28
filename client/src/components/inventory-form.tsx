@@ -71,6 +71,11 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
     retry: false,
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ["/api/categories"],
+    retry: false,
+  });
+
   const { data: stock } = useQuery({
     queryKey: ["/api/stock"],
     retry: false,
@@ -102,11 +107,11 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
 
       for (const locationId of selectedLocations) {
         // Get stock items for this location
-        const locationStock = stock?.filter((item: any) => item.locationId === locationId) || [];
+        const locationStock = Array.isArray(stock) ? stock.filter((item: any) => item.locationId === locationId) : [];
         
         for (const stockItem of locationStock) {
           // Check if product is in selected categories
-          const product = products?.find((p: any) => p.id === stockItem.productId);
+          const product = Array.isArray(products) ? products.find((p: any) => p.id === stockItem.productId) : null;
           if (product && selectedCategories.includes(product.categoryId)) {
             inventoryItems.push({
               inventoryId: inventory.id,
@@ -202,7 +207,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {inventoryTypes?.map((type: any) => (
+                    {Array.isArray(inventoryTypes) && inventoryTypes.map((type: any) => (
                       <SelectItem key={type.id} value={type.id.toString()}>
                         {type.name}
                       </SelectItem>
@@ -259,15 +264,15 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const allLocationIds = locations?.map((l: any) => l.id) || [];
+                        const allLocationIds = Array.isArray(locations) ? locations.map((l: any) => l.id) : [];
                         field.onChange(field.value?.length === allLocationIds.length ? [] : allLocationIds);
                       }}
                     >
-                      {field.value?.length === locations?.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                      {field.value?.length === (Array.isArray(locations) ? locations.length : 0) ? "Desmarcar Todos" : "Selecionar Todos"}
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {locations?.map((location: any) => (
+                    {Array.isArray(locations) && locations.map((location: any) => (
                       <div key={location.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`location-${location.id}`}
@@ -308,38 +313,35 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const allCategoryIds = products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index) || [];
+                        const allCategoryIds = Array.isArray(categories) ? categories.map((c: any) => c.id) : [];
                         field.onChange(field.value?.length === allCategoryIds.length ? [] : allCategoryIds);
                       }}
                     >
-                      {field.value?.length === products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index).length ? "Desmarcar Todos" : "Selecionar Todos"}
+                      {field.value?.length === (Array.isArray(categories) ? categories.length : 0) ? "Desmarcar Todos" : "Selecionar Todos"}
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index).map((categoryId: any) => {
-                      const categoryName = products?.find((p: any) => p.categoryId === categoryId)?.category || `Categoria ${categoryId}`;
-                      return (
-                        <div key={categoryId} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`category-${categoryId}`}
-                            checked={field.value?.includes(categoryId)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                field.onChange([...field.value, categoryId]);
-                              } else {
-                                field.onChange(field.value.filter(id => id !== categoryId));
-                              }
-                            }}
-                          />
-                          <Label 
-                            htmlFor={`category-${categoryId}`} 
-                            className="text-sm cursor-pointer"
-                          >
-                            {categoryName}
-                          </Label>
-                        </div>
-                      );
-                    })}
+                    {Array.isArray(categories) && categories.map((category: any) => (
+                      <div key={category.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category.id}`}
+                          checked={field.value?.includes(category.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([...field.value, category.id]);
+                            } else {
+                              field.onChange(field.value.filter(id => id !== category.id));
+                            }
+                          }}
+                        />
+                        <Label 
+                          htmlFor={`category-${category.id}`} 
+                          className="text-sm cursor-pointer"
+                        >
+                          {category.name}
+                        </Label>
+                      </div>
+                    ))}
                   </div>
                 </div>
                 <FormMessage />
