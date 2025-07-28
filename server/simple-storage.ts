@@ -1761,4 +1761,102 @@ export class SimpleStorage {
     console.log(`Product ${productId} serial control updated to: ${hasSerialControl}`);
     // Por enquanto, apenas logamos a operação
   }
+
+  // ===== MÉTODOS PARA INTEGRAÇÃO E TESTES =====
+
+  async reconcileInventory(inventoryId: number): Promise<void> {
+    const query = `
+      UPDATE inventory_items 
+      SET 
+        serialItemsCount = COALESCE((
+          SELECT COUNT(*) FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = inventory_items.inventoryId 
+          AND isi.productId = inventory_items.productId
+        ), 0),
+        serialItemsFound = COALESCE((
+          SELECT COUNT(*) FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = inventory_items.inventoryId 
+          AND isi.productId = inventory_items.productId
+          AND (isi.count1_found = 1 OR isi.count2_found = 1 OR isi.count3_found = 1 OR isi.count4_found = 1)
+        ), 0),
+        hasSerialDiscrepancy = CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM vw_products p 
+            WHERE p.id = inventory_items.productId 
+            AND p.hasSerialControl = 1
+          ) THEN 1 ELSE 0 END
+      WHERE inventoryId = @inventoryId
+    `;
+    
+    await this.pool.request()
+      .input('inventoryId', inventoryId)
+      .query(query);
+  }
+
+  async findProductBySerial(serialNumber: string): Promise<ProductWithSerialControl | null> {
+    const query = `
+      SELECT DISTINCT p.*, 
+        CASE WHEN p.hasSerialControl = 1 THEN 1 ELSE 0 END as hasSerialControl
+      FROM vw_products p
+      INNER JOIN stock_items si ON p.id = si.productId
+      WHERE si.serialNumber = @serialNumber 
+      AND si.isActive = 1
+      AND p.isActive = 1
+    `;
+    
+    const result = await this.pool.request()
+      .input('serialNumber', serialNumber)
+      .query(query);
+    
+    return result.recordset[0] || null;
+  }
+
+  async searchProductBySKU(sku: string): Promise<ProductWithSerialControl | null> {
+    const query = `
+      SELECT *, 
+        CASE WHEN hasSerialControl = 1 THEN 1 ELSE 0 END as hasSerialControl
+      FROM vw_products 
+      WHERE sku = @sku AND isActive = 1
+    `;
+    
+    const result = await this.pool.request()
+      .input('sku', sku)
+      .query(query);
+    
+    return result.recordset[0] || null;
+  }
+
+  async createInventorySerialItems(inventoryId: number): Promise<void> {
+    // Implementação simplificada - criar registros baseados nos stock_items
+    const query = `
+      INSERT INTO inventory_serial_items (
+        inventoryId, stockItemId, serialNumber, productId, locationId, 
+        expectedStatus, status, createdAt, updatedAt
+      )
+      SELECT 
+        @inventoryId,
+        si.id,
+        si.serialNumber,
+        si.productId,
+        si.locationId,
+        1,
+        'PENDING',
+        @timestamp,
+        @timestamp
+      FROM stock_items si
+      INNER JOIN vw_products p ON si.productId = p.id
+      WHERE si.isActive = 1 
+      AND p.hasSerialControl = 1
+      AND NOT EXISTS (
+        SELECT 1 FROM inventory_serial_items isi 
+        WHERE isi.inventoryId = @inventoryId 
+        AND isi.stockItemId = si.id
+      )
+    `;
+    
+    await this.pool.request()
+      .input('inventoryId', inventoryId)
+      .input('timestamp', Date.now())
+      .query(query);
+  }
 }

@@ -374,6 +374,56 @@ export const insertAuditLogSchema = z.object({
   metadata: z.string().optional(),
 });
 
+// Serial Reading schemas
+export const serialReadingRequestSchema = z.object({
+  serialNumber: z.string().min(1),
+  countStage: z.enum(['count1', 'count2', 'count3', 'count4']),
+});
+
+export const serialReadingResponseSchema = z.object({
+  success: z.boolean(),
+  productId: z.number().optional(),
+  productName: z.string().optional(),
+  productSku: z.string().optional(),
+  alreadyRead: z.boolean().optional(),
+  newSerial: z.boolean().optional(),
+  message: z.string().optional(),
+});
+
+// Reconciliation schemas
+export const reconciliationReportSchema = z.object({
+  inventoryId: z.number(),
+  summary: z.object({
+    totalProducts: z.number(),
+    productsWithSerial: z.number(),
+    productsManual: z.number(),
+    serialItemsExpected: z.number(),
+    serialItemsFound: z.number(),
+    serialItemsMissing: z.number(),
+    productsWithDiscrepancy: z.number(),
+  }),
+  productDetails: z.array(z.any()),
+  serialDiscrepancies: z.array(z.any()),
+  recommendations: z.array(z.string()),
+});
+
+// Validation schemas
+export const validationReportSchema = z.object({
+  inventoryId: z.number(),
+  isValid: z.boolean(),
+  issues: z.array(z.object({
+    type: z.string(),
+    productId: z.number().optional(),
+    serialNumber: z.string().optional(),
+    expected: z.number().optional(),
+    found: z.number().optional(),
+    count: z.number().optional(),
+    manualQuantity: z.number().optional(),
+    serialQuantity: z.number().optional(),
+  })),
+  timestamp: z.number(),
+});
+
 // Schema para controle de patrimônio por número de série
 export const insertInventorySerialItemSchema = z.object({
   inventoryId: z.number(),
@@ -402,11 +452,6 @@ export const insertInventorySerialItemSchema = z.object({
   status: z.enum(['PENDING', 'FOUND', 'MISSING', 'EXTRA']).default('PENDING'),
   notes: z.string().optional(),
   finalStatus: z.boolean().optional(),
-});
-
-export const serialReadingRequestSchema = z.object({
-  serialNumber: z.string().min(1),
-  countStage: z.enum(['count1', 'count2', 'count3', 'count4']),
 });
 
 export const updateProductSerialControlSchema = z.object({
@@ -443,6 +488,9 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type InsertInventoryStockItem = z.infer<typeof insertInventoryStockItemSchema>;
 export type InsertInventorySerialItem = z.infer<typeof insertInventorySerialItemSchema>;
 export type SerialReadingRequestData = z.infer<typeof serialReadingRequestSchema>;
+export type SerialReadingResponseData = z.infer<typeof serialReadingResponseSchema>;
+export type ReconciliationReport = z.infer<typeof reconciliationReportSchema>;
+export type ValidationReport = z.infer<typeof validationReportSchema>;
 export type UpdateProductSerialControlData = z.infer<typeof updateProductSerialControlSchema>;
 
 // Additional types

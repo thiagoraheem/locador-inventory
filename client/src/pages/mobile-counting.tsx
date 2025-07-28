@@ -73,7 +73,10 @@ export default function MobileCounting() {
     const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     if (!selectedInv) return 1;
     
-    switch (selectedInv.status) {
+    // Cast to any to avoid TypeScript errors with extended status types
+    const status = selectedInv.status as any;
+    
+    switch (status) {
       case 'open':
       case 'count1_open':
         return 1;
@@ -109,7 +112,7 @@ export default function MobileCounting() {
         credentials: 'include',
         body: JSON.stringify({
           serialNumber: serialInput.trim(),
-          countStage: getCurrentCountStage()
+          countStage: `count${getCurrentCountStage()}`
         }),
       });
       

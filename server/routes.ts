@@ -717,6 +717,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get products with serial control information
+  app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const products = await storage.getProductsWithSerialControl();
+      res.json(products);
+    } catch (error) {
+      console.error('Error fetching products with serial control:', error);
+      res.status(500).json({ message: "Failed to fetch products with serial control" });
+    }
+  });
+
   // Get inventory statistics for Control Panel
   app.get("/api/inventories/:id/stats", isAuthenticated, async (req: any, res) => {
     try {
@@ -1190,6 +1202,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // ===== ROTAS PARA VALIDAÇÃO E INTEGRAÇÃO =====
+
+  // Validar integridade do inventário
+  app.post("/api/inventories/:id/validate", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      
+      const { InventoryIntegrityValidator } = await import('./validation');
+      const validator = new InventoryIntegrityValidator(storage);
+      
+      const report = await validator.validateInventoryIntegrity(inventoryId);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "VALIDATE_INVENTORY",
+        entityType: "inventory",
+        entityId: inventoryId.toString(),
+        newValues: JSON.stringify({ isValid: report.isValid, issuesCount: report.issues.length }),
+      });
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error validating inventory:", error);
+      res.status(500).json({ message: "Failed to validate inventory" });
+    }
+  });
+
+  // Executar reconciliação do inventário
+  app.post("/api/inventories/:id/reconcile", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      
+      // Executar stored procedure de reconciliação
+      await storage.reconcileInventory(inventoryId);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "RECONCILE_INVENTORY",
+        entityType: "inventory",
+        entityId: inventoryId.toString(),
+        metadata: JSON.stringify({ timestamp: Date.now() }),
+      });
+      
+      res.json({ message: "Reconciliation completed successfully" });
+    } catch (error) {
+      console.error("Error reconciling inventory:", error);
+      res.status(500).json({ message: "Failed to reconcile inventory" });
+    }
+  });
+
+  // Obter relatório de reconciliação
+  app.get("/api/inventories/:id/reconciliation", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      
+      const { InventoryIntegrityValidator } = await import('./validation');
+      const validator = new InventoryIntegrityValidator(storage);
+      
+      const report = await validator.generateReconciliationReport(inventoryId);
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching reconciliation report:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation report" });
+    }
+  });
+
+  // Importar rotas de integração
+  const { addIntegrationRoutes } = await import('./routes-integration');
+  addIntegrationRoutes(app, getStorage, isAuthenticated);
 
   // ===== ROTAS PARA CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
 
