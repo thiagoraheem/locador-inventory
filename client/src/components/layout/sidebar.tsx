@@ -60,7 +60,6 @@ const navigation: NavigationItem[] = [
     name: "Inventários",
     icon: ClipboardList,
     children: [
-      { name: "Parâmetros / Regras", href: "/inventory-parameters", icon: Settings },
       { name: "Inventários", href: "/inventories", icon: ClipboardList },
       {
         name: "Contagens",
