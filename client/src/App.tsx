@@ -15,6 +15,7 @@ import Stock from "@/pages/stock";
 import Inventories from "@/pages/inventories";
 import InventoryCounting from "@/pages/inventory-counting";
 import InventoryCounts from "@/pages/inventory-counts";
+import MobileCounting from "@/pages/mobile-counting";
 import InventoryReview from "@/pages/inventory-review";
 import InventoryControlBoard from "@/pages/inventory-control-board";
 import InventoryAssetControl from "@/pages/inventory-asset-control";
@@ -25,7 +26,7 @@ import StockItems from "@/pages/stock-items";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -35,10 +36,23 @@ function Router() {
     );
   }
 
+  // Auto-redirect users with "Contador" role to mobile counting screen
+  const isContador = user && (user as any).role === 'contador';
+
   return (
     <Switch>
       {!isAuthenticated ? (
         <Route path="/" component={LoginPage} />
+      ) : isContador ? (
+        // Contador users get only the mobile counting interface
+        <div>
+          <Route path="/" component={MobileCounting} />
+          <Route path="/inventory-counts-cp" component={MobileCounting} />
+          <Route component={() => <div className="min-h-screen bg-blue-600 p-4 text-white text-center">
+            <h1 className="text-2xl font-bold mt-8">Sistema de Inventário</h1>
+            <p className="mt-4">Você tem acesso apenas à tela de contagem móvel.</p>
+          </div>} />
+        </div>
       ) : (
         <MainLayout>
           <Route path="/" component={Dashboard} />
@@ -51,6 +65,7 @@ function Router() {
           <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/inventory-counting/:id" component={InventoryCounting} />
           <Route path="/inventory-counts" component={InventoryCounts} />
+          <Route path="/inventory-counts-cp" component={MobileCounting} />
           <Route path="/inventory-assets/:id" component={InventoryAssetControl} />
           <Route path="/audit-logs" component={AuditLogs} />
           <Route path="/users" component={Users} />
