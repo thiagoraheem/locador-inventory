@@ -66,6 +66,9 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Schema Validation**: Corrected nullable optional fields in inventory schema
 ✅ **Storage Method**: Fixed getAllStock method name mismatch in inventory creation
 ✅ **Complete Workflow**: First inventory successfully created with items generation
+✅ **Navigation Links**: Fixed "Mesa de Controle" menu link to point to inventory-control-board
+✅ **Dashboard Runtime Error**: Fixed undefined inventory.type.name access with safe navigation
+✅ **Status Display**: Corrected status comparison from 'OPEN' to 'open' for proper badge display
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

@@ -49,6 +49,7 @@ function Router() {
           <Route path="/inventory-counting/:id" component={InventoryCounting} />
           <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/inventory-control/:id" component={InventoryControlBoard} />
+          <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-assets/:id" component={InventoryAssetControl} />
           <Route path="/audit-logs" component={AuditLogs} />
           <Route path="/users" component={Users} />

@@ -172,12 +172,12 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="text-sm font-medium">{inventory.code}</p>
-                        <p className="text-xs text-gray-600">{inventory.type.name}</p>
+                        <p className="text-xs text-gray-600">{inventory.type?.name || 'Tipo não especificado'}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge variant={inventory.status === 'OPEN' ? 'default' : 'secondary'}>
-                        {inventory.status === 'OPEN' ? 'Aberto' : 'Em Contagem'}
+                      <Badge variant={inventory.status === 'open' ? 'default' : 'secondary'}>
+                        {inventory.status === 'open' ? 'Aberto' : 'Em Contagem'}
                       </Badge>
                     </div>
                   </div>

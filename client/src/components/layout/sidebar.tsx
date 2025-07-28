@@ -70,7 +70,7 @@ const navigation: NavigationItem[] = [
           { name: "Por CP", href: "/inventory-counts-cp", icon: FileText },
         ]
       },
-      { name: "Mesa de Controle", href: "/control-desk", icon: Settings },
+      { name: "Mesa de Controle", href: "/inventory-control-board", icon: Settings },
       { name: "Relatórios", href: "/inventory-reports", icon: BarChart3 },
     ]
   },
