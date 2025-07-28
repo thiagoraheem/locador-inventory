@@ -68,6 +68,7 @@ const navigation: NavigationItem[] = [
         children: [
           { name: "Listagem", href: "/inventory-counts", icon: FileText },
           { name: "Por CP", href: "/inventory-counts-cp", icon: FileText },
+          { name: "Contagem de Itens", href: "/inventory-counting", icon: ClipboardList },
         ]
       },
       { name: "Mesa de Controle", href: "/inventory-control-board", icon: Settings },

@@ -911,8 +911,6 @@ export class SimpleStorage {
         SET count1 = @count1, count1By = @count1By, count1At = @count1At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    await this.calculateAndUpdateDifference(itemId);
   }
 
   async updateCount2(itemId: number, count: number, countedBy: string): Promise<void> {
@@ -928,8 +926,6 @@ export class SimpleStorage {
         SET count2 = @count2, count2By = @count2By, count2At = @count2At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    await this.calculateAndUpdateDifference(itemId);
   }
 
   async updateCount3(itemId: number, count: number, countedBy: string): Promise<void> {
@@ -945,8 +941,6 @@ export class SimpleStorage {
         SET count3 = @count3, count3By = @count3By, count3At = @count3At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    await this.calculateAndUpdateDifference(itemId);
   }
 
   async updateCount4(itemId: number, count: number, countedBy: string): Promise<void> {
@@ -962,8 +956,6 @@ export class SimpleStorage {
         SET count4 = @count4, count4By = @count4By, count4At = @count4At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    await this.calculateAndUpdateDifference(itemId);
   }
 
   // Calculate difference and accuracy (simplified - no need to update DB since columns don't exist)

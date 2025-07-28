@@ -14,6 +14,7 @@ import Locations from "@/pages/locations";
 import Stock from "@/pages/stock";
 import Inventories from "@/pages/inventories";
 import InventoryCounting from "@/pages/inventory-counting";
+import InventoryCounts from "@/pages/inventory-counts";
 import InventoryReview from "@/pages/inventory-review";
 import InventoryControlBoard from "@/pages/inventory-control-board";
 import InventoryAssetControl from "@/pages/inventory-asset-control";
@@ -49,6 +50,7 @@ function Router() {
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/inventory-counting/:id" component={InventoryCounting} />
+          <Route path="/inventory-counts" component={InventoryCounts} />
           <Route path="/inventory-assets/:id" component={InventoryAssetControl} />
           <Route path="/audit-logs" component={AuditLogs} />
           <Route path="/users" component={Users} />
