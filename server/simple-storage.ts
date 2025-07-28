@@ -1184,4 +1184,316 @@ export class SimpleStorage {
       timestamp: typeof record.timestamp === 'number' ? record.timestamp : Date.now()
     };
   }
+
+  // Inventory snapshot management methods
+  async createInventorySnapshotTables(): Promise<void> {
+    const queries = [
+      // Categories snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_categories_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_categories_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           categoryId INT NOT NULL,
+           idcompany INT,
+           name NVARCHAR(255),
+           description NVARCHAR(500),
+           isActive BIT DEFAULT 1,
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Companies snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_companies_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_companies_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           companyId INT NOT NULL,
+           name NVARCHAR(255),
+           description NVARCHAR(500),
+           isActive BIT DEFAULT 1,
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Locations snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_locations_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_locations_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           locationId INT NOT NULL,
+           code NVARCHAR(50),
+           name NVARCHAR(255),
+           description NVARCHAR(500),
+           isActive BIT DEFAULT 1,
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Products snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_products_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_products_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           productId INT NOT NULL,
+           sku NVARCHAR(100),
+           name NVARCHAR(255),
+           description NVARCHAR(500),
+           categoryId INT,
+           costValue DECIMAL(18,2),
+           serialNumber NVARCHAR(100),
+           isActive BIT DEFAULT 1,
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Stock snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_stock_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           stockId INT NOT NULL,
+           productId INT NOT NULL,
+           locationId INT NOT NULL,
+           quantity INT DEFAULT 0,
+           frozenAt DATETIME2 DEFAULT GETDATE(),
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Stock items snapshot table
+      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_items_snapshot]') AND type in (N'U'))
+       BEGIN
+         CREATE TABLE inventory_stock_items_snapshot (
+           id INT IDENTITY(1,1) PRIMARY KEY,
+           inventoryId INT NOT NULL,
+           stockItemId INT NOT NULL,
+           productId INT NOT NULL,
+           locationId INT NOT NULL,
+           assetTag NVARCHAR(100),
+           description NVARCHAR(255),
+           category NVARCHAR(100),
+           location NVARCHAR(100),
+           locationCode NVARCHAR(50),
+           costValue DECIMAL(18,2),
+           currentValue DECIMAL(18,2),
+           condition NVARCHAR(50),
+           serialNumber NVARCHAR(100),
+           brand NVARCHAR(100),
+           model NVARCHAR(100),
+           companyId INT,
+           acquisitionDate DATETIME2,
+           quantity INT DEFAULT 1,
+           isActive BIT DEFAULT 1,
+           frozenAt DATETIME2 DEFAULT GETDATE(),
+           createdAt DATETIME2 DEFAULT GETDATE(),
+           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
+         );
+       END`,
+      
+      // Add inventory freeze fields
+      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'isFrozen')
+       BEGIN
+         ALTER TABLE inventories ADD isFrozen BIT DEFAULT 0;
+       END`,
+      
+      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenAt')
+       BEGIN
+         ALTER TABLE inventories ADD frozenAt DATETIME2 NULL;
+       END`,
+      
+      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenBy')
+       BEGIN
+         ALTER TABLE inventories ADD frozenBy NVARCHAR(50) NULL;
+       END`
+    ];
+
+    for (const query of queries) {
+      await this.pool.request().query(query);
+    }
+  }
+
+  async freezeInventoryData(inventoryId: number, userId: string): Promise<void> {
+    const transaction = this.pool.transaction();
+    
+    try {
+      await transaction.begin();
+      
+      // Mark inventory as frozen
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .input('userId', sql.VarChar, userId)
+        .query(`
+          UPDATE inventories 
+          SET isFrozen = 1, frozenAt = GETDATE(), frozenBy = @userId
+          WHERE id = @inventoryId
+        `);
+      
+      // Freeze categories
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_categories_snapshot (inventoryId, categoryId, idcompany, name, description, isActive)
+          SELECT @inventoryId, id, idcompany, name, description, 1
+          FROM categories
+          WHERE isActive = 1
+        `);
+      
+      // Freeze companies
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_companies_snapshot (inventoryId, companyId, name, description, isActive)
+          SELECT @inventoryId, id, name, description, 1
+          FROM companies
+          WHERE isActive = 1
+        `);
+      
+      // Freeze locations
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_locations_snapshot (inventoryId, locationId, code, name, description, isActive)
+          SELECT @inventoryId, id, code, name, description, 1
+          FROM locations
+          WHERE isActive = 1
+        `);
+      
+      // Freeze products
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_products_snapshot (inventoryId, productId, sku, name, description, categoryId, costValue, serialNumber, isActive)
+          SELECT @inventoryId, id, sku, name, description, categoryId, costValue, sku, 1
+          FROM products
+          WHERE isActive = 1
+        `);
+      
+      // Freeze stock
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_stock_snapshot (inventoryId, stockId, productId, locationId, quantity)
+          SELECT @inventoryId, id, productId, locationId, quantity
+          FROM stock
+        `);
+      
+      // Freeze stock items (patrimônio)
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_stock_items_snapshot (
+            inventoryId, stockItemId, productId, locationId, assetTag, description, 
+            category, location, locationCode, costValue, currentValue, condition,
+            serialNumber, brand, model, companyId, acquisitionDate, quantity, isActive
+          )
+          SELECT 
+            @inventoryId, s.id, s.productId, s.locationId, p.sku, p.name,
+            c.name, l.name, l.code, p.costValue, p.costValue, 
+            CASE WHEN s.quantity > 0 THEN 'Bom' ELSE 'Indisponível' END,
+            p.sku, '', '', 3, s.createdAt, s.quantity, CASE WHEN s.quantity > 0 THEN 1 ELSE 0 END
+          FROM stock s
+          LEFT JOIN products p ON s.productId = p.id
+          LEFT JOIN categories c ON p.categoryId = c.id  
+          LEFT JOIN locations l ON s.locationId = l.id
+        `);
+      
+      await transaction.commit();
+      
+      // Create audit log
+      await this.createAuditLog({
+        userId: userId,
+        entityType: "Inventory",
+        entityId: inventoryId.toString(),
+        action: "FREEZE",
+        oldValues: "",
+        newValues: "Inventory data frozen",
+      });
+      
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  async unfreezeInventoryData(inventoryId: number, userId: string): Promise<void> {
+    const transaction = this.pool.transaction();
+    
+    try {
+      await transaction.begin();
+      
+      // Check if inventory can be unfrozen (no counts should exist)
+      const countsCheck = await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          SELECT COUNT(*) as countTotal
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId 
+          AND (count1 IS NOT NULL OR count2 IS NOT NULL OR count3 IS NOT NULL)
+        `);
+      
+      if (countsCheck.recordset[0].countTotal > 0) {
+        throw new Error("Cannot unfreeze inventory with existing counts");
+      }
+      
+      // Clear snapshot data
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`DELETE FROM inventory_categories_snapshot WHERE inventoryId = @inventoryId`);
+      
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`DELETE FROM inventory_companies_snapshot WHERE inventoryId = @inventoryId`);
+      
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`DELETE FROM inventory_locations_snapshot WHERE inventoryId = @inventoryId`);
+      
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)  
+        .query(`DELETE FROM inventory_products_snapshot WHERE inventoryId = @inventoryId`);
+      
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`DELETE FROM inventory_stock_snapshot WHERE inventoryId = @inventoryId`);
+      
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`DELETE FROM inventory_stock_items_snapshot WHERE inventoryId = @inventoryId`);
+      
+      // Mark inventory as not frozen
+      await transaction.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          UPDATE inventories 
+          SET isFrozen = 0, frozenAt = NULL, frozenBy = NULL
+          WHERE id = @inventoryId
+        `);
+      
+      await transaction.commit();
+      
+      // Create audit log
+      await this.createAuditLog({
+        userId: userId,
+        entityType: "Inventory",
+        entityId: inventoryId.toString(),
+        action: "UNFREEZE",
+        oldValues: "Inventory data frozen",
+        newValues: "",
+      });
+      
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
 }

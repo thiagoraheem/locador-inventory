@@ -95,6 +95,10 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Tela Parâmetros/Regras**: Criada documentação completa do funcionamento do inventário baseada no documento fornecido
 ✅ **Menu Navigation**: Adicionada nova opção "Parâmetros / Regras" no menu principal com ícone Settings
 ✅ **Validação de Usuário**: Implementada validação de login único para criação e edição de usuários
+✅ **Sistema de Congelamento**: Implementado congelamento de dados com tabelas snapshot para views
+✅ **Tabelas Snapshot**: Criadas tabelas para congelar dados de categorias, empresas, locais, produtos, estoque e patrimônio
+✅ **APIs de Congelamento**: Rotas /freeze e /unfreeze implementadas com transações e auditoria
+✅ **Estrutura Atualizada**: Base de dados preparada para tratamento de views como sistema congelado
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

@@ -6,12 +6,12 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { 
-  LayoutDashboard, 
-  Package, 
-  Warehouse, 
-  Layers, 
-  ClipboardList, 
+import {
+  LayoutDashboard,
+  Package,
+  Warehouse,
+  Layers,
+  ClipboardList,
   History,
   LogOut,
   User,
@@ -25,7 +25,7 @@ import {
   FileText,
   BarChart3,
   Users,
-  FolderOpen
+  FolderOpen,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -53,7 +53,7 @@ const navigation: NavigationItem[] = [
       { name: "Produtos", href: "/products", icon: Package },
       { name: "Locais de Estoque", href: "/locations", icon: Warehouse },
       { name: "Controle de Patrimônio", href: "/stock-items", icon: Package2 },
-    ]
+    ],
   },
   { name: "Controle de Estoque", href: "/stock", icon: Box },
   {
@@ -66,29 +66,49 @@ const navigation: NavigationItem[] = [
         icon: BarChart3,
         children: [
           { name: "Listagem", href: "/inventory-counts", icon: FileText },
-          { name: "Por CP", href: "/inventory-counts-cp", icon: FileText },
-          { name: "Contagem de Itens", href: "/inventory-counting", icon: ClipboardList },
-        ]
+          {
+            name: "Contagem Individual",
+            href: "/inventory-counts-cp",
+            icon: FileText,
+          },
+          {
+            name: "Contagem de Itens",
+            href: "/inventory-counting",
+            icon: ClipboardList,
+          },
+        ],
       },
-      { name: "Mesa de Controle", href: "/inventory-control-board", icon: Settings },
+      {
+        name: "Mesa de Controle",
+        href: "/inventory-control-board",
+        icon: Settings,
+      },
       { name: "Relatórios", href: "/inventory-reports", icon: BarChart3 },
-      { name: "Parâmetros / Regras", href: "/parameters-rules", icon: FileText },
-    ]
+      {
+        name: "Parâmetros / Regras",
+        href: "/parameters-rules",
+        icon: FileText,
+      },
+    ],
   },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
 ];
 
-export default function Sidebar({ isOpen = true, isMobile = false, onClose }: SidebarProps) {
+export default function Sidebar({
+  isOpen = true,
+  isMobile = false,
+  onClose,
+}: SidebarProps) {
   const { user } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleExpanded = (itemName: string) => {
-    setExpandedItems(prev => 
-      prev.includes(itemName) 
-        ? prev.filter(name => name !== itemName)
-        : [...prev, itemName]
+    setExpandedItems((prev) =>
+      prev.includes(itemName)
+        ? prev.filter((name) => name !== itemName)
+        : [...prev, itemName],
     );
   };
 
@@ -99,7 +119,7 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
     const Icon = item.icon;
 
     return (
-      <div key={item.name} className={`${level > 0 ? 'ml-4' : ''}`}>
+      <div key={item.name} className={`${level > 0 ? "ml-4" : ""}`}>
         {item.href ? (
           <Link href={item.href}>
             <a
@@ -125,15 +145,20 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
               <Icon className="w-4 h-4" />
               <span>{item.name}</span>
             </div>
-            {hasChildren && (
-              isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
-            )}
+            {hasChildren &&
+              (isExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              ))}
           </button>
         )}
 
         {hasChildren && isExpanded && (
           <div className="mt-1 space-y-1">
-            {item.children!.map(child => renderNavigationItem(child, level + 1))}
+            {item.children!.map((child) =>
+              renderNavigationItem(child, level + 1),
+            )}
           </div>
         )}
       </div>
@@ -142,16 +167,16 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error('Erro ao fazer logout');
+        throw new Error("Erro ao fazer logout");
       }
 
       return response.json();
@@ -159,19 +184,19 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
-      
+
       // Clear any local storage items if they exist
       localStorage.clear();
       sessionStorage.clear();
-      
+
       toast({
         title: "Logout realizado com sucesso",
         description: "Você foi desconectado do sistema.",
       });
-      
+
       // Force redirect to login after a short delay
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = "/";
       }, 1000);
     },
     onError: () => {
@@ -179,25 +204,27 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
       queryClient.clear();
       localStorage.clear();
       sessionStorage.clear();
-      
+
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado do sistema.",
       });
-      
+
       // Force redirect to login
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = "/";
       }, 1000);
     },
   });
 
   return (
-    <aside className={cn(
-      "w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col min-h-screen transition-transform duration-300 ease-in-out",
-      isMobile ? "fixed top-0 left-0 z-30" : "relative",
-      isMobile && !isOpen ? "-translate-x-full" : "translate-x-0"
-    )}>
+    <aside
+      className={cn(
+        "w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col min-h-screen transition-transform duration-300 ease-in-out",
+        isMobile ? "fixed top-0 left-0 z-30" : "relative",
+        isMobile && !isOpen ? "-translate-x-full" : "translate-x-0",
+      )}
+    >
       {/* Logo Section */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -206,7 +233,9 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
               <Box className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">InventoryPro</h1>
+              <h1 className="text-lg font-semibold text-gray-900">
+                InventoryPro
+              </h1>
               <p className="text-xs text-gray-600">Sistema de Estoque</p>
             </div>
           </div>
@@ -221,7 +250,7 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
       {/* Navigation Menu */}
       <nav className="flex-1 py-4">
         <div className="space-y-1 px-4">
-          {navigation.map(item => renderNavigationItem(item))}
+          {navigation.map((item) => renderNavigationItem(item))}
         </div>
       </nav>
 
@@ -233,9 +262,12 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">
-              {(user as any)?.firstName || (user as any)?.username} {(user as any)?.lastName}
+              {(user as any)?.firstName || (user as any)?.username}{" "}
+              {(user as any)?.lastName}
             </p>
-            <p className="text-xs text-gray-600 capitalize">{(user as any)?.role || 'Usuário'}</p>
+            <p className="text-xs text-gray-600 capitalize">
+              {(user as any)?.role || "Usuário"}
+            </p>
           </div>
         </div>
         <Button
