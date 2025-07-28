@@ -103,6 +103,18 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Database Implementation**: Tabelas desnecessárias removidas do SQL Server
 ✅ **Freeze Fields**: Campos isFrozen, frozenAt, frozenBy mantidos na tabela inventories
 
+**Controle de Patrimônio por Número de Série (January 29, 2025)**:
+✅ **Database Schema Migration**: Implementação completa do schema para controle patrimonial
+✅ **Nova Tabela inventory_serial_items**: Tabela dedicada para controle individual por número de série
+✅ **Colunas Adicionais**: inventory_items expandida com serialItemsCount, serialItemsFound, serialItemsMissing, hasSerialDiscrepancy
+✅ **Índices de Performance**: 4 índices criados para otimização de consultas por inventário, produto, série e localização
+✅ **View de Reconciliação**: vw_inventory_reconciliation para relatórios de discrepâncias
+✅ **Stored Procedures**: sp_CreateInventorySerialItems e sp_RegisterSerialReading para operações principais
+✅ **Estrutura de Auditoria**: Controle de contagens por estágio (count1-4) com usuário e timestamp
+✅ **Status de Série**: Sistema de status (PENDING, FOUND, MISSING, EXTRA) para números de série
+✅ **Foreign Keys**: Relacionamentos com inventories e users implementados
+✅ **Compatibilidade com Views**: Adaptação para trabalhar com sistema de views do banco existente
+
 **Current Login Credentials**: username: `admin`, password: `password`
 
 ## User Request (July 27, 2025)
