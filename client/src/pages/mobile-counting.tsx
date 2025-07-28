@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ProductSearchCombobox from "@/components/product-search-combobox";
 import { 
   Search, 
   Package,
@@ -40,11 +41,20 @@ interface CountedProduct {
   totalSerialCount?: number;
 }
 
+// Interface para produto pesquisado
+interface SearchedProduct {
+  id: number;
+  sku: string;
+  name: string;
+  categoryName: string;
+  hasSerialControl: boolean;
+}
+
 export default function MobileCounting() {
   // Estado principal para interface dual
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
   const [serialInput, setSerialInput] = useState("");
-  const [skuInput, setSkuInput] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<SearchedProduct | null>(null);
   const [quantityInput, setQuantityInput] = useState<number>(1);
   const [countedProducts, setCountedProducts] = useState<CountedProduct[]>([]);
   const [activeTab, setActiveTab] = useState<'serial' | 'sku'>('serial');
@@ -154,29 +164,14 @@ export default function MobileCounting() {
     }
   };
 
-  // Função para busca por SKU e quantidade manual
-  const handleSkuSearch = async () => {
-    if (!skuInput.trim() || !quantityInput || !selectedInventoryId) return;
+  // Função para adicionar produto selecionado com quantidade manual
+  const handleAddSelectedProduct = async () => {
+    if (!selectedProduct || !quantityInput || !selectedInventoryId) return;
     
     setIsLoading(true);
     try {
-      // Buscar produto por SKU ou descrição
-      const product = products?.find((p: ProductWithSerialControl) => 
-        p.sku.toLowerCase() === skuInput.toLowerCase() ||
-        p.name.toLowerCase().includes(skuInput.toLowerCase())
-      );
-      
-      if (!product) {
-        toast({
-          title: "Produto não encontrado",
-          description: "SKU ou descrição não encontrados",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       // Verificar se produto tem controle de série
-      if (product.hasSerialControl) {
+      if (selectedProduct.hasSerialControl) {
         toast({
           title: "Produto com controle de série",
           description: "Use a leitura de código de barras para este produto",
@@ -186,23 +181,23 @@ export default function MobileCounting() {
       }
       
       // Registrar contagem manual
-      await registerManualCount(product.id, quantityInput);
+      await registerManualCount(selectedProduct.id, quantityInput);
       
-      addManualProduct(product, quantityInput);
+      addManualProduct(selectedProduct, quantityInput);
       
       toast({
         title: "Produto adicionado",
-        description: `${product.name} - Qtd: ${quantityInput}`,
+        description: `${selectedProduct.name} - Qtd: ${quantityInput}`,
       });
       
     } catch (error) {
       toast({
-        title: "Erro na busca",
-        description: "Falha ao buscar produto",
+        title: "Erro ao adicionar",
+        description: "Falha ao adicionar produto",
         variant: "destructive",
       });
     } finally {
-      setSkuInput("");
+      setSelectedProduct(null);
       setQuantityInput(1);
       setIsLoading(false);
     }
@@ -239,7 +234,7 @@ export default function MobileCounting() {
   };
 
   // Função para adicionar produto manual à lista
-  const addManualProduct = (product: ProductWithSerialControl, quantity: number) => {
+  const addManualProduct = (product: SearchedProduct, quantity: number) => {
     setCountedProducts(prev => {
       const existingIndex = prev.findIndex(p => p.productId === product.id);
       
@@ -416,18 +411,16 @@ export default function MobileCounting() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-800">
                 <Search className="h-5 w-5" />
-                Busca por SKU/Descrição
+                Buscar Produto
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <Input
-                  placeholder="Digite SKU ou descrição do produto..."
-                  value={skuInput}
-                  onChange={(e) => setSkuInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSkuSearch()}
-                  className="flex-1"
-                  autoFocus={activeTab === 'sku'}
+                <ProductSearchCombobox
+                  value={selectedProduct}
+                  onSelect={setSelectedProduct}
+                  placeholder="Buscar por SKU/Descrição..."
+                  className="w-full"
                 />
                 
                 <div className="flex gap-2">
@@ -440,13 +433,27 @@ export default function MobileCounting() {
                     className="w-24"
                   />
                   <Button 
-                    onClick={handleSkuSearch}
-                    disabled={!skuInput.trim() || !quantityInput || isLoading}
+                    onClick={handleAddSelectedProduct}
+                    disabled={!selectedProduct || !quantityInput || isLoading}
                     className="bg-green-600 hover:bg-green-700 flex-1"
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
                   </Button>
                 </div>
+                
+                {selectedProduct && (
+                  <div className="p-3 bg-green-100 rounded-lg border border-green-200">
+                    <div className="font-medium text-green-800">{selectedProduct.name}</div>
+                    <div className="text-sm text-green-600">
+                      {selectedProduct.categoryName} • SKU: {selectedProduct.sku}
+                    </div>
+                    {selectedProduct.hasSerialControl && (
+                      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1 inline-block">
+                        Produto com controle de série
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <p className="text-sm text-green-600 mt-2">
                 Busque por código SKU ou descrição e informe a quantidade

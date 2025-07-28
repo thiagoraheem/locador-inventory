@@ -1324,6 +1324,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Buscar produtos por termo (SKU ou descrição) - API para combobox dinâmico
+  app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const { q, limit = 10 } = req.query;
+      
+      if (!q || q.length < 2) {
+        return res.json([]);
+      }
+      
+      storage = await getStorage();
+      const products = await storage.getProducts();
+      
+      // Filtrar produtos por SKU ou nome (case insensitive)
+      const searchTerm = q.toLowerCase();
+      const filteredProducts = products
+        .filter(p => 
+          p.sku?.toLowerCase().includes(searchTerm) || 
+          p.name?.toLowerCase().includes(searchTerm)
+        )
+        .slice(0, parseInt(limit))
+        .map(p => ({
+          id: p.id,
+          sku: p.sku,
+          name: p.name,
+          categoryName: p.category?.name || 'Sem categoria',
+          hasSerialControl: p.hasSerialControl || false
+        }));
+      
+      res.json(filteredProducts);
+    } catch (error) {
+      console.error("Error searching products:", error);
+      res.status(500).json({ message: "Failed to search products" });
+    }
+  });
+
   // Importar rotas de integração
   const { addIntegrationRoutes } = await import('./routes-integration');
   addIntegrationRoutes(app, getStorage, isAuthenticated);
