@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
+import ProductSearchAutocomplete from "@/components/product-search-autocomplete";
 
 export default function MobileCounting() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
@@ -25,6 +26,7 @@ export default function MobileCounting() {
   const [searchTerm, setSearchTerm] = useState("");
   const [countedItems, setCountedItems] = useState<{ [itemId: number]: number }>({});
   const [currentProducts, setCurrentProducts] = useState<InventoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -88,11 +90,11 @@ export default function MobileCounting() {
         credentials: 'include',
         body: JSON.stringify({ count }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update count');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -148,33 +150,88 @@ export default function MobileCounting() {
     setBarcodeInput("");
   };
 
-  // Handle product search
-  const handleProductSearch = () => {
-    if (!searchTerm.trim()) return;
+  // Function to register manual count
+  const registerManualCount = async (productId: number, quantity: number) => {
+    const inventoryItem = inventoryItems?.find(item => item.productId === productId);
 
-    const matchingProducts = products?.filter(p => 
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
-
-    const inventoryProductItems = matchingProducts
-      .map(product => inventoryItems?.find(item => item.productId === product.id))
-      .filter(Boolean) as InventoryItem[];
-
-    if (inventoryProductItems.length > 0) {
-      setCurrentProducts(prev => {
-        const newItems = inventoryProductItems.filter(newItem => 
-          !prev.find(existingItem => existingItem.id === newItem.id)
-        );
-        return [...prev, ...newItems];
-      });
-      setSearchTerm("");
-    } else {
+    if (!inventoryItem) {
       toast({
-        title: "Produto não encontrado",
-        description: "Nenhum produto encontrado no inventário atual",
+        title: "Produto não encontrado no inventário",
+        description: "Este produto não está incluído no inventário selecionado",
         variant: "destructive",
       });
+      throw new Error("Produto não encontrado no inventário");
+    }
+
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
+    if (!selectedInv) throw new Error("Inventário não selecionado");
+
+    const stage = getCurrentCountStage(selectedInv.status);
+    const countType = `count${stage}`;
+
+    await updateCountMutation.mutateAsync({ itemId: inventoryItem.id, count: quantity, countType });
+  };
+
+  // Function to add manual product to the current list
+  const addManualProduct = (product: Product, quantity: number) => {
+    const inventoryItem = inventoryItems?.find(item => item.productId === product.id);
+
+    if (inventoryItem) {
+      setCurrentProducts(prev => {
+        const exists = prev.find(existingItem => existingItem.id === inventoryItem.id);
+        if (!exists) {
+          return [...prev, inventoryItem];
+        }
+        return prev;
+      });
+
+      setCountedItems(prev => ({
+        ...prev,
+        [inventoryItem.id]: (prev[inventoryItem.id] || 0) + quantity
+      }));
+    } else {
+      toast({
+        title: "Produto não encontrado no inventário",
+        description: "Este produto não está incluído no inventário selecionado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle product search
+  const handleProductSelect = async (product: Product, quantity: number) => {
+    if (!selectedInventoryId) return;
+
+    setIsLoading(true);
+    try {
+      // Verificar se produto tem controle de série
+      if ((product as any).hasSerialControl) {
+        toast({
+          title: "Produto com controle de série",
+          description: "Use a leitura de código de barras para este produto",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Registrar contagem manual
+      await registerManualCount(product.id, quantity);
+
+      addManualProduct(product, quantity);
+
+      toast({
+        title: "Produto adicionado",
+        description: `${product.name} - Qtd: ${quantity}`,
+      });
+
+    } catch (error) {
+      toast({
+        title: "Erro ao adicionar produto",
+        description: "Falha ao registrar contagem",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -197,7 +254,7 @@ export default function MobileCounting() {
     const countType = `count${stage}`;
 
     updateCountMutation.mutate({ itemId, count, countType });
-    
+
     // Remove item from current list after counting
     setCurrentProducts(prev => prev.filter(item => item.id !== itemId));
     setCountedItems(prev => {
@@ -250,7 +307,7 @@ export default function MobileCounting() {
       {/* Header */}
       <div className="bg-blue-600 text-white mb-6">
         <h1 className="text-2xl font-bold text-center mb-4">Sistema de Inventário</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="bg-blue-500 border-blue-400">
             <CardContent className="p-4">
@@ -262,7 +319,7 @@ export default function MobileCounting() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-blue-500 border-blue-400">
             <CardContent className="p-4">
               <div className="text-white">
@@ -285,7 +342,7 @@ export default function MobileCounting() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-blue-500 border-blue-400">
             <CardContent className="p-4">
               <div className="text-white">
@@ -355,28 +412,7 @@ export default function MobileCounting() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Digite SKU ou descrição do produto..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleProductSearch()}
-                  className="flex-1"
-                />
-                <Input
-                  type="number"
-                  placeholder="1"
-                  min="0"
-                  className="w-20"
-                  defaultValue="1"
-                />
-                <Button 
-                  onClick={handleProductSearch}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Adicionar
-                </Button>
-              </div>
+              <ProductSearchAutocomplete onSelect={handleProductSelect} />
               <p className="text-sm text-gray-500 mt-2">
                 Busque por código SKU ou descrição do produto e informe a quantidade
               </p>
@@ -404,11 +440,11 @@ export default function MobileCounting() {
                     <span className="font-medium">Produto</span>
                     <span className="font-medium">Quantidade</span>
                   </div>
-                  
+
                   {currentProducts.map((item) => {
                     const product = products?.find(p => p.id === item.productId);
                     const location = locations?.find(l => l.id === item.locationId);
-                    
+
                     return (
                       <div key={item.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-3">
@@ -427,7 +463,7 @@ export default function MobileCounting() {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-2 ml-4">
                             <Input
                               type="number"
@@ -474,7 +510,7 @@ export default function MobileCounting() {
               <Plus className="h-5 w-5 mr-2" />
               Adicionar Produto
             </Button>
-            
+
             <Button 
               onClick={() => {}} 
               className="bg-green-600 hover:bg-green-700 text-white h-14"
@@ -482,7 +518,7 @@ export default function MobileCounting() {
               <CheckCircle className="h-5 w-5 mr-2" />
               Salvar Inventário
             </Button>
-            
+
             <Button 
               onClick={handleClearAll}
               variant="destructive"

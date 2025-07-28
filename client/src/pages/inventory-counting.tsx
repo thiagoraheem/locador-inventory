@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
@@ -8,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import ProductSearchAutocomplete from "@/components/product-search-autocomplete";
 import { ArrowLeft, Search, Save, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
@@ -15,7 +15,7 @@ import type { Inventory, InventoryItem, Product, Location } from "@shared/schema
 export default function InventoryCounting({ params }: { params: { id: string } }) {
   const [, setLocation] = useLocation();
   const inventoryId = parseInt(params.id);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [countValues, setCountValues] = useState<{ [itemId: number]: number | string }>({});
@@ -47,11 +47,11 @@ export default function InventoryCounting({ params }: { params: { id: string } }
         credentials: 'include',
         body: JSON.stringify({ count }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update count');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -72,7 +72,7 @@ export default function InventoryCounting({ params }: { params: { id: string } }
 
   const getCurrentCountStage = () => {
     if (!inventory) return 'count1';
-    
+
     switch (inventory.status) {
       case 'count1':
       case 'open':
@@ -110,7 +110,7 @@ export default function InventoryCounting({ params }: { params: { id: string } }
   const getItemStatus = (item: InventoryItem) => {
     const stage = getCurrentCountStage();
     const currentCount = getCurrentCount(item);
-    
+
     if (currentCount !== undefined) return "completed";
     return "pending";
   };
@@ -118,13 +118,13 @@ export default function InventoryCounting({ params }: { params: { id: string } }
   const filteredItems = inventoryItems?.filter(item => {
     const productName = getProductName(item.productId);
     const locationName = getLocationName(item.locationId);
-    
+
     const matchesSearch = searchTerm === "" || 
       productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       locationName.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
     const matchesLocation = locationFilter === "all" || item.locationId.toString() === locationFilter;
-    
+
     return matchesSearch && matchesLocation;
   }) || [];
 
@@ -138,7 +138,7 @@ export default function InventoryCounting({ params }: { params: { id: string } }
   const handleSaveCount = (itemId: number) => {
     const value = countValues[itemId];
     const count = typeof value === 'string' ? parseInt(value) : value;
-    
+
     if (isNaN(count) || count < 0) {
       toast({
         title: "Valor inválido",
@@ -225,7 +225,7 @@ export default function InventoryCounting({ params }: { params: { id: string } }
                 className="pl-8"
               />
             </div>
-            
+
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por local" />
