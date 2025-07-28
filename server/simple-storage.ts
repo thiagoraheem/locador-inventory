@@ -377,7 +377,7 @@ export class SimpleStorage {
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
-      .input("status", inventoryData.status || "OPEN")
+      .input("status", inventoryData.status || "open")
       .input("startDate", typeof inventoryData.startDate === 'number' ? new Date(inventoryData.startDate) : new Date(inventoryData.startDate))
       .input(
         "endDate",
@@ -1038,6 +1038,44 @@ export class SimpleStorage {
     // This method is kept for compatibility but doesn't update difference/accuracy columns
     // since they don't exist in the current database schema
     return;
+  }
+
+  // Create inventory item
+  async createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem> {
+    const request = this.pool.request();
+    const result = await request
+      .input("inventoryId", itemData.inventoryId)
+      .input("productId", itemData.productId)
+      .input("locationId", itemData.locationId)
+      .input("expectedQuantity", itemData.expectedQuantity)
+      .input("status", itemData.status || 'pending')
+      .input("createdAt", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        INSERT INTO inventory_items (inventoryId, productId, locationId, expectedQuantity, status, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@inventoryId, @productId, @locationId, @expectedQuantity, @status, @createdAt, @updatedAt)
+      `);
+
+    const item = result.recordset[0];
+    return {
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+    };
+  }
+
+  // Get inventory items
+  async getInventoryItems(): Promise<InventoryItem[]> {
+    const result = await this.pool
+      .request()
+      .query("SELECT * FROM inventory_items ORDER BY id");
+    
+    return result.recordset.map(item => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+    }));
   }
 
   // Get dashboard statistics

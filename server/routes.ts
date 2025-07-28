@@ -326,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Get stock data for selected locations and categories
         const stockItems = await storage.getStock();
-        const products = await storage.getAllProducts();
+        const products = await storage.getProducts();
         
         for (const locationId of selectedLocationIds) {
           const locationStock = stockItems.filter((item: any) => item.locationId === locationId);
