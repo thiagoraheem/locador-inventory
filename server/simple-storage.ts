@@ -265,8 +265,8 @@ export class SimpleStorage {
             id: row.productId,
             name: row.productName,
             sku: row.sku,
-            description: null,
-            categoryId: null,
+            description: undefined,
+            categoryId: undefined,
             isActive: true,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -277,7 +277,7 @@ export class SimpleStorage {
             id: row.locationId,
             name: row.locationName,
             code: row.locationCode,
-            description: null,
+            description: undefined,
             isActive: true,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -1338,45 +1338,8 @@ export class SimpleStorage {
           WHERE id = @inventoryId
         `);
       
-      // Freeze categories
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_categories_snapshot (inventoryId, categoryId, idcompany, name, description, isActive)
-          SELECT @inventoryId, id, idcompany, name, description, 1
-          FROM categories
-          WHERE isActive = 1
-        `);
-      
-      // Freeze companies
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_companies_snapshot (inventoryId, companyId, name, description, isActive)
-          SELECT @inventoryId, id, name, description, 1
-          FROM companies
-          WHERE isActive = 1
-        `);
-      
-      // Freeze locations
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_locations_snapshot (inventoryId, locationId, code, name, description, isActive)
-          SELECT @inventoryId, id, code, name, description, 1
-          FROM locations
-          WHERE isActive = 1
-        `);
-      
-      // Freeze products
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_products_snapshot (inventoryId, productId, sku, name, description, categoryId, costValue, serialNumber, isActive)
-          SELECT @inventoryId, id, sku, name, description, categoryId, costValue, sku, 1
-          FROM products
-          WHERE isActive = 1
-        `);
+      // Note: Categories, companies, locations, and products are now treated as views
+      // Only stock and stock_items are frozen for inventory control
       
       // Freeze stock
       await transaction.request()
@@ -1416,7 +1379,7 @@ export class SimpleStorage {
         entityId: inventoryId.toString(),
         action: "FREEZE",
         oldValues: "",
-        newValues: "Inventory data frozen",
+        newValues: "Inventory data frozen (stock and stock_items only)",
       });
       
     } catch (error) {
@@ -1445,23 +1408,7 @@ export class SimpleStorage {
         throw new Error("Cannot unfreeze inventory with existing counts");
       }
       
-      // Clear snapshot data
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`DELETE FROM inventory_categories_snapshot WHERE inventoryId = @inventoryId`);
-      
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`DELETE FROM inventory_companies_snapshot WHERE inventoryId = @inventoryId`);
-      
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`DELETE FROM inventory_locations_snapshot WHERE inventoryId = @inventoryId`);
-      
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)  
-        .query(`DELETE FROM inventory_products_snapshot WHERE inventoryId = @inventoryId`);
-      
+      // Clear snapshot data (only for stock and stock_items)
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
         .query(`DELETE FROM inventory_stock_snapshot WHERE inventoryId = @inventoryId`);
@@ -1488,7 +1435,7 @@ export class SimpleStorage {
         entityId: inventoryId.toString(),
         action: "UNFREEZE",
         oldValues: "Inventory data frozen",
-        newValues: "",
+        newValues: "Inventory data unfrozen (stock and stock_items only)",
       });
       
     } catch (error) {

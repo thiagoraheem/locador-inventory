@@ -95,12 +95,13 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Tela Parâmetros/Regras**: Criada documentação completa do funcionamento do inventário baseada no documento fornecido
 ✅ **Menu Navigation**: Adicionada nova opção "Parâmetros / Regras" no menu principal com ícone Settings
 ✅ **Validação de Usuário**: Implementada validação de login único para criação e edição de usuários
-✅ **Sistema de Congelamento**: Implementado congelamento de dados com tabelas snapshot para views
-✅ **Tabelas Snapshot**: 6 tabelas snapshot criadas no SQL Server (categories, companies, locations, products, stock, stock_items)
-✅ **APIs de Congelamento**: Rotas /freeze e /unfreeze implementadas com transações e auditoria
-✅ **Estrutura Atualizada**: Base de dados preparada para tratamento de views como sistema congelado
-✅ **Database Implementation**: Tabelas snapshot criadas corretamente no SQL Server com todas as chaves estrangeiras e índices
-✅ **Freeze Fields**: Campos isFrozen, frozenAt, frozenBy adicionados à tabela inventories com sucesso
+✅ **Sistema de Congelamento Refatorado**: Congelamento apenas de dados de estoque (stock e stock_items)
+✅ **Tabelas Snapshot Simplificadas**: 2 tabelas ativas (inventory_stock_snapshot, inventory_stock_items_snapshot)
+✅ **Views Dinâmicas**: Categories, companies, locations e products tratados como views (sem congelamento)
+✅ **APIs de Congelamento**: Rotas /freeze e /unfreeze atualizadas para escopo simplificado
+✅ **Estrutura Otimizada**: Base de dados limpa com foco apenas em dados de estoque mutáveis
+✅ **Database Implementation**: Tabelas desnecessárias removidas do SQL Server
+✅ **Freeze Fields**: Campos isFrozen, frozenAt, frozenBy mantidos na tabela inventories
 
 **Current Login Credentials**: username: `admin`, password: `password`
 
