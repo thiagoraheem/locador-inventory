@@ -16,12 +16,16 @@ import type {
   InsertInventory,
   InventoryItem,
   InsertInventoryItem,
+  InventoryStockItem,
+  InsertInventoryStockItem,
   Count,
   InsertCount,
   AuditLog,
   InsertAuditLog,
   Company,
   StockItem,
+  ControlPanelStats,
+  InventoryStatus,
 } from "@shared/schema";
 
 export class SimpleStorage {
@@ -762,5 +766,362 @@ export class SimpleStorage {
       ...count,
       countedAt: new Date(count.countedAt).getTime(),
     };
+  }
+
+  // Enhanced Inventory Methods for Multi-Stage Process
+
+  // Create inventory with location/category selection
+  async createInventoryWithSelection(inventoryData: InsertInventory): Promise<Inventory> {
+    const newInventory = {
+      id: 0, // Will be set by SQL Server IDENTITY
+      ...inventoryData,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const request = this.pool.request();
+    const result = await request
+      .input("code", newInventory.code || nanoid(8))
+      .input("typeId", newInventory.typeId)
+      .input("status", newInventory.status || "planning")
+      .input("startDate", new Date(newInventory.startDate))
+      .input("endDate", newInventory.endDate ? new Date(newInventory.endDate) : null)
+      .input("predictedEndDate", newInventory.predictedEndDate ? new Date(newInventory.predictedEndDate) : null)
+      .input("description", newInventory.description || null)
+      .input("selectedLocationIds", inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null)
+      .input("selectedCategoryIds", inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null)
+      .input("createdBy", newInventory.createdBy)
+      .input("createdAt", new Date(newInventory.createdAt))
+      .input("updatedAt", new Date(newInventory.updatedAt))
+      .query(`
+        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, createdBy, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @createdBy, @createdAt, @updatedAt)
+      `);
+
+    const inventory = result.recordset[0];
+    return {
+      ...inventory,
+      createdAt: new Date(inventory.createdAt).getTime(),
+      updatedAt: new Date(inventory.updatedAt).getTime(),
+      startDate: new Date(inventory.startDate).getTime(),
+      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : undefined,
+      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : undefined,
+      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : undefined,
+      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : undefined,
+    };
+  }
+
+  // Transition inventory status
+  async transitionInventoryStatus(inventoryId: number, newStatus: InventoryStatus, userId: string): Promise<void> {
+    const request = this.pool.request();
+    await request
+      .input("id", inventoryId)
+      .input("status", newStatus)
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventories 
+        SET status = @status, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    // Log the status transition
+    await this.createAuditLog({
+      userId,
+      action: "INVENTORY_STATUS_CHANGE",
+      entityType: "inventory",
+      entityId: inventoryId.toString(),
+      newValues: JSON.stringify({ status: newStatus }),
+      metadata: JSON.stringify({ timestamp: Date.now() }),
+    });
+  }
+
+  // Get inventory statistics for Control Panel
+  async getInventoryStats(inventoryId: number): Promise<ControlPanelStats> {
+    const request = this.pool.request();
+    
+    const [inventoryResult, itemsResult, countsResult] = await Promise.all([
+      request.input("id", inventoryId).query(`
+        SELECT COUNT(*) as activeInventories FROM inventories 
+        WHERE status NOT IN ('closed', 'cancelled')
+      `),
+      request.input("inventoryId", inventoryId).query(`
+        SELECT 
+          COUNT(*) as totalItems,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completedItems,
+          AVG(CASE WHEN accuracy IS NOT NULL THEN accuracy END) as avgAccuracy,
+          COUNT(CASE WHEN difference > 0 THEN 1 END) as divergenceCount
+        FROM inventory_items 
+        WHERE inventoryId = @inventoryId
+      `),
+      request.input("inventoryId2", inventoryId).query(`
+        SELECT 
+          COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Total,
+          COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Total,
+          COUNT(CASE WHEN count3 IS NOT NULL THEN 1 END) as count3Total,
+          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as auditTotal
+        FROM inventory_items 
+        WHERE inventoryId = @inventoryId2
+      `)
+    ]);
+
+    const items = itemsResult.recordset[0];
+    const counts = countsResult.recordset[0];
+
+    return {
+      totalInventories: 1,
+      activeInventories: inventoryResult.recordset[0].activeInventories,
+      itemsInProgress: items.totalItems - items.completedItems,
+      itemsCompleted: items.completedItems,
+      accuracyRate: items.avgAccuracy || 0,
+      divergenceCount: items.divergenceCount,
+      countingProgress: {
+        count1: counts.count1Total,
+        count2: counts.count2Total,
+        count3: counts.count3Total,
+        audit: counts.auditTotal,
+      },
+    };
+  }
+
+  // Update individual count methods
+  async updateCount1(itemId: number, count: number, countedBy: string): Promise<void> {
+    const request = this.pool.request();
+    await request
+      .input("id", itemId)
+      .input("count1", count)
+      .input("count1By", countedBy)
+      .input("count1At", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_items 
+        SET count1 = @count1, count1By = @count1By, count1At = @count1At, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    await this.calculateAndUpdateDifference(itemId);
+  }
+
+  async updateCount2(itemId: number, count: number, countedBy: string): Promise<void> {
+    const request = this.pool.request();
+    await request
+      .input("id", itemId)
+      .input("count2", count)
+      .input("count2By", countedBy)
+      .input("count2At", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_items 
+        SET count2 = @count2, count2By = @count2By, count2At = @count2At, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    await this.calculateAndUpdateDifference(itemId);
+  }
+
+  async updateCount3(itemId: number, count: number, countedBy: string): Promise<void> {
+    const request = this.pool.request();
+    await request
+      .input("id", itemId)
+      .input("count3", count)
+      .input("count3By", countedBy)
+      .input("count3At", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_items 
+        SET count3 = @count3, count3By = @count3By, count3At = @count3At, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    await this.calculateAndUpdateDifference(itemId);
+  }
+
+  async updateCount4(itemId: number, count: number, countedBy: string): Promise<void> {
+    const request = this.pool.request();
+    await request
+      .input("id", itemId)
+      .input("count4", count)
+      .input("count4By", countedBy)
+      .input("count4At", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_items 
+        SET count4 = @count4, count4By = @count4By, count4At = @count4At, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    await this.calculateAndUpdateDifference(itemId);
+  }
+
+  // Calculate difference and accuracy
+  private async calculateAndUpdateDifference(itemId: number): Promise<void> {
+    const request = this.pool.request();
+    
+    // Get current item data
+    const result = await request
+      .input("id", itemId)
+      .query(`
+        SELECT expectedQuantity, count1, count2, count3, count4 
+        FROM inventory_items 
+        WHERE id = @id
+      `);
+
+    const item = result.recordset[0];
+    if (!item) return;
+
+    // Calculate final quantity (use most recent count)
+    const finalCount = item.count4 ?? item.count3 ?? item.count2 ?? item.count1;
+    const difference = finalCount !== null ? Math.abs(finalCount - item.expectedQuantity) : 0;
+    const accuracy = item.expectedQuantity > 0 ? 
+      Math.max(0, 100 - (difference / item.expectedQuantity) * 100) : 100;
+
+    // Update calculated values
+    await this.pool.request()
+      .input("id", itemId)
+      .input("finalQuantity", finalCount)
+      .input("difference", difference)
+      .input("accuracy", accuracy)
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_items 
+        SET finalQuantity = @finalQuantity, difference = @difference, 
+            accuracy = @accuracy, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+  }
+
+  // Inventory Stock Items methods (for patrimônio)
+  async createInventoryStockItem(data: InsertInventoryStockItem): Promise<InventoryStockItem> {
+    const newItem = {
+      id: 0,
+      ...data,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const request = this.pool.request();
+    const result = await request
+      .input("inventoryId", newItem.inventoryId)
+      .input("stockItemId", newItem.stockItemId)
+      .input("expectedQuantity", newItem.expectedQuantity || 0)
+      .input("status", newItem.status || "PENDING")
+      .input("createdAt", new Date(newItem.createdAt))
+      .input("updatedAt", new Date(newItem.updatedAt))
+      .query(`
+        INSERT INTO inventory_stock_items (inventoryId, stockItemId, expectedQuantity, status, createdAt, updatedAt)
+        OUTPUT INSERTED.*
+        VALUES (@inventoryId, @stockItemId, @expectedQuantity, @status, @createdAt, @updatedAt)
+      `);
+
+    const stockItem = result.recordset[0];
+    return {
+      ...stockItem,
+      createdAt: new Date(stockItem.createdAt).getTime(),
+      updatedAt: new Date(stockItem.updatedAt).getTime(),
+    };
+  }
+
+  async getInventoryStockItems(inventoryId: number): Promise<InventoryStockItem[]> {
+    const result = await this.pool
+      .request()
+      .input("inventoryId", inventoryId)
+      .query(`
+        SELECT * FROM inventory_stock_items 
+        WHERE inventoryId = @inventoryId 
+        ORDER BY id
+      `);
+
+    return result.recordset.map((item: any) => ({
+      ...item,
+      createdAt: new Date(item.createdAt).getTime(),
+      updatedAt: new Date(item.updatedAt).getTime(),
+      count1At: item.count1At ? new Date(item.count1At).getTime() : undefined,
+      count2At: item.count2At ? new Date(item.count2At).getTime() : undefined,
+      count3At: item.count3At ? new Date(item.count3At).getTime() : undefined,
+      count4At: item.count4At ? new Date(item.count4At).getTime() : undefined,
+    }));
+  }
+
+  async updateInventoryStockItemCount(itemId: number, countData: { count: number; countBy: string; countType: 'count1' | 'count2' | 'count3' | 'count4' }): Promise<void> {
+    const { count, countBy, countType } = countData;
+    const countByField = `${countType}By`;
+    const countAtField = `${countType}At`;
+
+    const request = this.pool.request();
+    await request
+      .input("id", itemId)
+      .input("count", count)
+      .input("countBy", countBy)
+      .input("countAt", new Date())
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_stock_items 
+        SET ${countType} = @count, ${countByField} = @countBy, ${countAtField} = @countAt, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+
+    // Calculate and update difference for stock item
+    await this.calculateStockItemDifference(itemId);
+  }
+
+  private async calculateStockItemDifference(itemId: number): Promise<void> {
+    const request = this.pool.request();
+    
+    const result = await request
+      .input("id", itemId)
+      .query(`
+        SELECT expectedQuantity, count1, count2, count3, count4 
+        FROM inventory_stock_items 
+        WHERE id = @id
+      `);
+
+    const item = result.recordset[0];
+    if (!item) return;
+
+    const finalCount = item.count4 ?? item.count3 ?? item.count2 ?? item.count1;
+    const difference = finalCount !== null ? Math.abs(finalCount - item.expectedQuantity) : 0;
+    const accuracy = item.expectedQuantity > 0 ? 
+      Math.max(0, 100 - (difference / item.expectedQuantity) * 100) : 100;
+
+    await this.pool.request()
+      .input("id", itemId)
+      .input("finalQuantity", finalCount)
+      .input("difference", difference)
+      .input("accuracy", accuracy)
+      .input("updatedAt", new Date())
+      .query(`
+        UPDATE inventory_stock_items 
+        SET finalQuantity = @finalQuantity, difference = @difference, 
+            accuracy = @accuracy, updatedAt = @updatedAt
+        WHERE id = @id
+      `);
+  }
+
+  // Get dashboard statistics
+  async getDashboardStats(): Promise<{
+    totalProducts: number;
+    totalCategories: number;
+    totalLocations: number;
+    totalInventories: number;
+  }> {
+    try {
+      const [productsResult, categoriesResult, locationsResult, inventoriesResult] =
+        await Promise.all([
+          this.pool.request().query("SELECT COUNT(*) as count FROM products"),
+          this.pool.request().query("SELECT COUNT(*) as count FROM categories"),
+          this.pool.request().query("SELECT COUNT(*) as count FROM locations"),
+          this.pool.request().query("SELECT COUNT(*) as count FROM inventories"),
+        ]);
+
+      return {
+        totalProducts: productsResult.recordset[0].count,
+        totalCategories: categoriesResult.recordset[0].count,
+        totalLocations: locationsResult.recordset[0].count,
+        totalInventories: inventoriesResult.recordset[0].count,
+      };
+    } catch (error) {
+      console.error("Error getting dashboard stats:", error);
+      throw error;
+    }
   }
 }

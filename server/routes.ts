@@ -19,6 +19,7 @@ import {
   insertUserSchema,
   loginSchema,
   registerSchema,
+  insertInventoryStockItemSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -604,6 +605,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stock items:", error as Error);
       res.status(500).json({ message: "Failed to fetch stock items" });
+    }
+  });
+
+  // Enhanced Inventory Management Routes
+
+  // Create inventory with location/category selection
+  app.post("/api/inventories/advanced", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const validatedData = insertInventorySchema.parse({
+        ...req.body,
+        createdBy: req.user.id,
+      });
+
+      const inventory = await storage.createInventoryWithSelection(validatedData);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "CREATE_ADVANCED_INVENTORY",
+        entityType: "inventory",
+        entityId: inventory.id.toString(),
+        newValues: JSON.stringify(validatedData),
+        metadata: JSON.stringify({ 
+          selectedLocationIds: validatedData.selectedLocationIds,
+          selectedCategoryIds: validatedData.selectedCategoryIds 
+        }),
+      });
+
+      res.status(201).json(inventory);
+    } catch (error) {
+      console.error("Error creating advanced inventory:", error as Error);
+      res.status(500).json({
+        message: "Failed to create advanced inventory",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Transition inventory status
+  app.put("/api/inventories/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      // Validate status transition
+      const validStatuses = ['planning', 'open', 'count1', 'count2', 'count3', 'audit', 'divergence', 'closed'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid inventory status" });
+      }
+
+      await storage.transitionInventoryStatus(inventoryId, status, req.user.id);
+      res.json({ message: "Inventory status updated successfully" });
+    } catch (error) {
+      console.error("Error updating inventory status:", error as Error);
+      res.status(500).json({
+        message: "Failed to update inventory status",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Get inventory statistics for Control Panel
+  app.get("/api/inventories/:id/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const stats = await storage.getInventoryStats(inventoryId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching inventory stats:", error as Error);
+      res.status(500).json({
+        message: "Failed to fetch inventory statistics",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Update count 1 for inventory item
+  app.put("/api/inventory-items/:id/count1", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const { count } = req.body;
+
+      await storage.updateCount1(itemId, count, req.user.id);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "UPDATE_COUNT1",
+        entityType: "inventory_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ count1: count }),
+        metadata: JSON.stringify({ countedAt: Date.now() }),
+      });
+
+      res.json({ message: "Count 1 updated successfully" });
+    } catch (error) {
+      console.error("Error updating count 1:", error as Error);
+      res.status(500).json({
+        message: "Failed to update count 1",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Update count 2 for inventory item
+  app.put("/api/inventory-items/:id/count2", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const { count } = req.body;
+
+      await storage.updateCount2(itemId, count, req.user.id);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "UPDATE_COUNT2",
+        entityType: "inventory_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ count2: count }),
+        metadata: JSON.stringify({ countedAt: Date.now() }),
+      });
+
+      res.json({ message: "Count 2 updated successfully" });
+    } catch (error) {
+      console.error("Error updating count 2:", error as Error);
+      res.status(500).json({
+        message: "Failed to update count 2",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Update count 3 for inventory item
+  app.put("/api/inventory-items/:id/count3", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const { count } = req.body;
+
+      await storage.updateCount3(itemId, count, req.user.id);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "UPDATE_COUNT3",
+        entityType: "inventory_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ count3: count }),
+        metadata: JSON.stringify({ countedAt: Date.now() }),
+      });
+
+      res.json({ message: "Count 3 updated successfully" });
+    } catch (error) {
+      console.error("Error updating count 3:", error as Error);
+      res.status(500).json({
+        message: "Failed to update count 3",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Update count 4 (audit) for inventory item
+  app.put("/api/inventory-items/:id/count4", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const { count } = req.body;
+
+      await storage.updateCount4(itemId, count, req.user.id);
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "UPDATE_COUNT4_AUDIT",
+        entityType: "inventory_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ count4: count }),
+        metadata: JSON.stringify({ countedAt: Date.now() }),
+      });
+
+      res.json({ message: "Audit count updated successfully" });
+    } catch (error) {
+      console.error("Error updating audit count:", error as Error);
+      res.status(500).json({
+        message: "Failed to update audit count",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Get stock items for inventory (patrimônio control)
+  app.get("/api/inventories/:id/stock-items", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const stockItems = await storage.getInventoryStockItems(inventoryId);
+      res.json(stockItems);
+    } catch (error) {
+      console.error("Error fetching inventory stock items:", error as Error);
+      res.status(500).json({
+        message: "Failed to fetch inventory stock items",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Update count for stock item (patrimônio)
+  app.put("/api/inventory-stock-items/:id/count", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const { count, countType } = req.body;
+
+      // Validate count type
+      const validCountTypes = ['count1', 'count2', 'count3', 'count4'];
+      if (!validCountTypes.includes(countType)) {
+        return res.status(400).json({ message: "Invalid count type" });
+      }
+
+      await storage.updateInventoryStockItemCount(itemId, {
+        count,
+        countBy: req.user.id,
+        countType,
+      });
+      
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: `UPDATE_STOCK_ITEM_${countType.toUpperCase()}`,
+        entityType: "inventory_stock_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ [countType]: count }),
+        metadata: JSON.stringify({ countedAt: Date.now() }),
+      });
+
+      res.json({ message: "Stock item count updated successfully" });
+    } catch (error) {
+      console.error("Error updating stock item count:", error as Error);
+      res.status(500).json({
+        message: "Failed to update stock item count",
+        details: (error as Error).message,
+      });
     }
   });
 
