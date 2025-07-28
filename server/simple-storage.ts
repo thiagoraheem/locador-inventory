@@ -35,33 +35,7 @@ export class SimpleStorage {
     this.pool = pool;
   }
 
-  // User operations
-  async createUser(userData: Omit<InsertUser, "id">): Promise<User> {
-    const newUser = {
-      id: nanoid(),
-      ...userData,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    const request = this.pool.request();
-    await request
-      .input("id", newUser.id)
-      .input("email", newUser.email)
-      .input("username", newUser.username)
-      .input("password", newUser.password)
-      .input("firstName", newUser.firstName || null)
-      .input("lastName", newUser.lastName || null)
-      .input("role", newUser.role || "user")
-      .input("isActive", newUser.isActive !== false)
-      .input("createdAt", new Date(newUser.createdAt))
-      .input("updatedAt", new Date(newUser.updatedAt)).query(`
-        INSERT INTO users (id, email, username, password, firstName, lastName, role, isActive, createdAt, updatedAt)
-        VALUES (@id, @email, @username, @password, @firstName, @lastName, @role, @isActive, @createdAt, @updatedAt)
-      `);
-
-    return newUser as User;
-  }
+  // User operations (main implementation)
 
   async getUserByUsername(username: string): Promise<User | null> {
     const result = await this.pool
@@ -566,24 +540,49 @@ export class SimpleStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
+    // Check if username already exists
+    const existingUser = await this.pool
+      .request()
+      .input("username", sql.VarChar, user.username)
+      .query("SELECT id FROM users WHERE username = @username");
+    
+    if (existingUser.recordset.length > 0) {
+      throw new Error("Username already exists");
+    }
+
     const hashedPassword = await bcrypt.hash(user.password, 10);
+    const userId = `user${Date.now()}`;
 
     const result = await this.pool
       .request()
-      .input("id", sql.VarChar, user.id || `user${Date.now()}`)
+      .input("id", sql.VarChar, userId)
       .input("username", sql.VarChar, user.username)
       .input("email", sql.VarChar, user.email)
       .input("firstName", sql.VarChar, user.firstName)
       .input("lastName", sql.VarChar, user.lastName)
       .input("role", sql.VarChar, user.role)
-      .input("isActive", sql.Bit, user.isActive)
-      .input("password", sql.VarChar, hashedPassword).query(`
-        INSERT INTO users (id, username, email, firstName, lastName, role, isActive, password)
+      .input("isActive", sql.Bit, user.isActive ?? true)
+      .input("password", sql.VarChar, hashedPassword)
+      .input("createdAt", sql.DateTime, new Date())
+      .input("updatedAt", sql.DateTime, new Date())
+      .query(`
+        INSERT INTO users (id, username, email, firstName, lastName, role, isActive, password, createdAt, updatedAt)
         OUTPUT INSERTED.*
-        VALUES (@id, @username, @email, @firstName, @lastName, @role, @isActive, @password)
+        VALUES (@id, @username, @email, @firstName, @lastName, @role, @isActive, @password, @createdAt, @updatedAt)
       `);
 
     const newUser = result.recordset[0];
+    
+    // Create audit log without problematic parameters
+    await this.createAuditLog({
+      userId: "system",
+      entityType: "User",
+      entityId: userId,
+      action: "CREATE",
+      oldValues: "",
+      newValues: "User created",
+    });
+
     return {
       ...newUser,
       createdAt: newUser.createdAt
@@ -596,6 +595,19 @@ export class SimpleStorage {
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    // Check if username is already taken by another user
+    if (updates.username) {
+      const existingUser = await this.pool
+        .request()
+        .input("username", sql.VarChar, updates.username)
+        .input("currentId", sql.VarChar, id)
+        .query("SELECT id FROM users WHERE username = @username AND id != @currentId");
+      
+      if (existingUser.recordset.length > 0) {
+        throw new Error("Username already exists");
+      }
+    }
+
     const setParts = [];
     const request = this.pool.request().input("id", sql.VarChar, id);
 
@@ -643,6 +655,17 @@ export class SimpleStorage {
     }
 
     const updatedUser = result.recordset[0];
+    
+    // Create audit log without problematic parameters
+    await this.createAuditLog({
+      userId: "system",
+      entityType: "User",
+      entityId: id,
+      action: "UPDATE",
+      oldValues: "User data updated",
+      newValues: "User data updated",
+    });
+
     return {
       ...updatedUser,
       createdAt: updatedUser.createdAt
@@ -661,6 +684,16 @@ export class SimpleStorage {
       .query(
         "UPDATE users SET isActive = 0, updatedAt = GETDATE() WHERE id = @id",
       );
+    
+    // Create audit log
+    await this.createAuditLog({
+      userId: "system",
+      entityType: "User",
+      entityId: id,
+      action: "DELETE",
+      oldValues: "User deactivated",
+      newValues: "",
+    });
   }
 
   // Company management methods
