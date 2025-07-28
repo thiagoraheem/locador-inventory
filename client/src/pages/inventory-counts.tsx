@@ -120,7 +120,7 @@ export default function InventoryCounts() {
     return currentCount !== undefined && currentCount !== null ? 'counted' : 'pending';
   };
 
-  // Filter items based on search and status
+  // Filter items based on search and status - BLIND COUNTING: hide already counted items
   const filteredItems = inventoryItems?.filter(item => {
     const product = products?.find(p => p.id === item.productId);
     const location = locations?.find(l => l.id === item.locationId);
@@ -136,15 +136,20 @@ export default function InventoryCounts() {
     
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    // BLIND COUNTING: Show only pending items by default, or counted items if specifically requested
+    if (statusFilter === 'counted') {
+      return matchesSearch && status === 'counted';
+    } else {
+      return matchesSearch && status === 'pending';
+    }
   }) || [];
 
   const handleSaveCount = (itemId: number, stage: number) => {
     const countValue = countValues[itemId];
-    if (!countValue || isNaN(Number(countValue))) {
+    if (!countValue || countValue === "" || isNaN(Number(countValue)) || Number(countValue) < 0) {
       toast({
         title: "Valor inválido",
-        description: "Por favor, insira um número válido",
+        description: "Por favor, insira um número válido (0 ou maior)",
         variant: "destructive",
       });
       return;
@@ -156,6 +161,12 @@ export default function InventoryCounts() {
       count: Number(countValue), 
       countType 
     });
+    
+    // Clear the input after successful count
+    setCountValues(prev => ({
+      ...prev,
+      [itemId]: ""
+    }));
   };
 
   const getStageLabel = (stage: number) => {
@@ -252,15 +263,14 @@ export default function InventoryCounts() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Status</label>
+                  <label className="text-sm font-medium">Visualizar</label>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="counted">Contado</SelectItem>
+                      <SelectItem value="all">Apenas Pendentes (Contagem Às Cegas)</SelectItem>
+                      <SelectItem value="counted">Mostrar Já Contados</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -273,10 +283,10 @@ export default function InventoryCounts() {
             <CardHeader>
               <CardTitle>{getStageLabel(currentStage)}</CardTitle>
               <CardDescription>
-                Registre as quantidades contadas para cada produto
-                {filteredItems.length > 0 && (
-                  <span className="ml-2">
-                    ({filteredItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{filteredItems.length} itens contados)
+                Contagem às cegas - registre apenas o que você consegue contar fisicamente
+                {inventoryItems && (
+                  <span className="ml-2 font-medium">
+                    ({inventoryItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{inventoryItems.length} itens contados)
                   </span>
                 )}
               </CardDescription>
@@ -288,7 +298,6 @@ export default function InventoryCounts() {
                     <TableRow>
                       <TableHead>Produto</TableHead>
                       <TableHead>Local</TableHead>
-                      <TableHead>Qtd. Esperada</TableHead>
                       <TableHead>Qtd. Contada</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Ações</TableHead>
@@ -297,11 +306,13 @@ export default function InventoryCounts() {
                   <TableBody>
                     {filteredItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={5} className="text-center py-8">
                           <div className="text-muted-foreground">
                             {inventoryItems?.length === 0 ? 
                               "Nenhum item encontrado para este inventário" :
-                              "Nenhum item corresponde aos filtros aplicados"
+                              statusFilter === 'all' ? 
+                                "Todos os itens pendentes já foram contados!" :
+                                "Nenhum item corresponde aos filtros aplicados"
                             }
                           </div>
                         </TableCell>
@@ -323,65 +334,37 @@ export default function InventoryCounts() {
                               </div>
                             </TableCell>
                             <TableCell>{location?.name || 'N/A'}</TableCell>
-                            <TableCell>{item.expectedQuantity}</TableCell>
                             <TableCell>
-                              {status === 'counted' ? (
-                                <div className="font-medium text-green-600">
-                                  {currentCount}
-                                </div>
-                              ) : (
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  placeholder="0"
-                                  value={countValue}
-                                  onChange={(e) => setCountValues(prev => ({
-                                    ...prev,
-                                    [item.id]: e.target.value
-                                  }))}
-                                  className="w-24"
-                                />
-                              )}
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Quantidade contada..."
+                                value={countValue}
+                                onChange={(e) => setCountValues(prev => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }))}
+                                className="w-32"
+                                autoFocus
+                              />
                             </TableCell>
                             <TableCell>
-                              <Badge variant={status === 'counted' ? 'default' : 'secondary'}>
-                                {status === 'counted' ? (
-                                  <div className="flex items-center gap-1">
-                                    <CheckCircle className="h-3 w-3" />
-                                    Contado
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Pendente
-                                  </div>
-                                )}
+                              <Badge variant="secondary">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Aguardando Contagem
+                                </div>
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {status === 'pending' ? (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleSaveCount(item.id, currentStage)}
-                                  disabled={updateCountMutation.isPending}
-                                >
-                                  Salvar
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setCountValues(prev => ({
-                                      ...prev,
-                                      [item.id]: currentCount || ""
-                                    }));
-                                  }}
-                                >
-                                  Editar
-                                </Button>
-                              )}
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveCount(item.id, currentStage)}
+                                disabled={updateCountMutation.isPending || !countValue || countValue === ""}
+                              >
+                                {updateCountMutation.isPending ? "Salvando..." : "Registrar"}
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );

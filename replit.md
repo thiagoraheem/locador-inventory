@@ -85,6 +85,10 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Database Structure Update**: Added endpoint /api/update-database-structure to add missing columns
 ✅ **Schema Alignment**: Updated Inventory interface to support predictedEndDate, selectedLocationIds, selectedCategoryIds
 ✅ **Audit Log Fix**: Corrected createAuditLog to use JSON.stringify for newValues parameter validation
+✅ **Contagem Às Cegas**: Implementada interface de contagem que oculta quantidades esperadas e remove itens já contados
+✅ **Menu Integration**: Adicionada tela "Contagem de Itens" no submenu Inventários → Contagens
+✅ **Status Logic**: Status baseado no preenchimento das colunas count1/count2/count3 (NULL = pendente, preenchido = contado)
+✅ **Blind Counting Interface**: Usuários veem apenas itens pendentes e não visualizam estoque esperado durante contagem
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

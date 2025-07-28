@@ -960,8 +960,7 @@ export class SimpleStorage {
 
   // Calculate difference and accuracy (simplified - no need to update DB since columns don't exist)
   private async calculateAndUpdateDifference(itemId: number): Promise<void> {
-    // This method is kept for compatibility but doesn't update difference/accuracy columns
-    // since they don't exist in the current database schema
+    // This method is disabled - columns difference/accuracy don't exist in current schema
     return;
   }
 
