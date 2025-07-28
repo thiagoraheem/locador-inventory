@@ -211,9 +211,9 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">
-              {user?.firstName || user?.username} {user?.lastName}
+              {(user as any)?.firstName || (user as any)?.username} {(user as any)?.lastName}
             </p>
-            <p className="text-xs text-gray-600 capitalize">{user?.role || 'Usuário'}</p>
+            <p className="text-xs text-gray-600 capitalize">{(user as any)?.role || 'Usuário'}</p>
           </div>
         </div>
         <Button

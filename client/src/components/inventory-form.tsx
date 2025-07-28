@@ -30,7 +30,9 @@ import { z } from "zod";
 const formSchema = insertInventorySchema.extend({
   startDate: z.string().min(1, "Data de início é obrigatória"),
   endDate: z.string().optional(),
-  locationIds: z.array(z.number()).min(1, "Selecione pelo menos um local"),
+  predictedEndDate: z.string().optional(),
+  selectedLocationIds: z.array(z.number()).min(1, "Selecione pelo menos um local"),
+  selectedCategoryIds: z.array(z.number()).min(1, "Selecione pelo menos uma categoria"),
 }).omit({ createdBy: true });
 
 interface InventoryFormProps {
@@ -47,8 +49,10 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       typeId: 0,
       startDate: "",
       endDate: "",
+      predictedEndDate: "",
       description: "",
-      locationIds: [],
+      selectedLocationIds: [],
+      selectedCategoryIds: [],
     },
   });
 
@@ -90,22 +94,28 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       const response = await apiRequest("POST", "/api/inventories", inventoryPayload);
       const inventory = await response.json();
 
-      // Create inventory items for selected locations
-      const selectedLocations = data.locationIds;
+      // Create inventory items for selected locations and categories
+      const selectedLocations = data.selectedLocationIds;
       const inventoryItems = [];
+
+      const selectedCategories = data.selectedCategoryIds;
 
       for (const locationId of selectedLocations) {
         // Get stock items for this location
         const locationStock = stock?.filter((item: any) => item.locationId === locationId) || [];
         
         for (const stockItem of locationStock) {
-          inventoryItems.push({
-            inventoryId: inventory.id,
-            productId: stockItem.productId,
-            locationId: stockItem.locationId,
-            expectedQuantity: stockItem.quantity,
-            status: 'PENDING',
-          });
+          // Check if product is in selected categories
+          const product = products?.find((p: any) => p.id === stockItem.productId);
+          if (product && selectedCategories.includes(product.categoryId)) {
+            inventoryItems.push({
+              inventoryId: inventory.id,
+              productId: stockItem.productId,
+              locationId: stockItem.locationId,
+              expectedQuantity: stockItem.quantity,
+              status: 'PENDING',
+            });
+          }
         }
       }
 
@@ -235,35 +245,118 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
           />
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="selectedLocationIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Locais de Estoque *</FormLabel>
+                <div className="max-h-48 overflow-y-auto border rounded-lg p-4">
+                  <div className="mb-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allLocationIds = locations?.map((l: any) => l.id) || [];
+                        field.onChange(field.value?.length === allLocationIds.length ? [] : allLocationIds);
+                      }}
+                    >
+                      {field.value?.length === locations?.length ? "Desmarcar Todos" : "Selecionar Todos"}
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {locations?.map((location: any) => (
+                      <div key={location.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`location-${location.id}`}
+                          checked={field.value?.includes(location.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([...field.value, location.id]);
+                            } else {
+                              field.onChange(field.value.filter(id => id !== location.id));
+                            }
+                          }}
+                        />
+                        <Label 
+                          htmlFor={`location-${location.id}`} 
+                          className="text-sm cursor-pointer"
+                        >
+                          {location.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="selectedCategoryIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categorias *</FormLabel>
+                <div className="max-h-48 overflow-y-auto border rounded-lg p-4">
+                  <div className="mb-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allCategoryIds = products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index) || [];
+                        field.onChange(field.value?.length === allCategoryIds.length ? [] : allCategoryIds);
+                      }}
+                    >
+                      {field.value?.length === products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index).length ? "Desmarcar Todos" : "Selecionar Todos"}
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {products?.map((p: any) => p.categoryId).filter((id: any, index: number, self: any) => self.indexOf(id) === index).map((categoryId: any) => {
+                      const categoryName = products?.find((p: any) => p.categoryId === categoryId)?.category || `Categoria ${categoryId}`;
+                      return (
+                        <div key={categoryId} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`category-${categoryId}`}
+                            checked={field.value?.includes(categoryId)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                field.onChange([...field.value, categoryId]);
+                              } else {
+                                field.onChange(field.value.filter(id => id !== categoryId));
+                              }
+                            }}
+                          />
+                          <Label 
+                            htmlFor={`category-${categoryId}`} 
+                            className="text-sm cursor-pointer"
+                          >
+                            {categoryName}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
-          name="locationIds"
+          name="predictedEndDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Locais de Estoque *</FormLabel>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-48 overflow-y-auto border rounded-lg p-4">
-                {locations?.map((location: any) => (
-                  <div key={location.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`location-${location.id}`}
-                      checked={field.value?.includes(location.id)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          field.onChange([...field.value, location.id]);
-                        } else {
-                          field.onChange(field.value.filter(id => id !== location.id));
-                        }
-                      }}
-                    />
-                    <Label 
-                      htmlFor={`location-${location.id}`} 
-                      className="text-sm cursor-pointer"
-                    >
-                      {location.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+              <FormLabel>Previsão de Término</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

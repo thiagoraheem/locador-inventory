@@ -342,50 +342,7 @@ export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InsertCount = z.infer<typeof insertCountSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
-// New types for enhanced inventory
-export type InventoryStockItem = {
-  id: number;
-  inventoryId: number;
-  stockItemId: number;
-  expectedQuantity: number;
-  finalQuantity?: number;
-  status: string;
-  count1?: number;
-  count2?: number;
-  count3?: number;
-  count4?: number;
-  difference?: number;
-  accuracy?: number;
-  count1By?: string;
-  count2By?: string;
-  count3By?: string;
-  count4By?: string;
-  count1At?: number;
-  count2At?: number;
-  count3At?: number;
-  count4At?: number;
-  createdAt: number;
-  updatedAt: number;
-};
-
 export type InsertInventoryStockItem = z.infer<typeof insertInventoryStockItemSchema>;
-
-export type InventoryStatus = 'planning' | 'open' | 'count1' | 'count2' | 'count3' | 'audit' | 'divergence' | 'closed';
-
-export type ControlPanelStats = {
-  totalInventories: number;
-  activeInventories: number;
-  itemsInProgress: number;
-  itemsCompleted: number;
-  accuracyRate: number;
-  divergenceCount: number;
-  countingProgress: {
-    count1: number;
-    count2: number;
-    count3: number;
-    audit: number;
-  };
-};
 
 // Additional types
 export type AuditLogWithDetails = AuditLog & {
