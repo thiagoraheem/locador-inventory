@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,21 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Search, 
+  Plus, 
+  RefreshCcw,
   Package,
   Barcode,
-  Loader2,
-  ArrowLeft,
-  RefreshCcw,
+  CheckCircle,
+  AlertCircle,
+  Save,
   Trash2,
-  Eye
+  Loader2,
+  Edit,
+  Eye,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { 
   Inventory, 
+  InventoryItem, 
+  Product, 
+  Location, 
   ProductWithSerialControl,
   SerialReadingRequest,
   SerialReadingResponse 
 } from "@shared/schema";
+import ProductSearchAutocomplete from "@/components/product-search-autocomplete";
 
 // Interface para produtos contados na nova estrutura dual
 interface CountedProduct {
@@ -40,6 +49,22 @@ interface CountedProduct {
   totalSerialCount?: number;
 }
 
+// Interface para o estado da interface dual
+interface MobileCountingState {
+  // Entrada de dados
+  serialInput: string;
+  skuInput: string;
+  quantityInput: number;
+  
+  // Produtos contados
+  countedProducts: CountedProduct[];
+  
+  // UI State
+  activeTab: 'serial' | 'sku';
+  isLoading: boolean;
+  recentScans: string[];
+}
+
 export default function MobileCounting() {
   // Estado principal para interface dual
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
@@ -52,6 +77,7 @@ export default function MobileCounting() {
   const [recentScans, setRecentScans] = useState<string[]>([]);
 
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch all active inventories
   const { data: inventories } = useQuery<Inventory[]>({
@@ -61,6 +87,10 @@ export default function MobileCounting() {
   // Fetch products with serial control information
   const { data: products } = useQuery<ProductWithSerialControl[]>({
     queryKey: ["/api/products/with-serial-control"],
+  });
+
+  const { data: locations } = useQuery<Location[]>({
+    queryKey: ["/api/locations"],
   });
 
   // Get active inventories that can be counted
@@ -225,7 +255,7 @@ export default function MobileCounting() {
           productId,
           productName,
           productSku,
-          locationId: 0,
+          locationId: 0, // Determinar pela série
           locationName: '',
           hasSerialControl: true,
           serialNumbers: [serialNumber],
@@ -254,7 +284,7 @@ export default function MobileCounting() {
           productId: product.id,
           productName: product.name,
           productSku: product.sku,
-          locationId: 0,
+          locationId: 0, // Determinar contexto
           locationName: '',
           hasSerialControl: false,
           manualQuantity: quantity
@@ -270,6 +300,66 @@ export default function MobileCounting() {
     return Promise.resolve();
   };
 
+  // Save count for an item
+  const handleSaveCount = (itemId: number) => {
+    const count = countedItems[itemId];
+    if (count === undefined || count < 0) {
+      toast({
+        title: "Quantidade inválida",
+        description: "Insira uma quantidade válida (0 ou maior)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
+    if (!selectedInv) return;
+
+    const stage = getCurrentCountStage(selectedInv.status);
+    const countType = `count${stage}`;
+
+    updateCountMutation.mutate({ itemId, count, countType });
+
+    // Remove item from current list after counting
+    setCurrentProducts(prev => prev.filter(item => item.id !== itemId));
+    setCountedItems(prev => {
+      const newCounts = { ...prev };
+      delete newCounts[itemId];
+      return newCounts;
+    });
+  };
+
+  // Remove item from list
+  const handleRemoveItem = (itemId: number) => {
+    setCurrentProducts(prev => prev.filter(item => item.id !== itemId));
+    setCountedItems(prev => {
+      const newCounts = { ...prev };
+      delete newCounts[itemId];
+      return newCounts;
+    });
+  };
+
+  // Clear all items
+  const handleClearAll = () => {
+    setCurrentProducts([]);
+    setCountedItems({});
+  };
+
+  // Reload data
+  const handleReload = () => {
+    refetchInventories();
+    refetchItems();
+    setCurrentProducts([]);
+    setCountedItems({});
+    toast({
+      title: "Dados atualizados",
+      description: "Informações recarregadas com sucesso",
+    });
+  };
+
+  const selectedInventory = inventories?.find(inv => inv.id === selectedInventoryId);
+  const currentStage = selectedInventory ? getCurrentCountStage(selectedInventory.status) : 1;
+
   // Auto-select first available inventory if none selected
   useEffect(() => {
     if (!selectedInventoryId && activeInventories.length > 0) {
@@ -277,31 +367,28 @@ export default function MobileCounting() {
     }
   }, [activeInventories, selectedInventoryId]);
 
-  const selectedInventory = inventories?.find(inv => inv.id === selectedInventoryId);
-  const currentStage = selectedInventory ? getCurrentCountStage() : 1;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 p-4">
+    <div className="min-h-screen bg-blue-600 p-4">
       {/* Header */}
-      <div className="text-white mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white hover:bg-blue-700"
-            onClick={() => window.history.back()}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Contagem Mobile</h1>
-        </div>
+      <div className="bg-blue-600 text-white mb-6">
+        <h1 className="text-2xl font-bold text-center mb-4">Sistema de Inventário</h1>
 
-        {/* Inventory Selection */}
-        <Card className="bg-blue-500/30 border-blue-400 backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="bg-blue-500 border-blue-400">
+            <CardContent className="p-4">
               <div className="text-white">
-                <label className="block text-sm font-medium mb-2">Inventário:</label>
+                <label className="block text-sm font-medium mb-2">Código do Inventário:</label>
+                <div className="bg-blue-700 rounded px-3 py-2 font-mono">
+                  {selectedInventory?.code || "Selecione um inventário"}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-blue-500 border-blue-400">
+            <CardContent className="p-4">
+              <div className="text-white">
+                <label className="block text-sm font-medium mb-2">Contagem:</label>
                 <Select 
                   value={selectedInventoryId?.toString() || ""} 
                   onValueChange={(value) => setSelectedInventoryId(Number(value))}
@@ -312,260 +399,214 @@ export default function MobileCounting() {
                   <SelectContent>
                     {activeInventories.map((inventory) => (
                       <SelectItem key={inventory.id} value={inventory.id.toString()}>
-                        {inventory.code} - {getStageLabel(getCurrentCountStage())}
+                        {getStageLabel(getCurrentCountStage(inventory.status))}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-blue-500 border-blue-400">
+            <CardContent className="p-4">
               <div className="text-white">
-                <label className="block text-sm font-medium mb-2">Estágio:</label>
-                <div className="bg-blue-700 rounded px-3 py-2 text-center font-semibold">
-                  {getStageLabel(currentStage)}
+                <label className="block text-sm font-medium mb-2">Data:</label>
+                <div className="bg-blue-700 rounded px-3 py-2">
+                  {new Date().toLocaleDateString('pt-BR')}
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Interface Dual */}
-      <div className="space-y-4 mb-6">
-        {/* Tabs para alternar entre métodos */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={activeTab === 'serial' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('serial')}
-            className={`flex items-center gap-2 ${
-              activeTab === 'serial' 
-                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
-            }`}
-          >
-            <Barcode className="h-4 w-4" />
-            Leitura de Série
-          </Button>
-          <Button
-            variant={activeTab === 'sku' ? 'default' : 'outline'}
-            onClick={() => setActiveTab('sku')}
-            className={`flex items-center gap-2 ${
-              activeTab === 'sku' 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
-                : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
-            }`}
-          >
-            <Search className="h-4 w-4" />
-            Busca por SKU
+      {!selectedInventoryId || activeInventories.length === 0 ? (
+        <div className="bg-white rounded-lg p-8 text-center">
+          <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+            Nenhuma contagem ativa encontrada
+          </h3>
+          <p className="text-gray-500 mb-4">
+            Não há inventários em andamento para contagem no momento.
+          </p>
+          <Button onClick={handleReload} className="bg-blue-600 hover:bg-blue-700">
+            <RefreshCcw className="h-4 w-4 mr-2" />
+            Recarregar
           </Button>
         </div>
-
-        {/* Campo de leitura de série */}
-        {activeTab === 'serial' && (
-          <Card className="bg-blue-50 border-blue-200">
+      ) : (
+        <div className="space-y-6">
+          {/* Barcode Scanner Section */}
+          <Card className="bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-blue-800">
                 <Barcode className="h-5 w-5" />
-                Leitura de Número de Série
+                Leitura de CP
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-2 mb-3">
+              <div className="flex gap-2">
                 <Input
-                  placeholder="Escaneie o código de barras..."
-                  value={serialInput}
-                  onChange={(e) => setSerialInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSerialScan()}
-                  className="flex-1 text-lg"
-                  autoFocus={activeTab === 'serial'}
+                  placeholder="Escaneie ou digite o código..."
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleBarcodeSubmit()}
+                  className="flex-1"
+                  autoFocus
                 />
                 <Button 
-                  onClick={handleSerialScan}
-                  disabled={!serialInput.trim() || isLoading}
+                  onClick={handleBarcodeSubmit}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ler'}
+                  Adicionar
                 </Button>
               </div>
-              <p className="text-sm text-blue-600 mb-3">
-                Escaneie o código de barras do produto para identificação automática
+              <p className="text-sm text-gray-500 mt-2">
+                Pressione Enter após escanear ou clique em Adicionar
               </p>
-              
-              {/* Histórico de últimas leituras */}
-              {recentScans.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Últimas leituras:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {recentScans.slice(0, 3).map((scan, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {scan}
-                      </Badge>
-                    ))}
+            </CardContent>
+          </Card>
+
+          {/* Product Search Section */}
+          <Card className="bg-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-700">
+                <Search className="h-5 w-5" />
+                Buscar Produto
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProductSearchAutocomplete onProductSelect={handleProductSelect} />
+              <p className="text-sm text-gray-500 mt-2">
+                Busque por código SKU ou descrição do produto e informe a quantidade
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Product List Section */}
+          <Card className="bg-white">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <Package className="h-5 w-5" />
+                Lista de Produtos para Inventário
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {currentProducts.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum produto adicionado para contagem</p>
+                  <p className="text-sm">Use o leitor de código ou busca de produto acima</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Produto</span>
+                    <span className="font-medium">Quantidade</span>
                   </div>
+
+                  {currentProducts.map((item) => {
+                    const product = products?.find(p => p.id === item.productId);
+                    const location = locations?.find(l => l.id === item.locationId);
+
+                    return (
+                      <div key={item.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">
+                              {product?.name || 'N/A'}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {product?.sku} • {location?.name}
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                              {product?.sku && (
+                                <Badge variant="outline" className="text-xs">
+                                  SKU: {product.sku}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 ml-4">
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={countedItems[item.id] || ""}
+                              onChange={(e) => setCountedItems(prev => ({
+                                ...prev,
+                                [item.id]: Number(e.target.value)
+                              }))}
+                              className="w-20 text-center"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveCount(item.id)}
+                              disabled={updateCountMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Save className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
-        )}
 
-        {/* Campo de busca por SKU */}
-        {activeTab === 'sku' && (
-          <Card className="bg-green-50 border-green-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-800">
-                <Search className="h-5 w-5" />
-                Busca por SKU/Descrição
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <Input
-                  placeholder="Digite SKU ou descrição do produto..."
-                  value={skuInput}
-                  onChange={(e) => setSkuInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSkuSearch()}
-                  className="flex-1"
-                  autoFocus={activeTab === 'sku'}
-                />
-                
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="Quantidade"
-                    value={quantityInput || ''}
-                    onChange={(e) => setQuantityInput(Number(e.target.value))}
-                    className="w-24"
-                  />
-                  <Button 
-                    onClick={handleSkuSearch}
-                    disabled={!skuInput.trim() || !quantityInput || isLoading}
-                    className="bg-green-600 hover:bg-green-700 flex-1"
-                  >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
-                  </Button>
-                </div>
-              </div>
-              <p className="text-sm text-green-600 mt-2">
-                Busque por código SKU ou descrição e informe a quantidade
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-3 gap-4">
+            <Button 
+              onClick={() => {}} 
+              className="bg-blue-600 hover:bg-blue-700 text-white h-14"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Adicionar Produto
+            </Button>
 
-      {/* Lista de Produtos Contados */}
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-blue-800">
-              <Package className="h-5 w-5" />
-              Produtos Contados ({countedProducts.length})
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setCountedProducts([])}
-                disabled={countedProducts.length === 0}
-                className="text-red-600 border-red-300 hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Limpar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => window.location.reload()}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
-              >
-                <RefreshCcw className="h-4 w-4 mr-1" />
-                Atualizar
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {countedProducts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum produto contado</p>
-              <p className="text-sm">Use os métodos de entrada acima</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {countedProducts.map((product, index) => (
-                <div key={`${product.productId}-${index}`} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
-                        {product.productName}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        SKU: {product.productSku}
-                      </p>
-                      
-                      {/* Informações de contagem */}
-                      <div className="mt-2 space-y-1">
-                        {product.hasSerialControl ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs bg-blue-50">
-                                <Barcode className="h-3 w-3 mr-1" />
-                                Séries: {product.totalSerialCount}
-                              </Badge>
-                            </div>
-                            
-                            {/* Lista de séries lidas */}
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {product.serialNumbers?.slice(0, 5).map((serial, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
-                                  {serial}
-                                </Badge>
-                              ))}
-                              {(product.serialNumbers?.length || 0) > 5 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{(product.serialNumbers?.length || 0) - 5} mais
-                                </Badge>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs bg-green-50">
-                              <Package className="h-3 w-3 mr-1" />
-                              Quantidade: {product.manualQuantity}
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setCountedProducts(prev => 
-                          prev.filter((_, i) => i !== index)
-                        )}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button 
+              onClick={() => {}} 
+              className="bg-green-600 hover:bg-green-700 text-white h-14"
+            >
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Salvar Inventário
+            </Button>
+
+            <Button 
+              onClick={handleClearAll}
+              variant="destructive"
+              className="h-14"
+            >
+              <Trash2 className="h-5 w-5 mr-2" />
+              Limpar Tudo
+            </Button>
+          </div>
+
+          {/* Reload Button */}
+          <div className="text-center">
+            <Button 
+              onClick={handleReload}
+              variant="outline"
+              className="w-full bg-white"
+            >
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Recarregar
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
