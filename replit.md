@@ -75,6 +75,8 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Mesa de Controle Enhancement**: Added counting control buttons with proper enabling/disabling logic
 ✅ **Inventory Status Schema**: Updated to support count1_open, count1_closed, count2_open, count2_closed, count3_open, count3_closed
 ✅ **API Routes**: Added /start-counting and /finish-counting endpoints with audit logging
+✅ **Cancel/Delete Inventory**: Added cancel inventory functionality in listing with reason tracking
+✅ **Delete Cancelled Inventory**: Added delete functionality for cancelled inventories with all associated records cleanup
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

@@ -1055,6 +1055,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cancel inventory - changes status to "CANCELLED"
+  app.put("/api/inventories/:id/cancel", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      await storage.transitionInventoryStatus(inventoryId, 'cancelled', req.user.id);
+
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "CANCEL_INVENTORY",
+        entityType: "INVENTORY",
+        entityId: inventoryId.toString(),
+        oldValues: { status: inventory.status },
+        newValues: { status: 'cancelled', reason },
+        metadata: JSON.stringify({ reason }),
+      });
+
+      res.json({ message: "Inventory cancelled successfully" });
+    } catch (error) {
+      console.error("Error cancelling inventory:", error);
+      res.status(500).json({ message: "Failed to cancel inventory" });
+    }
+  });
+
+  // Delete cancelled inventory - removes all associated records
+  app.delete("/api/inventories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      if (inventory.status !== 'cancelled') {
+        return res.status(400).json({ message: "Only cancelled inventories can be deleted" });
+      }
+
+      // Delete all associated records
+      await storage.deleteInventory(inventoryId);
+
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "DELETE_INVENTORY",
+        entityType: "INVENTORY",
+        entityId: inventoryId.toString(),
+        oldValues: { inventory: inventory },
+        newValues: null,
+        metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
+      });
+
+      res.json({ message: "Inventory deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting inventory:", error);
+      res.status(500).json({ message: "Failed to delete inventory" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
