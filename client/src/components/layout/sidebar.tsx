@@ -76,6 +76,7 @@ const navigation: NavigationItem[] = [
     ]
   },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
+  { name: "Parâmetros / Regras", href: "/parameters-rules", icon: Settings },
 ];
 
 export default function Sidebar({ isOpen = true, isMobile = false, onClose }: SidebarProps) {

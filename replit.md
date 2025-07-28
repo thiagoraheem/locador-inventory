@@ -92,6 +92,9 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Tela Móvel de Contagem**: Interface responsiva baseada no design fornecido para dispositivos móveis
 ✅ **Redirecionamento Automático**: Usuários "Contador" são automaticamente direcionados para tela móvel
 ✅ **Logout Fix**: Corrigido redirecionamento após logout para retornar corretamente à tela de login
+✅ **Tela Parâmetros/Regras**: Criada documentação completa do funcionamento do inventário baseada no documento fornecido
+✅ **Menu Navigation**: Adicionada nova opção "Parâmetros / Regras" no menu principal com ícone Settings
+✅ **Validação de Usuário**: Implementada validação de login único para criação e edição de usuários
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

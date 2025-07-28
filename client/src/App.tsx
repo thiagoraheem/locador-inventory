@@ -23,6 +23,7 @@ import AuditLogs from "@/pages/audit-logs";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
 import StockItems from "@/pages/stock-items";
+import ParametersRules from "@/pages/parameters-rules";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
@@ -75,6 +76,7 @@ function Router() {
           <Route path="/users" component={Users} />
           <Route path="/companies" component={Companies} />
           <Route path="/stock-items" component={StockItems} />
+          <Route path="/parameters-rules" component={ParametersRules} />
         </MainLayout>
       )}
       <Route component={NotFound} />
