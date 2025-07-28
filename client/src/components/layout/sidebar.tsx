@@ -96,7 +96,7 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
     const hasChildren = item.children && item.children.length > 0;
     const isActive = item.href && location === item.href;
     const Icon = item.icon;
-    
+
     return (
       <div key={item.name} className={`${level > 0 ? 'ml-4' : ''}`}>
         {item.href ? (
@@ -129,7 +129,7 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
             )}
           </button>
         )}
-        
+
         {hasChildren && isExpanded && (
           <div className="mt-1 space-y-1">
             {item.children!.map(child => renderNavigationItem(child, level + 1))}
@@ -147,11 +147,11 @@ export default function Sidebar({ isOpen = true, isMobile = false, onClose }: Si
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Erro ao fazer logout');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {

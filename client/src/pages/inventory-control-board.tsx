@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { Search, Filter, Download, Clock, Package, TrendingUp, Target } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
-
-interface InventoryControlBoardProps {
-  params: { id: string };
-}
 
 interface KPICardProps {
   title: string;
@@ -102,23 +103,34 @@ const AccuracyIndicator = ({ accuracy, difference }: AccuracyIndicatorProps) => 
   );
 };
 
-export default function InventoryControlBoard({ params }: InventoryControlBoardProps) {
-  const inventoryId = parseInt(params.id);
+export default function InventoryControlBoard() {
+  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [startTime, setStartTime] = useState<number>(Date.now());
+  const [cancelReason, setCancelReason] = useState("");
 
-  const { data: inventory } = useQuery<Inventory>({
-    queryKey: [`/api/inventories/${inventoryId}`],
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: inventories } = useQuery<Inventory[]>({
+    queryKey: ["/api/inventories"],
+  });
+
+  const { data: selectedInventory } = useQuery<Inventory>({
+    queryKey: [`/api/inventories/${selectedInventoryId}`],
+    enabled: !!selectedInventoryId,
   });
 
   const { data: stats } = useQuery<ControlPanelStats>({
-    queryKey: [`/api/inventories/${inventoryId}/stats`],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
+    enabled: !!selectedInventoryId,
+    refetchInterval: 30000,
   });
 
   const { data: inventoryItems } = useQuery<InventoryItem[]>({
-    queryKey: [`/api/inventories/${inventoryId}/items`],
+    queryKey: [`/api/inventories/${selectedInventoryId}/items`],
+    enabled: !!selectedInventoryId,
   });
 
   const { data: products } = useQuery<Product[]>({
@@ -133,11 +145,73 @@ export default function InventoryControlBoard({ params }: InventoryControlBoardP
     queryKey: ["/api/categories"],
   });
 
+  const cancelInventoryMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
+      const response = await fetch(`/api/inventories/${id}/cancel`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to cancel inventory');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Inventário cancelado",
+        description: "O inventário foi cancelado com sucesso",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
+      setSelectedInventoryId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao cancelar inventário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteInventoryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/inventories/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete inventory');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Inventário excluído",
+        description: "O inventário foi excluído com sucesso",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
+      setSelectedInventoryId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao excluir inventário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
-    if (inventory?.startDate) {
-      setStartTime(inventory.startDate);
+    if (selectedInventory?.startDate) {
+      setStartTime(selectedInventory.startDate);
     }
-  }, [inventory]);
+  }, [selectedInventory]);
 
   const getElapsedTime = () => {
     const elapsed = Date.now() - startTime;
@@ -174,217 +248,340 @@ export default function InventoryControlBoard({ params }: InventoryControlBoardP
   }) || [];
 
   const handleExport = () => {
-    // Implement export functionality
     console.log("Export functionality to be implemented");
+  };
+
+  const handleCancelInventory = () => {
+    if (selectedInventoryId && cancelReason.trim()) {
+      cancelInventoryMutation.mutate({ id: selectedInventoryId, reason: cancelReason });
+      setCancelReason("");
+    }
+  };
+
+  const handleDeleteInventory = () => {
+    if (selectedInventoryId) {
+      deleteInventoryMutation.mutate(selectedInventoryId);
+    }
   };
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header with KPIs */}
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Mesa de Controle</h1>
-            <p className="text-muted-foreground">
-              Inventário: {inventory?.code} - Status: {inventory?.status}
-            </p>
-          </div>
-          <Button onClick={handleExport} className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Exportar Relatório
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Produtos"
-            value={stats?.itemsInProgress + stats?.itemsCompleted || 0}
-            description="Total de itens"
-            icon={<Package className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KPICard
-            title="Categorias"
-            value={categories?.length || 0}
-            description="Categorias ativas"
-            icon={<Target className="h-4 w-4 text-muted-foreground" />}
-          />
-          <KPICard
-            title="Inventariado"
-            value={`${getInventoriedPercentage().toFixed(1)}%`}
-            description={`${stats?.itemsCompleted || 0} de ${(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)} itens`}
-            icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
-            trend="up"
-          />
-          <KPICard
-            title="Tempo Decorrido"
-            value={getElapsedTime()}
-            description="Desde o início"
-            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-          />
-        </div>
-
-        {/* Progress Bar */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Progresso Geral</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={getInventoriedPercentage()} className="w-full" />
-            <div className="flex justify-between text-xs text-muted-foreground mt-2">
-              <span>Acuracidade Média: {stats?.accuracyRate.toFixed(1)}%</span>
-              <span>Divergências: {stats?.divergenceCount || 0}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
+      {/* Inventory Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Controle de Itens</CardTitle>
+          <CardTitle>Selecionar Inventário</CardTitle>
           <CardDescription>
-            Acompanhe o progresso de contagem por item
+            Escolha um inventário para visualizar na Mesa de Controle
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por produto ou local..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+              <Select value={selectedInventoryId?.toString() || ""} onValueChange={(value) => setSelectedInventoryId(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um inventário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {inventories?.map((inventory) => (
+                    <SelectItem key={inventory.id} value={inventory.id.toString()}>
+                      {inventory.code} - {inventory.description || 'Sem descrição'} ({inventory.status})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Filtrar por status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="PENDING">Pendente</SelectItem>
-                <SelectItem value="IN_PROGRESS">Em Progresso</SelectItem>
-                <SelectItem value="COMPLETED">Concluído</SelectItem>
-                <SelectItem value="DIVERGENT">Divergente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            
+            {selectedInventoryId && selectedInventory && (
+              <div className="flex gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-orange-600 hover:text-orange-700">
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancelar
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancelar Inventário</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação irá cancelar o inventário. Por favor, informe o motivo do cancelamento.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                      <Textarea
+                        placeholder="Motivo do cancelamento..."
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                      />
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Voltar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleCancelInventory}
+                        disabled={!cancelReason.trim()}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        Cancelar Inventário
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
-          {/* Main Table */}
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Local de Estoque</TableHead>
-                  <TableHead>Qtd. Estoque</TableHead>
-                  <TableHead className="text-center">C1</TableHead>
-                  <TableHead className="text-center">C2</TableHead>
-                  <TableHead className="text-center">C3</TableHead>
-                  <TableHead className="text-center">C4</TableHead>
-                  <TableHead>Qtd. Final</TableHead>
-                  <TableHead>Diferença</TableHead>
-                  <TableHead>Acuracidade</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">
-                      {getProductName(item.productId)}
-                    </TableCell>
-                    <TableCell>{getLocationName(item.locationId)}</TableCell>
-                    <TableCell>{item.expectedQuantity}</TableCell>
-                    <TableCell>
-                      <CountIndicator
-                        count={item.count1}
-                        countBy={item.count1By}
-                        countAt={item.count1At}
-                        stage="C1"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CountIndicator
-                        count={item.count2}
-                        countBy={item.count2By}
-                        countAt={item.count2At}
-                        stage="C2"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CountIndicator
-                        count={item.count3}
-                        countBy={item.count3By}
-                        countAt={item.count3At}
-                        stage="C3"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <CountIndicator
-                        count={item.count4}
-                        countBy={item.count4By}
-                        countAt={item.count4At}
-                        stage="C4"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {item.finalQuantity !== undefined ? (
-                        <span className="font-bold">{item.finalQuantity}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {item.difference !== undefined ? (
-                        <span className={item.difference > 0 ? "text-red-600" : "text-green-600"}>
-                          {item.difference > 0 ? '+' : ''}{item.difference}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <AccuracyIndicator
-                        accuracy={item.accuracy}
-                        difference={item.difference}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Footer with Totals */}
-          <div className="mt-4 p-4 bg-muted rounded-lg">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Total de Itens: </span>
-                <span>{filteredItems.length}</span>
+                {selectedInventory.status === 'CANCELLED' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Inventário Cancelado</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Esta ação irá excluir permanentemente o inventário cancelado e todos os seus dados. Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Voltar</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleDeleteInventory}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Excluir Permanentemente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
-              <div>
-                <span className="font-medium">Concluídos: </span>
-                <span>{filteredItems.filter(item => item.finalQuantity !== undefined).length}</span>
-              </div>
-              <div>
-                <span className="font-medium">Divergências: </span>
-                <span className="text-red-600">
-                  {filteredItems.filter(item => item.difference && item.difference > 0).length}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium">Acuracidade Média: </span>
-                <span className="font-bold">
-                  {stats?.accuracyRate.toFixed(1)}%
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {selectedInventoryId && selectedInventory ? (
+        <>
+          {/* Header with KPIs */}
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold">Mesa de Controle</h1>
+                <p className="text-muted-foreground">
+                  Inventário: {selectedInventory.code} - Status: {selectedInventory.status}
+                </p>
+              </div>
+              <Button onClick={handleExport} className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Exportar Relatório
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KPICard
+                title="Produtos"
+                value={(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)}
+                description="Total de itens"
+                icon={<Package className="h-4 w-4 text-muted-foreground" />}
+              />
+              <KPICard
+                title="Categorias"
+                value={categories?.length || 0}
+                description="Categorias ativas"
+                icon={<Target className="h-4 w-4 text-muted-foreground" />}
+              />
+              <KPICard
+                title="Inventariado"
+                value={`${getInventoriedPercentage().toFixed(1)}%`}
+                description={`${stats?.itemsCompleted || 0} de ${((stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0))} itens`}
+                icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                trend="up"
+              />
+              <KPICard
+                title="Tempo Decorrido"
+                value={getElapsedTime()}
+                description="Desde o início"
+                icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+              />
+            </div>
+
+            {/* Progress Bar */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Progresso Geral</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Progress value={getInventoriedPercentage()} className="w-full" />
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                  <span>Acuracidade Média: {stats?.accuracyRate?.toFixed(1) || 0}%</span>
+                  <span>Divergências: {stats?.divergenceCount || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters and Search */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Controle de Itens</CardTitle>
+              <CardDescription>
+                Acompanhe o progresso de contagem por item
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row gap-4 mb-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por produto ou local..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Filtrar por status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="PENDING">Pendente</SelectItem>
+                    <SelectItem value="IN_PROGRESS">Em Progresso</SelectItem>
+                    <SelectItem value="COMPLETED">Concluído</SelectItem>
+                    <SelectItem value="DIVERGENT">Divergente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Main Table */}
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Local de Estoque</TableHead>
+                      <TableHead>Qtd. Estoque</TableHead>
+                      <TableHead className="text-center">C1</TableHead>
+                      <TableHead className="text-center">C2</TableHead>
+                      <TableHead className="text-center">C3</TableHead>
+                      <TableHead className="text-center">C4</TableHead>
+                      <TableHead>Qtd. Final</TableHead>
+                      <TableHead>Diferença</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">
+                          {getProductName(item.productId)}
+                        </TableCell>
+                        <TableCell>{getLocationName(item.locationId)}</TableCell>
+                        <TableCell>{item.expectedQuantity}</TableCell>
+                        <TableCell>
+                          <CountIndicator
+                            count={item.count1}
+                            countBy={item.count1By}
+                            countAt={item.count1At}
+                            stage="C1"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <CountIndicator
+                            count={item.count2}
+                            countBy={item.count2By}
+                            countAt={item.count2At}
+                            stage="C2"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <CountIndicator
+                            count={item.count3}
+                            countBy={item.count3By}
+                            countAt={item.count3At}
+                            stage="C3"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <CountIndicator
+                            count={item.count4}
+                            countBy={item.count4By}
+                            countAt={item.count4At}
+                            stage="C4"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {item.finalQuantity !== undefined ? (
+                            <span className="font-bold">{item.finalQuantity}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.count1 !== undefined && item.count2 !== undefined ? (
+                            <span className={Math.abs(item.count1 - item.expectedQuantity) > 0 || Math.abs(item.count2 - item.expectedQuantity) > 0 ? "text-red-600" : "text-green-600"}>
+                              {item.count1 === item.expectedQuantity && item.count2 === item.expectedQuantity ? '0' : 'Divergente'}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={item.status === 'COMPLETED' ? 'default' : item.status === 'IN_PROGRESS' ? 'secondary' : 'outline'}>
+                            {item.status === 'COMPLETED' ? 'Concluído' : item.status === 'IN_PROGRESS' ? 'Em Progresso' : 'Pendente'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Footer with Totals */}
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Total de Itens: </span>
+                    <span>{filteredItems.length}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Concluídos: </span>
+                    <span>{filteredItems.filter(item => item.count1 !== undefined && item.count2 !== undefined).length}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Divergências: </span>
+                    <span className="text-red-600">
+                      {filteredItems.filter(item => 
+                        item.count1 !== undefined && 
+                        item.count2 !== undefined &&
+                        (Math.abs(item.count1 - item.expectedQuantity) > 0 || Math.abs(item.count2 - item.expectedQuantity) > 0)
+                      ).length}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Acuracidade Média: </span>
+                    <span className="font-bold">
+                      {stats?.accuracyRate?.toFixed(1) || 0}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Selecione um Inventário</h3>
+            <p className="text-muted-foreground">
+              Escolha um inventário acima para visualizar as informações na Mesa de Controle
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
