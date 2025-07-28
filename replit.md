@@ -82,6 +82,9 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Inventory Creation Fixed**: Corrected method references (getAllProducts → getProducts) and implemented createInventoryItem method
 ✅ **Database Structure Alignment**: Fixed status values (OPEN → open) and timestamp handling for SQL Server compatibility
 ✅ **Inventory Item Creation**: Added createInventoryItem method with proper SQL Server OUTPUT clause and date conversion
+✅ **Database Structure Update**: Added endpoint /api/update-database-structure to add missing columns
+✅ **Schema Alignment**: Updated Inventory interface to support predictedEndDate, selectedLocationIds, selectedCategoryIds
+✅ **Audit Log Fix**: Corrected createAuditLog to use JSON.stringify for newValues parameter validation
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

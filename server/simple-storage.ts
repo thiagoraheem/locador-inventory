@@ -374,6 +374,13 @@ export class SimpleStorage {
     inventoryData: Omit<InsertInventory, "id">,
   ): Promise<Inventory> {
     const request = this.pool.request();
+    
+    // Handle optional fields with proper types
+    const selectedLocationIds = inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null;
+    const selectedCategoryIds = inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null;
+    const predictedEndDate = inventoryData.predictedEndDate ? 
+      (typeof inventoryData.predictedEndDate === 'number' ? new Date(inventoryData.predictedEndDate) : new Date(inventoryData.predictedEndDate)) : null;
+    
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
@@ -383,12 +390,15 @@ export class SimpleStorage {
         "endDate",
         inventoryData.endDate ? (typeof inventoryData.endDate === 'number' ? new Date(inventoryData.endDate) : new Date(inventoryData.endDate)) : null,
       )
+      .input("predictedEndDate", predictedEndDate)
       .input("description", inventoryData.description || null)
+      .input("selectedLocationIds", selectedLocationIds)
+      .input("selectedCategoryIds", selectedCategoryIds)
       .input("createdBy", inventoryData.createdBy)
       .input("createdAt", new Date())
       .input("updatedAt", new Date()).query(`
-        INSERT INTO inventories (code, typeId, status, startDate, endDate, description, createdBy, createdAt, updatedAt)
-        VALUES (@code, @typeId, @status, @startDate, @endDate, @description, @createdBy, @createdAt, @updatedAt)
+        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, createdBy, createdAt, updatedAt)
+        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @createdBy, @createdAt, @updatedAt)
       `);
 
     const result = await this.pool
@@ -403,6 +413,9 @@ export class SimpleStorage {
       updatedAt: new Date(inventory.updatedAt).getTime(),
       startDate: new Date(inventory.startDate).getTime(),
       endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
+      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
+      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
     };
   }
 
@@ -1125,21 +1138,26 @@ export class SimpleStorage {
 
   async createAuditLog(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
     const request = this.pool.request();
+    const timestamp = Date.now();
     const result = await request
       .input("userId", auditLog.userId)
       .input("action", auditLog.action)
       .input("entityType", auditLog.entityType)
       .input("entityId", auditLog.entityId)
-      .input("oldValues", auditLog.oldValues)
-      .input("newValues", auditLog.newValues)
-      .input("metadata", auditLog.metadata)
-      .input("timestamp", Date.now())
+      .input("oldValues", auditLog.oldValues || null)
+      .input("newValues", auditLog.newValues || null)
+      .input("metadata", auditLog.metadata || null)
+      .input("timestamp", timestamp)
       .query(`
         INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
         OUTPUT INSERTED.*
         VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, @timestamp)
       `);
 
-    return result.recordset[0];
+    const record = result.recordset[0];
+    return {
+      ...record,
+      timestamp: typeof record.timestamp === 'number' ? record.timestamp : Date.now()
+    };
   }
 }
