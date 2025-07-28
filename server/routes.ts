@@ -1015,15 +1015,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.transitionInventoryStatus(inventoryId, 'cancelled', req.user.id);
 
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "CANCEL_INVENTORY",
-        entityType: "INVENTORY",
-        entityId: inventoryId.toString(),
-        oldValues: { status: inventory.status },
-        newValues: { status: 'cancelled', reason },
-        metadata: JSON.stringify({ reason }),
-      });
+      // Try to create audit log but don't fail if it errors
+      try {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "CANCEL_INVENTORY",
+          entityType: "INVENTORY",
+          entityId: inventoryId.toString(),
+          oldValues: { status: inventory.status },
+          newValues: { status: 'cancelled', reason },
+          metadata: JSON.stringify({ reason }),
+        });
+      } catch (auditError) {
+        console.warn("Failed to create audit log for inventory cancellation:", auditError);
+      }
 
       res.json({ message: "Inventory cancelled successfully" });
     } catch (error) {
@@ -1050,20 +1055,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Delete all associated records
       await storage.deleteInventory(inventoryId);
 
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "DELETE_INVENTORY",
-        entityType: "INVENTORY",
-        entityId: inventoryId.toString(),
-        oldValues: JSON.stringify(inventory),
-        newValues: undefined,
-        metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
-      });
+      // Try to create audit log but don't fail if it errors
+      try {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "DELETE_INVENTORY",
+          entityType: "INVENTORY",
+          entityId: inventoryId.toString(),
+          oldValues: JSON.stringify(inventory),
+          newValues: undefined,
+          metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
+        });
+      } catch (auditError) {
+        console.warn("Failed to create audit log for inventory deletion:", auditError);
+      }
 
       res.json({ message: "Inventory deleted successfully" });
     } catch (error) {
       console.error("Error deleting inventory:", error);
       res.status(500).json({ message: "Failed to delete inventory" });
+    }
+  });
+
+  // Fix audit_logs table structure
+  app.post("/api/fix-audit-logs-table", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      
+      const fixQuery = `
+        -- Fix audit_logs table timestamp column type
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('audit_logs') AND name = 'timestamp' AND system_type_id != 61)
+        BEGIN
+            -- Drop existing timestamp column if it's not datetime2
+            ALTER TABLE audit_logs DROP COLUMN timestamp;
+            
+            -- Add timestamp column as datetime2
+            ALTER TABLE audit_logs ADD timestamp DATETIME2 NOT NULL DEFAULT GETDATE();
+        END
+        ELSE IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('audit_logs') AND name = 'timestamp')
+        BEGIN
+            -- Add timestamp column if it doesn't exist
+            ALTER TABLE audit_logs ADD timestamp DATETIME2 NOT NULL DEFAULT GETDATE();
+        END
+
+        -- Return verification
+        SELECT COLUMN_NAME, DATA_TYPE 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_NAME = 'audit_logs' AND COLUMN_NAME = 'timestamp';
+      `;
+      
+      const result = await storage.pool.request().query(fixQuery);
+      res.json({ 
+        success: true, 
+        message: "Audit logs table structure fixed successfully", 
+        columnInfo: result.recordset 
+      });
+    } catch (error) {
+      console.error("Error fixing audit logs table structure:", error);
+      res.status(500).json({ 
+        message: "Failed to fix audit logs table structure", 
+        error: error.message 
+      });
     }
   });
 

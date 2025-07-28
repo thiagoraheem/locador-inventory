@@ -354,13 +354,13 @@ export class SimpleStorage {
     inventoryData: Omit<InsertInventory, "id">,
   ): Promise<Inventory> {
     const request = this.pool.request();
-    
+
     // Handle optional fields with proper types
     const selectedLocationIds = inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null;
     const selectedCategoryIds = inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null;
     const predictedEndDate = inventoryData.predictedEndDate ? 
       (typeof inventoryData.predictedEndDate === 'number' ? new Date(inventoryData.predictedEndDate) : new Date(inventoryData.predictedEndDate)) : null;
-    
+
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
@@ -551,7 +551,7 @@ export class SimpleStorage {
       .request()
       .input("username", sql.VarChar, user.username)
       .query("SELECT id FROM users WHERE username = @username");
-    
+
     if (existingUser.recordset.length > 0) {
       throw new Error("Username already exists");
     }
@@ -578,7 +578,7 @@ export class SimpleStorage {
       `);
 
     const newUser = result.recordset[0];
-    
+
     // Create audit log without problematic parameters
     await this.createAuditLog({
       userId: "system",
@@ -608,7 +608,7 @@ export class SimpleStorage {
         .input("username", sql.VarChar, updates.username)
         .input("currentId", sql.VarChar, id)
         .query("SELECT id FROM users WHERE username = @username AND id != @currentId");
-      
+
       if (existingUser.recordset.length > 0) {
         throw new Error("Username already exists");
       }
@@ -661,7 +661,7 @@ export class SimpleStorage {
     }
 
     const updatedUser = result.recordset[0];
-    
+
     // Create audit log without problematic parameters
     await this.createAuditLog({
       userId: "system",
@@ -690,7 +690,7 @@ export class SimpleStorage {
       .query(
         "UPDATE users SET isActive = 0, updatedAt = GETDATE() WHERE id = @id",
       );
-    
+
     // Create audit log
     await this.createAuditLog({
       userId: "system",
@@ -891,7 +891,7 @@ export class SimpleStorage {
   // Get inventory statistics for Control Panel
   async getInventoryStats(inventoryId: number): Promise<ControlPanelStats> {
     const request = this.pool.request();
-    
+
     const [inventoryResult, itemsResult, countsResult] = await Promise.all([
       request.input("id", inventoryId).query(`
         SELECT COUNT(*) as activeInventories FROM inventories 
@@ -1113,7 +1113,7 @@ export class SimpleStorage {
     const result = await this.pool
       .request()
       .query("SELECT * FROM inventory_items ORDER BY id");
-    
+
     return result.recordset.map(item => ({
       ...item,
       createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
@@ -1181,7 +1181,7 @@ export class SimpleStorage {
       .query(`
         INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
         OUTPUT INSERTED.*
-        VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, @timestamp)
+        VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, GETDATE())
       `);
 
     const record = result.recordset[0];
@@ -1209,7 +1209,7 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Companies snapshot table
       `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_companies_snapshot]') AND type in (N'U'))
        BEGIN
@@ -1224,7 +1224,7 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Locations snapshot table
       `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_locations_snapshot]') AND type in (N'U'))
        BEGIN
@@ -1240,7 +1240,7 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Products snapshot table
       `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_products_snapshot]') AND type in (N'U'))
        BEGIN
@@ -1259,7 +1259,7 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Stock snapshot table
       `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_snapshot]') AND type in (N'U'))
        BEGIN
@@ -1275,7 +1275,7 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Stock items snapshot table
       `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_items_snapshot]') AND type in (N'U'))
        BEGIN
@@ -1305,18 +1305,18 @@ export class SimpleStorage {
            FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
          );
        END`,
-      
+
       // Add inventory freeze fields
       `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'isFrozen')
        BEGIN
          ALTER TABLE inventories ADD isFrozen BIT DEFAULT 0;
        END`,
-      
+
       `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenAt')
        BEGIN
          ALTER TABLE inventories ADD frozenAt DATETIME2 NULL;
        END`,
-      
+
       `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenBy')
        BEGIN
          ALTER TABLE inventories ADD frozenBy NVARCHAR(50) NULL;
@@ -1330,10 +1330,10 @@ export class SimpleStorage {
 
   async freezeInventoryData(inventoryId: number, userId: string): Promise<void> {
     const transaction = this.pool.transaction();
-    
+
     try {
       await transaction.begin();
-      
+
       // Mark inventory as frozen
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
@@ -1343,10 +1343,10 @@ export class SimpleStorage {
           SET isFrozen = 1, frozenAt = GETDATE(), frozenBy = @userId
           WHERE id = @inventoryId
         `);
-      
+
       // Note: Categories, companies, locations, and products are now treated as views
       // Only stock and stock_items are frozen for inventory control
-      
+
       // Freeze stock
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
@@ -1355,7 +1355,7 @@ export class SimpleStorage {
           SELECT @inventoryId, id, productId, locationId, quantity
           FROM stock
         `);
-      
+
       // Freeze stock items (patrimônio)
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
@@ -1375,9 +1375,9 @@ export class SimpleStorage {
           LEFT JOIN categories c ON p.categoryId = c.id  
           LEFT JOIN locations l ON s.locationId = l.id
         `);
-      
+
       await transaction.commit();
-      
+
       // Create audit log
       await this.createAuditLog({
         userId: userId,
@@ -1387,7 +1387,7 @@ export class SimpleStorage {
         oldValues: "",
         newValues: "Inventory data frozen (stock and stock_items only)",
       });
-      
+
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -1396,10 +1396,10 @@ export class SimpleStorage {
 
   async unfreezeInventoryData(inventoryId: number, userId: string): Promise<void> {
     const transaction = this.pool.transaction();
-    
+
     try {
       await transaction.begin();
-      
+
       // Check if inventory can be unfrozen (no counts should exist)
       const countsCheck = await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
@@ -1409,20 +1409,20 @@ export class SimpleStorage {
           WHERE inventoryId = @inventoryId 
           AND (count1 IS NOT NULL OR count2 IS NOT NULL OR count3 IS NOT NULL)
         `);
-      
+
       if (countsCheck.recordset[0].countTotal > 0) {
         throw new Error("Cannot unfreeze inventory with existing counts");
       }
-      
+
       // Clear snapshot data (only for stock and stock_items)
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
         .query(`DELETE FROM inventory_stock_snapshot WHERE inventoryId = @inventoryId`);
-      
+
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
         .query(`DELETE FROM inventory_stock_items_snapshot WHERE inventoryId = @inventoryId`);
-      
+
       // Mark inventory as not frozen
       await transaction.request()
         .input('inventoryId', sql.Int, inventoryId)
@@ -1431,9 +1431,9 @@ export class SimpleStorage {
           SET isFrozen = 0, frozenAt = NULL, frozenBy = NULL
           WHERE id = @inventoryId
         `);
-      
+
       await transaction.commit();
-      
+
       // Create audit log
       await this.createAuditLog({
         userId: userId,
@@ -1443,7 +1443,7 @@ export class SimpleStorage {
         oldValues: "Inventory data frozen",
         newValues: "Inventory data unfrozen (stock and stock_items only)",
       });
-      
+
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -1457,7 +1457,7 @@ export class SimpleStorage {
     const query = `
       EXEC sp_CreateInventorySerialItems @InventoryId = @inventoryId
     `;
-    
+
     await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
       .query(query);
@@ -1533,7 +1533,7 @@ export class SimpleStorage {
         message: "Número de série não encontrado no sistema" 
       };
     }
-    
+
     // Verificar se já foi lida neste estágio
     const existingReading = await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
@@ -1544,7 +1544,7 @@ export class SimpleStorage {
         AND serialNumber = @serialNumber
         AND ${request.countStage}_found = 1
       `);
-      
+
     if (existingReading.recordset.length > 0) {
       return { 
         success: false, 
@@ -1554,7 +1554,7 @@ export class SimpleStorage {
         message: "Número de série já foi lido neste estágio" 
       };
     }
-    
+
     // Registrar leitura usando stored procedure
     await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
@@ -1562,7 +1562,7 @@ export class SimpleStorage {
       .input('countStage', sql.NVarChar, request.countStage)
       .input('userId', sql.NVarChar, userId)
       .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
-    
+
     return { 
       success: true, 
       productId: product.id, 
@@ -1581,9 +1581,9 @@ export class SimpleStorage {
         WHERE si.serialNumber = @serialNumber
         AND si.isActive = 1
       `);
-      
+
     if (result.recordset.length === 0) return null;
-    
+
     const product = result.recordset[0];
     return {
       ...product,
@@ -1600,7 +1600,7 @@ export class SimpleStorage {
         SELECT COUNT(*) as count FROM stock_items 
         WHERE serialNumber = @serialNumber AND isActive = 1
       `);
-      
+
     return result.recordset[0].count > 0;
   }
 
@@ -1632,35 +1632,35 @@ export class SimpleStorage {
   async updateInventorySerialItem(id: number, data: Partial<InventorySerialItem>): Promise<InventorySerialItem> {
     const updateFields = [];
     const request = this.pool.request().input('id', sql.Int, id);
-    
+
     if (data.status !== undefined) {
       updateFields.push('status = @status');
       request.input('status', sql.NVarChar, data.status);
     }
-    
+
     if (data.notes !== undefined) {
       updateFields.push('notes = @notes');
       request.input('notes', sql.NVarChar, data.notes);
     }
-    
+
     if (data.finalStatus !== undefined) {
       updateFields.push('finalStatus = @finalStatus');
       request.input('finalStatus', sql.Bit, data.finalStatus);
     }
-    
+
     updateFields.push('updatedAt = GETDATE()');
-    
+
     await request.query(`
       UPDATE inventory_serial_items 
       SET ${updateFields.join(', ')}
       WHERE id = @id
     `);
-    
+
     // Retornar item atualizado
     const result = await this.pool.request()
       .input('id', sql.Int, id)
       .query('SELECT * FROM inventory_serial_items WHERE id = @id');
-      
+
     const item = result.recordset[0];
     return {
       ...item,
@@ -1695,7 +1695,7 @@ export class SimpleStorage {
       FROM inventory_items ii
       WHERE ii.inventoryId = @inventoryId
     `;
-    
+
     await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
       .query(query);
@@ -1727,11 +1727,11 @@ export class SimpleStorage {
         LEFT JOIN locations l ON ii.locationId = l.id
         WHERE ii.inventoryId = @inventoryId
       `);
-      
+
     return result.recordset;
   }
 
-  // Buscar produtos com controle de série
+  //  // Buscar produtos com controle de série
   async getProductsWithSerialControl(): Promise<ProductWithSerialControl[]> {
     const result = await this.pool.request()
       .query(`
@@ -1787,7 +1787,7 @@ export class SimpleStorage {
           ) THEN 1 ELSE 0 END
       WHERE inventoryId = @inventoryId
     `;
-    
+
     await this.pool.request()
       .input('inventoryId', inventoryId)
       .query(query);
@@ -1803,11 +1803,11 @@ export class SimpleStorage {
       AND si.isActive = 1
       AND p.isActive = 1
     `;
-    
+
     const result = await this.pool.request()
       .input('serialNumber', serialNumber)
       .query(query);
-    
+
     return result.recordset[0] || null;
   }
 
@@ -1818,11 +1818,11 @@ export class SimpleStorage {
       FROM vw_products 
       WHERE sku = @sku AND isActive = 1
     `;
-    
+
     const result = await this.pool.request()
       .input('sku', sku)
       .query(query);
-    
+
     return result.recordset[0] || null;
   }
 
@@ -1853,10 +1853,43 @@ export class SimpleStorage {
         AND isi.stockItemId = si.id
       )
     `;
-    
+
     await this.pool.request()
       .input('inventoryId', inventoryId)
       .input('timestamp', Date.now())
       .query(query);
+  }
+
+  async createAuditLog(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
+    const request = this.pool.request();
+    try {
+      // Convert timestamp to datetime for SQL Server compatibility
+      const timestamp = new Date();
+
+      const result = await request
+        .input("userId", auditLog.userId)
+        .input("action", auditLog.action)
+        .input("entityType", auditLog.entityType)
+        .input("entityId", auditLog.entityId)
+        .input("oldValues", auditLog.oldValues || null)
+        .input("newValues", auditLog.newValues || null)
+        .input("metadata", auditLog.metadata || null)
+        .input("timestamp", timestamp)
+        .query(`
+          INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
+          OUTPUT INSERTED.*
+          VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, @timestamp)
+        `);
+
+      const record = result.recordset[0];
+      return {
+        ...record,
+        timestamp: typeof record.timestamp === 'number' ? record.timestamp : Date.now()
+      };
+    } catch (error) {
+      // Log error but don't throw - audit log shouldn't break main functionality
+      console.warn("Warning: Failed to create audit log:", error);
+      return null;
+    }
   }
 }
