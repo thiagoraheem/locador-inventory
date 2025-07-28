@@ -3,10 +3,12 @@ import { Package, ClipboardList, Warehouse, History } from "lucide-react";
 
 interface StatsCardsProps {
   stats: {
-    totalProducts: number;
-    activeInventories: number;
-    stockLocations: number;
-    lastAuditDays: number;
+    totalProducts?: number;
+    activeInventories?: number;
+    stockLocations?: number;
+    lastAuditDays?: number;
+    totalCategories?: number;
+    totalLocations?: number;
   };
 }
 
@@ -14,7 +16,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
     {
       title: "Total de Produtos",
-      value: stats.totalProducts.toLocaleString(),
+      value: (stats?.totalProducts || 0).toLocaleString(),
       icon: Package,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -23,7 +25,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Inventários Ativos",
-      value: stats.activeInventories.toString(),
+      value: (stats?.activeInventories || 0).toString(),
       icon: ClipboardList,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
@@ -41,12 +43,12 @@ export default function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Última Auditoria",
-      value: stats.lastAuditDays === 0 ? "Hoje" : (stats.lastAuditDays?.toString() || "N/A"),
+      value: (stats?.lastAuditDays === 0) ? "Hoje" : ((stats?.lastAuditDays || 0).toString() || "N/A"),
       icon: History,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
       trend: null,
-      trendText: stats.lastAuditDays === 0 ? "" : "dias atrás",
+      trendText: (stats?.lastAuditDays === 0) ? "" : "dias atrás",
     },
   ];
 

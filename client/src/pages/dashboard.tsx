@@ -66,12 +66,22 @@ export default function Dashboard() {
     );
   }
 
-  const activeInventories = inventories?.filter((inv: any) => inv.status === 'OPEN' || inv.status === 'COUNTING') || [];
+  const activeInventories = inventories?.filter((inv: any) => inv.status === 'open' || inv.status === 'count1' || inv.status === 'count2' || inv.status === 'count3') || [];
+
+  // Map API stats to component expected format
+  const mappedStats = {
+    totalProducts: stats?.totalProducts || 0,
+    activeInventories: activeInventories?.length || 0,
+    stockLocations: stats?.totalLocations || 0,
+    lastAuditDays: 0, // Default value since not provided by API
+    totalCategories: stats?.totalCategories || 0,
+    totalLocations: stats?.totalLocations || 0,
+  };
 
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <StatsCards stats={stats} />
+      <StatsCards stats={mappedStats} />
 
       {/* Quick Actions */}
       <Card>
