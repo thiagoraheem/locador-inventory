@@ -145,32 +145,64 @@ export default function InventoryControlBoard() {
     queryKey: ["/api/categories"],
   });
 
-  const cancelInventoryMutation = useMutation({
-    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
-      const response = await fetch(`/api/inventories/${id}/cancel`, {
+  const startCountingMutation = useMutation({
+    mutationFn: async (inventoryId: number) => {
+      const response = await fetch(`/api/inventories/${inventoryId}/start-counting`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ userId: 'user1' }),
       });
       
       if (!response.ok) {
-        throw new Error('Failed to cancel inventory');
+        throw new Error('Failed to start counting');
       }
       
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: "Inventário cancelado",
-        description: "O inventário foi cancelado com sucesso",
+        title: "Contagem iniciada",
+        description: "A contagem foi iniciada com sucesso",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
-      setSelectedInventoryId(null);
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/stats`] });
     },
     onError: (error) => {
       toast({
-        title: "Erro ao cancelar inventário",
+        title: "Erro ao iniciar contagem",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const finishCountingMutation = useMutation({
+    mutationFn: async (inventoryId: number) => {
+      const response = await fetch(`/api/inventories/${inventoryId}/finish-counting`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: 'user1' }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to finish counting');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Contagem finalizada",
+        description: "A contagem foi finalizada com sucesso",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/stats`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao finalizar contagem",
         description: error.message,
         variant: "destructive",
       });
@@ -264,6 +296,36 @@ export default function InventoryControlBoard() {
     }
   };
 
+  // Helper functions for counting status
+  const canStartCounting = (status: string) => {
+    return ['open', 'count1_closed', 'count2_closed'].includes(status);
+  };
+
+  const canFinishCounting = (status: string) => {
+    return ['count1_open', 'count2_open', 'count3_open'].includes(status);
+  };
+
+  const getCountingStageText = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'Pronto para 1ª Contagem';
+      case 'count1_open':
+        return '1ª Contagem Aberta';
+      case 'count1_closed':
+        return 'Pronto para 2ª Contagem';
+      case 'count2_open':
+        return '2ª Contagem Aberta';
+      case 'count2_closed':
+        return 'Pronto para 3ª Contagem';
+      case 'count3_open':
+        return '3ª Contagem Aberta';
+      case 'count3_closed':
+        return 'Contagens Finalizadas';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Inventory Selection */}
@@ -293,67 +355,28 @@ export default function InventoryControlBoard() {
             
             {selectedInventoryId && selectedInventory && (
               <div className="flex gap-2">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="text-orange-600 hover:text-orange-700">
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Cancelar
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Cancelar Inventário</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação irá cancelar o inventário. Por favor, informe o motivo do cancelamento.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="py-4">
-                      <Textarea
-                        placeholder="Motivo do cancelamento..."
-                        value={cancelReason}
-                        onChange={(e) => setCancelReason(e.target.value)}
-                      />
-                    </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Voltar</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={handleCancelInventory}
-                        disabled={!cancelReason.trim()}
-                        className="bg-orange-600 hover:bg-orange-700"
-                      >
-                        Cancelar Inventário
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Counting Control Buttons */}
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  disabled={!canStartCounting(selectedInventory.status) || startCountingMutation.isPending}
+                  onClick={() => selectedInventoryId && startCountingMutation.mutate(selectedInventoryId)}
+                >
+                  Iniciar Contagem
+                </Button>
+                
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  disabled={!canFinishCounting(selectedInventory.status) || finishCountingMutation.isPending}
+                  onClick={() => selectedInventoryId && finishCountingMutation.mutate(selectedInventoryId)}
+                >
+                  Finalizar Contagem
+                </Button>
+                
 
-                {selectedInventory.status === 'CANCELLED' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Excluir
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir Inventário Cancelado</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação irá excluir permanentemente o inventário cancelado e todos os seus dados. Esta ação não pode ser desfeita.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Voltar</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleDeleteInventory}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Excluir Permanentemente
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+
+
               </div>
             )}
           </div>
@@ -368,7 +391,7 @@ export default function InventoryControlBoard() {
               <div>
                 <h1 className="text-3xl font-bold">Mesa de Controle</h1>
                 <p className="text-muted-foreground">
-                  Inventário: {selectedInventory.code} - Status: {selectedInventory.status}
+                  Inventário: {selectedInventory.code} - Status: <Badge variant="outline">{getCountingStageText(selectedInventory.status)}</Badge>
                 </p>
               </div>
               <Button onClick={handleExport} className="flex items-center gap-2">

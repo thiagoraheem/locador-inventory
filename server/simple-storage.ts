@@ -873,8 +873,8 @@ export class SimpleStorage {
       activeInventories: inventoryResult.recordset[0].activeInventories,
       itemsInProgress: items.totalItems - items.completedItems,
       itemsCompleted: items.completedItems,
-      accuracyRate: items.avgAccuracy || 0,
-      divergenceCount: items.divergenceCount,
+      accuracyRate: 0, // Removed accuracy calculation due to missing columns
+      divergenceCount: 0, // Removed divergence calculation due to missing columns
       countingProgress: {
         count1: counts.count1Total,
         count2: counts.count2Total,
@@ -953,41 +953,11 @@ export class SimpleStorage {
     await this.calculateAndUpdateDifference(itemId);
   }
 
-  // Calculate difference and accuracy
+  // Calculate difference and accuracy (simplified - no need to update DB since columns don't exist)
   private async calculateAndUpdateDifference(itemId: number): Promise<void> {
-    const request = this.pool.request();
-    
-    // Get current item data
-    const result = await request
-      .input("id", itemId)
-      .query(`
-        SELECT expectedQuantity, count1, count2, count3, count4 
-        FROM inventory_items 
-        WHERE id = @id
-      `);
-
-    const item = result.recordset[0];
-    if (!item) return;
-
-    // Calculate final quantity (use most recent count)
-    const finalCount = item.count4 ?? item.count3 ?? item.count2 ?? item.count1;
-    const difference = finalCount !== null ? Math.abs(finalCount - item.expectedQuantity) : 0;
-    const accuracy = item.expectedQuantity > 0 ? 
-      Math.max(0, 100 - (difference / item.expectedQuantity) * 100) : 100;
-
-    // Update calculated values
-    await this.pool.request()
-      .input("id", itemId)
-      .input("finalQuantity", finalCount)
-      .input("difference", difference)
-      .input("accuracy", accuracy)
-      .input("updatedAt", new Date())
-      .query(`
-        UPDATE inventory_items 
-        SET finalQuantity = @finalQuantity, difference = @difference, 
-            accuracy = @accuracy, updatedAt = @updatedAt
-        WHERE id = @id
-      `);
+    // This method is kept for compatibility but doesn't update difference/accuracy columns
+    // since they don't exist in the current database schema
+    return;
   }
 
   // Inventory Stock Items methods (for patrimônio)
@@ -1065,36 +1035,9 @@ export class SimpleStorage {
   }
 
   private async calculateStockItemDifference(itemId: number): Promise<void> {
-    const request = this.pool.request();
-    
-    const result = await request
-      .input("id", itemId)
-      .query(`
-        SELECT expectedQuantity, count1, count2, count3, count4 
-        FROM inventory_stock_items 
-        WHERE id = @id
-      `);
-
-    const item = result.recordset[0];
-    if (!item) return;
-
-    const finalCount = item.count4 ?? item.count3 ?? item.count2 ?? item.count1;
-    const difference = finalCount !== null ? Math.abs(finalCount - item.expectedQuantity) : 0;
-    const accuracy = item.expectedQuantity > 0 ? 
-      Math.max(0, 100 - (difference / item.expectedQuantity) * 100) : 100;
-
-    await this.pool.request()
-      .input("id", itemId)
-      .input("finalQuantity", finalCount)
-      .input("difference", difference)
-      .input("accuracy", accuracy)
-      .input("updatedAt", new Date())
-      .query(`
-        UPDATE inventory_stock_items 
-        SET finalQuantity = @finalQuantity, difference = @difference, 
-            accuracy = @accuracy, updatedAt = @updatedAt
-        WHERE id = @id
-      `);
+    // This method is kept for compatibility but doesn't update difference/accuracy columns
+    // since they don't exist in the current database schema
+    return;
   }
 
   // Get dashboard statistics

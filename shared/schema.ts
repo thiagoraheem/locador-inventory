@@ -230,8 +230,8 @@ export const insertInventoryTypeSchema = z.object({
 
 // Inventory status validation
 export const inventoryStatusSchema = z.enum([
-  "planning", "open", "count1", "count2", "count3", 
-  "audit", "divergence", "closed", "cancelled"
+  "planning", "open", "count1_open", "count1_closed", "count2_open", "count2_closed", 
+  "count3_open", "count3_closed", "audit", "divergence", "closed", "cancelled"
 ]);
 
 export const insertInventorySchema = z.object({

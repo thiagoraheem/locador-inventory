@@ -767,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status } = req.body;
 
       // Validate status transition
-      const validStatuses = ['planning', 'open', 'count1', 'count2', 'count3', 'audit', 'divergence', 'closed'];
+      const validStatuses = ['planning', 'open', 'count1_open', 'count1_closed', 'count2_open', 'count2_closed', 'count3_open', 'count3_closed', 'audit', 'divergence', 'closed'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ message: "Invalid inventory status" });
       }
@@ -962,6 +962,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to update stock item count",
         details: (error as Error).message,
       });
+    }
+  });
+
+  // Start counting - transitions to next counting stage
+  app.put("/api/inventories/:id/start-counting", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      let newStatus: string;
+      switch (inventory.status) {
+        case 'open':
+          newStatus = 'count1_open';
+          break;
+        case 'count1_closed':
+          newStatus = 'count2_open';
+          break;
+        case 'count2_closed':
+          newStatus = 'count3_open';
+          break;
+        default:
+          return res.status(400).json({ message: "Cannot start counting from current status" });
+      }
+
+      await storage.transitionInventoryStatus(inventoryId, newStatus, req.user.id);
+
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "START_COUNTING",
+        entityType: "INVENTORY",
+        entityId: inventoryId.toString(),
+        oldValues: { status: inventory.status },
+        newValues: { status: newStatus },
+        metadata: null,
+      });
+
+      res.json({ message: "Counting started successfully", newStatus });
+    } catch (error) {
+      console.error("Error starting counting:", error);
+      res.status(500).json({ message: "Failed to start counting" });
+    }
+  });
+
+  // Finish counting - closes current counting stage
+  app.put("/api/inventories/:id/finish-counting", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      let newStatus: string;
+      switch (inventory.status) {
+        case 'count1_open':
+          newStatus = 'count1_closed';
+          break;
+        case 'count2_open':
+          newStatus = 'count2_closed';
+          break;
+        case 'count3_open':
+          newStatus = 'count3_closed';
+          break;
+        default:
+          return res.status(400).json({ message: "Cannot finish counting from current status" });
+      }
+
+      await storage.transitionInventoryStatus(inventoryId, newStatus, req.user.id);
+
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "FINISH_COUNTING",
+        entityType: "INVENTORY",
+        entityId: inventoryId.toString(),
+        oldValues: { status: inventory.status },
+        newValues: { status: newStatus },
+        metadata: null,
+      });
+
+      res.json({ message: "Counting finished successfully", newStatus });
+    } catch (error) {
+      console.error("Error finishing counting:", error);
+      res.status(500).json({ message: "Failed to finish counting" });
     }
   });
 
