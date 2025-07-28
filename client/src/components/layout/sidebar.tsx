@@ -73,10 +73,10 @@ const navigation: NavigationItem[] = [
       },
       { name: "Mesa de Controle", href: "/inventory-control-board", icon: Settings },
       { name: "Relatórios", href: "/inventory-reports", icon: BarChart3 },
+      { name: "Parâmetros / Regras", href: "/parameters-rules", icon: FileText },
     ]
   },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
-  { name: "Parâmetros / Regras", href: "/parameters-rules", icon: Settings },
 ];
 
 export default function Sidebar({ isOpen = true, isMobile = false, onClose }: SidebarProps) {
