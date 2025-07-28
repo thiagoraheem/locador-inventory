@@ -1137,6 +1137,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create inventory snapshot tables
+  app.post("/api/create-inventory-snapshot-tables", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      await storage.createInventorySnapshotTables();
+      res.json({ message: "Inventory snapshot tables created successfully" });
+    } catch (error) {
+      console.error("Error creating inventory snapshot tables:", error as Error);
+      res.status(500).json({ 
+        message: "Failed to create inventory snapshot tables", 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Freeze inventory data
+  app.post("/api/inventories/:id/freeze", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const userId = (req.session as any).user?.id || "system";
+      
+      storage = await getStorage();
+      await storage.freezeInventoryData(inventoryId, userId);
+      res.json({ message: "Inventory data frozen successfully" });
+    } catch (error) {
+      console.error("Error freezing inventory data:", error as Error);
+      res.status(500).json({ 
+        message: "Failed to freeze inventory data", 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Unfreeze inventory data
+  app.post("/api/inventories/:id/unfreeze", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const userId = (req.session as any).user?.id || "system";
+      
+      storage = await getStorage();
+      await storage.unfreezeInventoryData(inventoryId, userId);
+      res.json({ message: "Inventory data unfrozen successfully" });
+    } catch (error) {
+      console.error("Error unfreezing inventory data:", error as Error);
+      res.status(500).json({ 
+        message: "Failed to unfreeze inventory data", 
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
