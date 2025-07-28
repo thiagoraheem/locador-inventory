@@ -115,6 +115,18 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Foreign Keys**: Relacionamentos com inventories e users implementados
 ✅ **Compatibilidade com Views**: Adaptação para trabalhar com sistema de views do banco existente
 
+**Backend APIs - Controle de Patrimônio (January 29, 2025)**:
+✅ **Interfaces TypeScript**: Novas interfaces para InventorySerialItem, ProductWithSerialControl, SerialReadingRequest/Response
+✅ **Schema Validation**: Schemas Zod para validação de todos os endpoints de patrimônio
+✅ **Storage Methods**: 14 novos métodos implementados no SimpleStorage para controle de série
+✅ **API Endpoints**: 11 novas rotas REST para operações de patrimônio implementadas
+✅ **Stored Procedures**: Integração com sp_CreateInventorySerialItems e sp_RegisterSerialReading
+✅ **Audit Logging**: Log completo de todas as operações de patrimônio
+✅ **Error Handling**: Tratamento robusto de erros e validações
+✅ **Type Safety**: Cobertura TypeScript completa sem erros LSP
+✅ **Database Integration**: Funcionalidade testada com SQL Server
+✅ **Reconciliation System**: Sistema de reconciliação entre quantidades e números de série
+
 **Current Login Credentials**: username: `admin`, password: `password`
 
 ## User Request (July 27, 2025)

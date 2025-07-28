@@ -20,6 +20,9 @@ import {
   loginSchema,
   registerSchema,
   insertInventoryStockItemSchema,
+  insertInventorySerialItemSchema,
+  serialReadingRequestSchema,
+  updateProductSerialControlSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1185,6 +1188,222 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to unfreeze inventory data", 
         details: error instanceof Error ? error.message : String(error)
       });
+    }
+  });
+
+  // ===== ROTAS PARA CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
+
+  // Inicializar itens de série para inventário
+  app.post("/api/inventories/:id/serial-items/initialize", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      await storage.createInventorySerialItems(inventoryId);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "INITIALIZE_SERIAL_ITEMS",
+        entityType: "inventory",
+        entityId: inventoryId.toString(),
+        metadata: JSON.stringify({ inventoryId }),
+      });
+      
+      res.json({ message: "Serial items initialized successfully" });
+    } catch (error) {
+      console.error("Error initializing serial items:", error);
+      res.status(500).json({ message: "Failed to initialize serial items" });
+    }
+  });
+
+  // Registrar leitura de número de série
+  app.post("/api/inventories/:id/serial-reading", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const validatedData = serialReadingRequestSchema.parse(req.body);
+      
+      storage = await getStorage();
+      const result = await storage.registerSerialReading(
+        inventoryId, 
+        validatedData, 
+        (req.session as any).user?.id || "system"
+      );
+      
+      if (result.success) {
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || "system",
+          action: "SERIAL_READING",
+          entityType: "inventory_serial_item",
+          entityId: `${inventoryId}-${validatedData.serialNumber}`,
+          newValues: JSON.stringify(validatedData),
+          metadata: JSON.stringify({ productId: result.productId }),
+        });
+      }
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error registering serial reading:", error);
+      res.status(500).json({ message: "Failed to register serial reading" });
+    }
+  });
+
+  // Buscar produto por número de série
+  app.get("/api/products/by-serial/:serial", isAuthenticated, async (req: any, res) => {
+    try {
+      const serialNumber = req.params.serial;
+      storage = await getStorage();
+      const product = await storage.findProductBySerial(serialNumber);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found for this serial number" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      console.error("Error finding product by serial:", error);
+      res.status(500).json({ message: "Failed to find product" });
+    }
+  });
+
+  // Listar itens de série do inventário
+  app.get("/api/inventories/:id/serial-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+      
+      storage = await getStorage();
+      const items = productId 
+        ? await storage.getInventorySerialItemsByProduct(inventoryId, productId)
+        : await storage.getInventorySerialItems(inventoryId);
+        
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching inventory serial items:", error);
+      res.status(500).json({ message: "Failed to fetch serial items" });
+    }
+  });
+
+  // Atualizar item de série
+  app.put("/api/inventory-serial-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const updateData = req.body;
+      
+      storage = await getStorage();
+      const updatedItem = await storage.updateInventorySerialItem(itemId, updateData);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "UPDATE_SERIAL_ITEM",
+        entityType: "inventory_serial_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify(updateData),
+      });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error updating serial item:", error);
+      res.status(500).json({ message: "Failed to update serial item" });
+    }
+  });
+
+  // Reconciliação de quantidades
+  app.post("/api/inventories/:id/reconcile", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      await storage.reconcileInventoryQuantities(inventoryId);
+      
+      const reconciliation = await storage.getInventoryReconciliation(inventoryId);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "INVENTORY_RECONCILIATION",
+        entityType: "inventory",
+        entityId: inventoryId.toString(),
+        metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
+      });
+      
+      res.json({ message: "Reconciliation completed", data: reconciliation });
+    } catch (error) {
+      console.error("Error reconciling inventory:", error);
+      res.status(500).json({ message: "Failed to reconcile inventory" });
+    }
+  });
+
+  // Buscar dados de reconciliação
+  app.get("/api/inventories/:id/reconciliation", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      const reconciliation = await storage.getInventoryReconciliation(inventoryId);
+      res.json(reconciliation);
+    } catch (error) {
+      console.error("Error fetching reconciliation data:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation data" });
+    }
+  });
+
+  // Buscar histórico de número de série
+  app.get("/api/serial-history/:serial", isAuthenticated, async (req: any, res) => {
+    try {
+      const serialNumber = req.params.serial;
+      storage = await getStorage();
+      const history = await storage.getSerialHistory(serialNumber);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching serial history:", error);
+      res.status(500).json({ message: "Failed to fetch serial history" });
+    }
+  });
+
+  // Validar se número de série existe
+  app.get("/api/validate-serial/:serial", isAuthenticated, async (req: any, res) => {
+    try {
+      const serialNumber = req.params.serial;
+      storage = await getStorage();
+      const exists = await storage.validateSerialExists(serialNumber);
+      res.json({ exists, serialNumber });
+    } catch (error) {
+      console.error("Error validating serial:", error);
+      res.status(500).json({ message: "Failed to validate serial number" });
+    }
+  });
+
+  // ===== ROTAS PARA PRODUTOS COM CONTROLE DE SÉRIE =====
+
+  // Listar produtos com controle de série
+  app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const products = await storage.getProductsWithSerialControl();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products with serial control:", error);
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  // Atualizar controle de série do produto
+  app.put("/api/products/:id/serial-control", isAuthenticated, async (req: any, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const validatedData = updateProductSerialControlSchema.parse(req.body);
+      
+      storage = await getStorage();
+      await storage.updateProductSerialControl(productId, validatedData.hasSerialControl);
+      
+      await storage.createAuditLog({
+        userId: (req.session as any).user?.id || "system",
+        action: "UPDATE_SERIAL_CONTROL",
+        entityType: "product",
+        entityId: productId.toString(),
+        newValues: JSON.stringify(validatedData),
+      });
+      
+      res.json({ message: "Serial control updated successfully" });
+    } catch (error) {
+      console.error("Error updating serial control:", error);
+      res.status(500).json({ message: "Failed to update serial control" });
     }
   });
 

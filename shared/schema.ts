@@ -183,6 +183,65 @@ export interface ControlPanelStats {
   };
 }
 
+// Controle de Patrimônio - Número de Série
+export interface InventorySerialItem {
+  id: number;
+  inventoryId: number;
+  stockItemId: number;
+  serialNumber: string;
+  productId: number;
+  locationId: number;
+  expectedStatus: boolean;
+  
+  // Contagens por estágio
+  count1_found?: boolean;
+  count2_found?: boolean;
+  count3_found?: boolean;
+  count4_found?: boolean;
+  
+  // Auditoria
+  count1_by?: string;
+  count2_by?: string;
+  count3_by?: string;
+  count4_by?: string;
+  count1_at?: number;
+  count2_at?: number;
+  count3_at?: number;
+  count4_at?: number;
+  
+  status: 'PENDING' | 'FOUND' | 'MISSING' | 'EXTRA';
+  notes?: string;
+  finalStatus?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ProductWithSerialControl extends Product {
+  hasSerialControl: boolean;
+  serialItemsCount?: number;
+}
+
+export interface InventoryItemWithSerial extends InventoryItem {
+  serialItemsCount: number;
+  serialItemsFound: number;
+  serialItemsMissing: number;
+  hasSerialDiscrepancy: boolean;
+}
+
+export interface SerialReadingRequest {
+  serialNumber: string;
+  countStage: 'count1' | 'count2' | 'count3' | 'count4';
+}
+
+export interface SerialReadingResponse {
+  success: boolean;
+  productId?: number;
+  productName?: string;
+  alreadyRead?: boolean;
+  newSerial?: boolean;
+  message?: string;
+}
+
 // Zod schemas for validation
 export const insertUserSchema = z.object({
   email: z.string().email(),
@@ -315,6 +374,45 @@ export const insertAuditLogSchema = z.object({
   metadata: z.string().optional(),
 });
 
+// Schema para controle de patrimônio por número de série
+export const insertInventorySerialItemSchema = z.object({
+  inventoryId: z.number(),
+  stockItemId: z.number(),
+  serialNumber: z.string().min(1),
+  productId: z.number(),
+  locationId: z.number(),
+  expectedStatus: z.boolean().default(true),
+  
+  // Contagens por estágio
+  count1_found: z.boolean().optional(),
+  count2_found: z.boolean().optional(),
+  count3_found: z.boolean().optional(),
+  count4_found: z.boolean().optional(),
+  
+  // Auditoria
+  count1_by: z.string().optional(),
+  count2_by: z.string().optional(),
+  count3_by: z.string().optional(),
+  count4_by: z.string().optional(),
+  count1_at: z.number().optional(),
+  count2_at: z.number().optional(),
+  count3_at: z.number().optional(),
+  count4_at: z.number().optional(),
+  
+  status: z.enum(['PENDING', 'FOUND', 'MISSING', 'EXTRA']).default('PENDING'),
+  notes: z.string().optional(),
+  finalStatus: z.boolean().optional(),
+});
+
+export const serialReadingRequestSchema = z.object({
+  serialNumber: z.string().min(1),
+  countStage: z.enum(['count1', 'count2', 'count3', 'count4']),
+});
+
+export const updateProductSerialControlSchema = z.object({
+  hasSerialControl: z.boolean(),
+});
+
 export const loginSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
@@ -343,6 +441,9 @@ export type InsertCount = z.infer<typeof insertCountSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type InsertInventoryStockItem = z.infer<typeof insertInventoryStockItemSchema>;
+export type InsertInventorySerialItem = z.infer<typeof insertInventorySerialItemSchema>;
+export type SerialReadingRequestData = z.infer<typeof serialReadingRequestSchema>;
+export type UpdateProductSerialControlData = z.infer<typeof updateProductSerialControlSchema>;
 
 // Additional types
 export type AuditLogWithDetails = AuditLog & {

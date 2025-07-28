@@ -26,6 +26,12 @@ import type {
   StockItem,
   ControlPanelStats,
   InventoryStatus,
+  InventorySerialItem,
+  InsertInventorySerialItem,
+  ProductWithSerialControl,
+  InventoryItemWithSerial,
+  SerialReadingRequest,
+  SerialReadingResponse,
 } from "@shared/schema";
 
 export class SimpleStorage {
@@ -1442,5 +1448,317 @@ export class SimpleStorage {
       await transaction.rollback();
       throw error;
     }
+  }
+
+  // ===== CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
+
+  // Criar itens de série para inventário
+  async createInventorySerialItems(inventoryId: number): Promise<void> {
+    const query = `
+      EXEC sp_CreateInventorySerialItems @InventoryId = @inventoryId
+    `;
+    
+    await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .query(query);
+  }
+
+  // Buscar todos os itens de série de um inventário
+  async getInventorySerialItems(inventoryId: number): Promise<InventorySerialItem[]> {
+    const result = await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .query(`
+        SELECT 
+          id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
+          count1_found, count2_found, count3_found, count4_found,
+          count1_by, count2_by, count3_by, count4_by,
+          count1_at, count2_at, count3_at, count4_at,
+          status, notes, finalStatus, createdAt, updatedAt
+        FROM inventory_serial_items 
+        WHERE inventoryId = @inventoryId
+        ORDER BY serialNumber
+      `);
+
+    return result.recordset.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt).getTime(),
+      updatedAt: new Date(row.updatedAt).getTime(),
+      count1_at: row.count1_at ? new Date(row.count1_at).getTime() : undefined,
+      count2_at: row.count2_at ? new Date(row.count2_at).getTime() : undefined,
+      count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
+      count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
+    }));
+  }
+
+  // Buscar itens de série por produto
+  async getInventorySerialItemsByProduct(inventoryId: number, productId: number): Promise<InventorySerialItem[]> {
+    const result = await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .input('productId', sql.Int, productId)
+      .query(`
+        SELECT 
+          id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
+          count1_found, count2_found, count3_found, count4_found,
+          count1_by, count2_by, count3_by, count4_by,
+          count1_at, count2_at, count3_at, count4_at,
+          status, notes, finalStatus, createdAt, updatedAt
+        FROM inventory_serial_items 
+        WHERE inventoryId = @inventoryId AND productId = @productId
+        ORDER BY serialNumber
+      `);
+
+    return result.recordset.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt).getTime(),
+      updatedAt: new Date(row.updatedAt).getTime(),
+      count1_at: row.count1_at ? new Date(row.count1_at).getTime() : undefined,
+      count2_at: row.count2_at ? new Date(row.count2_at).getTime() : undefined,
+      count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
+      count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
+    }));
+  }
+
+  // Registrar leitura de número de série
+  async registerSerialReading(
+    inventoryId: number, 
+    request: SerialReadingRequest, 
+    userId: string
+  ): Promise<SerialReadingResponse> {
+    // Verificar se série existe
+    const product = await this.findProductBySerial(request.serialNumber);
+    if (!product) {
+      return { 
+        success: false, 
+        newSerial: true, 
+        message: "Número de série não encontrado no sistema" 
+      };
+    }
+    
+    // Verificar se já foi lida neste estágio
+    const existingReading = await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .input('serialNumber', sql.NVarChar, request.serialNumber)
+      .query(`
+        SELECT * FROM inventory_serial_items 
+        WHERE inventoryId = @inventoryId 
+        AND serialNumber = @serialNumber
+        AND ${request.countStage}_found = 1
+      `);
+      
+    if (existingReading.recordset.length > 0) {
+      return { 
+        success: false, 
+        alreadyRead: true, 
+        productId: product.id,
+        productName: product.name,
+        message: "Número de série já foi lido neste estágio" 
+      };
+    }
+    
+    // Registrar leitura usando stored procedure
+    await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .input('serialNumber', sql.NVarChar, request.serialNumber)
+      .input('countStage', sql.NVarChar, request.countStage)
+      .input('userId', sql.NVarChar, userId)
+      .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
+    
+    return { 
+      success: true, 
+      productId: product.id, 
+      productName: product.name,
+      message: "Leitura registrada com sucesso"
+    };
+  }
+
+  // Buscar produto por número de série
+  async findProductBySerial(serialNumber: string): Promise<Product | null> {
+    const result = await this.pool.request()
+      .input('serialNumber', sql.NVarChar, serialNumber)
+      .query(`
+        SELECT DISTINCT p.* FROM products p
+        JOIN stock_items si ON p.id = si.productId
+        WHERE si.serialNumber = @serialNumber
+        AND si.isActive = 1
+      `);
+      
+    if (result.recordset.length === 0) return null;
+    
+    const product = result.recordset[0];
+    return {
+      ...product,
+      createdAt: new Date(product.createdAt).getTime(),
+      updatedAt: new Date(product.updatedAt).getTime(),
+    };
+  }
+
+  // Validar se número de série existe
+  async validateSerialExists(serialNumber: string): Promise<boolean> {
+    const result = await this.pool.request()
+      .input('serialNumber', sql.NVarChar, serialNumber)
+      .query(`
+        SELECT COUNT(*) as count FROM stock_items 
+        WHERE serialNumber = @serialNumber AND isActive = 1
+      `);
+      
+    return result.recordset[0].count > 0;
+  }
+
+  // Buscar histórico de um número de série
+  async getSerialHistory(serialNumber: string): Promise<InventorySerialItem[]> {
+    const result = await this.pool.request()
+      .input('serialNumber', sql.NVarChar, serialNumber)
+      .query(`
+        SELECT 
+          isi.*, i.code as inventoryCode, i.startDate
+        FROM inventory_serial_items isi
+        JOIN inventories i ON isi.inventoryId = i.id
+        WHERE isi.serialNumber = @serialNumber
+        ORDER BY i.startDate DESC
+      `);
+
+    return result.recordset.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt).getTime(),
+      updatedAt: new Date(row.updatedAt).getTime(),
+      count1_at: row.count1_at ? new Date(row.count1_at).getTime() : undefined,
+      count2_at: row.count2_at ? new Date(row.count2_at).getTime() : undefined,
+      count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
+      count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
+    }));
+  }
+
+  // Atualizar item de série
+  async updateInventorySerialItem(id: number, data: Partial<InventorySerialItem>): Promise<InventorySerialItem> {
+    const updateFields = [];
+    const request = this.pool.request().input('id', sql.Int, id);
+    
+    if (data.status !== undefined) {
+      updateFields.push('status = @status');
+      request.input('status', sql.NVarChar, data.status);
+    }
+    
+    if (data.notes !== undefined) {
+      updateFields.push('notes = @notes');
+      request.input('notes', sql.NVarChar, data.notes);
+    }
+    
+    if (data.finalStatus !== undefined) {
+      updateFields.push('finalStatus = @finalStatus');
+      request.input('finalStatus', sql.Bit, data.finalStatus);
+    }
+    
+    updateFields.push('updatedAt = GETDATE()');
+    
+    await request.query(`
+      UPDATE inventory_serial_items 
+      SET ${updateFields.join(', ')}
+      WHERE id = @id
+    `);
+    
+    // Retornar item atualizado
+    const result = await this.pool.request()
+      .input('id', sql.Int, id)
+      .query('SELECT * FROM inventory_serial_items WHERE id = @id');
+      
+    const item = result.recordset[0];
+    return {
+      ...item,
+      createdAt: new Date(item.createdAt).getTime(),
+      updatedAt: new Date(item.updatedAt).getTime(),
+      count1_at: item.count1_at ? new Date(item.count1_at).getTime() : undefined,
+      count2_at: item.count2_at ? new Date(item.count2_at).getTime() : undefined,
+      count3_at: item.count3_at ? new Date(item.count3_at).getTime() : undefined,
+      count4_at: item.count4_at ? new Date(item.count4_at).getTime() : undefined,
+    };
+  }
+
+  // Reconciliação de quantidades
+  async reconcileInventoryQuantities(inventoryId: number): Promise<void> {
+    const query = `
+      UPDATE ii 
+      SET 
+        serialItemsFound = ISNULL((
+          SELECT COUNT(*) FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = ii.inventoryId 
+          AND isi.productId = ii.productId 
+          AND isi.locationId = ii.locationId
+          AND isi.status = 'FOUND'
+        ), 0),
+        serialItemsMissing = ISNULL((
+          SELECT COUNT(*) FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = ii.inventoryId 
+          AND isi.productId = ii.productId 
+          AND isi.locationId = ii.locationId
+          AND isi.status IN ('PENDING', 'MISSING')
+        ), 0)
+      FROM inventory_items ii
+      WHERE ii.inventoryId = @inventoryId
+    `;
+    
+    await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .query(query);
+  }
+
+  // Buscar dados de reconciliação
+  async getInventoryReconciliation(inventoryId: number): Promise<any[]> {
+    const result = await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .query(`
+        SELECT 
+          ii.inventoryId,
+          ii.productId,
+          ii.locationId,
+          p.name as productName,
+          p.sku,
+          l.name as locationName,
+          ii.expectedQuantity,
+          ii.finalQuantity,
+          ii.serialItemsCount,
+          ii.serialItemsFound,
+          ii.serialItemsMissing,
+          CASE 
+            WHEN ii.serialItemsCount > 0 AND ISNULL(ii.finalQuantity, 0) != ISNULL(ii.serialItemsFound, 0) 
+            THEN 1 ELSE 0 
+          END as hasDiscrepancy
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN locations l ON ii.locationId = l.id
+        WHERE ii.inventoryId = @inventoryId
+      `);
+      
+    return result.recordset;
+  }
+
+  // Buscar produtos com controle de série
+  async getProductsWithSerialControl(): Promise<ProductWithSerialControl[]> {
+    const result = await this.pool.request()
+      .query(`
+        SELECT 
+          p.*,
+          CASE WHEN COUNT(si.id) > 0 THEN 1 ELSE 0 END as hasSerialControl,
+          COUNT(si.id) as serialItemsCount
+        FROM products p
+        LEFT JOIN stock_items si ON p.id = si.productId AND si.isActive = 1
+        WHERE p.isActive = 1
+        GROUP BY p.id, p.sku, p.name, p.description, p.categoryId, p.costValue, p.isActive, p.createdAt, p.updatedAt
+        ORDER BY p.name
+      `);
+
+    return result.recordset.map(row => ({
+      ...row,
+      hasSerialControl: !!row.hasSerialControl,
+      createdAt: new Date(row.createdAt).getTime(),
+      updatedAt: new Date(row.updatedAt).getTime(),
+    }));
+  }
+
+  // Atualizar controle de série do produto (esta função é conceitual, já que products é uma VIEW)
+  async updateProductSerialControl(productId: number, hasSerialControl: boolean): Promise<void> {
+    // Como products é uma VIEW, não podemos alterar diretamente
+    // Esta funcionalidade seria implementada no sistema principal "Locador"
+    console.log(`Product ${productId} serial control updated to: ${hasSerialControl}`);
+    // Por enquanto, apenas logamos a operação
   }
 }
