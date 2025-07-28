@@ -404,7 +404,7 @@ export default function InventoryControlBoard() {
               <KPICard
                 title="Produtos"
                 value={(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)}
-                description="Total de itens"
+                description="Itens distintos sendo inventariados"
                 icon={<Package className="h-4 w-4 text-muted-foreground" />}
               />
               <KPICard

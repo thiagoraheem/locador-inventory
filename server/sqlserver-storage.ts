@@ -579,8 +579,8 @@ export class SqlServerStorage implements IStorage {
   }> {
     const request = this.pool.request();
 
-    // Get basic inventory stats
-    const inventoryResult = await request
+    // Get total items count for this inventory
+    const totalItemsResult = await request
       .input('inventoryId', sql.Int, inventoryId)
       .query(`
         SELECT COUNT(*) as totalItems
@@ -592,25 +592,37 @@ export class SqlServerStorage implements IStorage {
       .input('inventoryId', sql.Int, inventoryId)
       .query(`
         SELECT 
+          COUNT(*) as totalItems,
           COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL THEN 1 END) as completed,
           COUNT(CASE WHEN count1 IS NULL OR count2 IS NULL THEN 1 END) as inProgress,
           COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Done,
           COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Done,
           COUNT(CASE WHEN count3 IS NOT NULL THEN 1 END) as count3Done,
-          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as count4Done
+          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as count4Done,
+          COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as divergences
         FROM inventory_items 
         WHERE inventoryId = @inventoryId
       `);
 
     const stats = itemsResult.recordset[0];
+    const totalItems = stats.totalItems || 0;
+    const completed = stats.completed || 0;
+    const inProgress = totalItems - completed;
+
+    // Calculate accuracy rate based on matches between counts
+    let accuracyRate = 0;
+    if (totalItems > 0 && completed > 0) {
+      const accurateItems = completed - (stats.divergences || 0);
+      accuracyRate = (accurateItems / completed) * 100;
+    }
 
     return {
       totalInventories: 1,
       activeInventories: 1,
-      itemsInProgress: stats.inProgress || 0,
-      itemsCompleted: stats.completed || 0,
-      accuracyRate: 95.0, // Calculate based on counts matching expected
-      divergenceCount: 0, // Calculate based on count differences
+      itemsInProgress: inProgress,
+      itemsCompleted: completed,
+      accuracyRate: Math.round(accuracyRate * 10) / 10, // Round to 1 decimal place
+      divergenceCount: stats.divergences || 0,
       countingProgress: {
         count1: stats.count1Done || 0,
         count2: stats.count2Done || 0,
