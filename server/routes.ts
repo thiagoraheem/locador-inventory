@@ -424,81 +424,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.put(
-    "/api/inventories/:id/cancel",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const id = parseInt(req.params.id);
-        const { reason } = req.body;
-        
-        if (!reason || reason.trim() === '') {
-          return res.status(400).json({ message: "Cancellation reason is required" });
-        }
 
-        const oldInventory = await storage.getInventory(id);
-        if (!oldInventory) {
-          return res.status(404).json({ message: "Inventory not found" });
-        }
 
-        await storage.cancelInventory(id, reason, req.user.id);
 
-        await storage.createAuditLog({
-          userId: req.user.id,
-          action: "CANCEL",
-          entityType: "INVENTORY",
-          entityId: id.toString(),
-          oldValues: oldInventory,
-          newValues: { status: "CANCELLED", reason },
-          metadata: null,
-        });
-
-        res.json({ message: "Inventory cancelled successfully" });
-      } catch (error) {
-        console.error("Error cancelling inventory:", error as Error);
-        res.status(500).json({ message: "Failed to cancel inventory" });
-      }
-    },
-  );
-
-  app.delete(
-    "/api/inventories/:id",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const id = parseInt(req.params.id);
-        
-        const oldInventory = await storage.getInventory(id);
-        if (!oldInventory) {
-          return res.status(404).json({ message: "Inventory not found" });
-        }
-
-        // Only allow deletion of cancelled inventories
-        if (oldInventory.status !== 'CANCELLED') {
-          return res.status(400).json({ message: "Only cancelled inventories can be deleted" });
-        }
-
-        await storage.deleteInventory(id);
-
-        await storage.createAuditLog({
-          userId: req.user.id,
-          action: "DELETE",
-          entityType: "INVENTORY",
-          entityId: id.toString(),
-          oldValues: oldInventory,
-          newValues: null,
-          metadata: null,
-        });
-
-        res.json({ message: "Inventory deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting inventory:", error as Error);
-        res.status(500).json({ message: "Failed to delete inventory" });
-      }
-    },
-  );
 
   // Inventory items routes
   app.get(
