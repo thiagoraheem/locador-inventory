@@ -240,6 +240,23 @@ export default function InventoryCounting({ params }: { params: { id: string } }
               </SelectContent>
             </Select>
           </div>
+          
+          <div className="mt-4">
+            <ProductSearchAutocomplete 
+              onProductSelect={(product, quantity) => {
+                // Função para adicionar produto diretamente à contagem
+                const inventoryItem = inventoryItems?.find(item => item.productId === product.id);
+                if (inventoryItem) {
+                  setCountValues(prev => ({
+                    ...prev,
+                    [inventoryItem.id]: quantity
+                  }));
+                  handleSaveCount(inventoryItem.id);
+                }
+              }}
+              placeholder="Buscar produto para adicionar à contagem..."
+            />
+          </div>
         </CardContent>
       </Card>
 

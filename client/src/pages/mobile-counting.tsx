@@ -412,7 +412,7 @@ export default function MobileCounting() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ProductSearchAutocomplete onSelect={handleProductSelect} />
+              <ProductSearchAutocomplete onProductSelect={handleProductSelect} />
               <p className="text-sm text-gray-500 mt-2">
                 Busque por código SKU ou descrição do produto e informe a quantidade
               </p>
