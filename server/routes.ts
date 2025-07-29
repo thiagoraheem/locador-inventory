@@ -709,9 +709,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       storage = await getStorage();
       const products = await storage.getProductsWithSerialControl();
+      console.log(`✅ Fetched ${products.length} products with serial control info`);
       res.json(products);
     } catch (error) {
-      console.error('Error fetching products with serial control:', error);
+      console.error('❌ Error fetching products with serial control:', error);
       res.status(500).json({ message: "Failed to fetch products with serial control" });
     }
   });
@@ -1316,21 +1317,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q, limit = 10 } = req.query;
       
-      console.log('Search request received:', { q, limit });
+      console.log('🔍 Search request received:', { q, limit });
       
-      if (!q || q.length < 2) {
-        console.log('Search term too short or empty');
+      if (!q || typeof q !== 'string' || q.trim().length < 1) {
+        console.log('❌ Search term too short or empty');
         return res.json([]);
       }
       
       storage = await getStorage();
-      const products = await storage.searchProducts(q, parseInt(limit));
+      const products = await storage.searchProducts(q.trim(), parseInt(limit.toString()));
       
-      console.log(`Found ${products.length} products for search term: ${q}`);
+      console.log(`✅ Found ${products.length} products for search term: "${q}"`);
       res.json(products);
     } catch (error) {
-      console.error("Error searching products:", error);
-      res.status(500).json({ message: "Failed to search products", error: error.message });
+      console.error("❌ Error searching products:", error);
+      res.status(500).json({ 
+        message: "Failed to search products", 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
@@ -1516,18 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get products with serial control information
-  app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const products = await storage.getProductsWithSerialControl();
-      console.log(`Fetched ${products.length} products with serial control info`);
-      res.json(products);
-    } catch (error) {
-      console.error('Error fetching products with serial control:', error);
-      res.status(500).json({ message: "Failed to fetch products with serial control" });
-    }
-  });
+  
 
   // Atualizar controle de série do produto
   app.put("/api/products/:id/serial-control", isAuthenticated, async (req: any, res) => {

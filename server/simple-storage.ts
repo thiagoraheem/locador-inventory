@@ -1767,7 +1767,7 @@ export class SimpleStorage {
     return result.recordset;
   }
 
-  //  // Buscar produtos com controle de série
+  // Buscar produtos com controle de série
   async getProductsWithSerialControl(): Promise<ProductWithSerialControl[]> {
     try {
       const request = this.pool.request();
@@ -1776,17 +1776,19 @@ export class SimpleStorage {
           p.id,
           p.sku,
           p.name,
-          p.description,
-          c.name as categoryName,
-          0 as hasSerialControl
+          ISNULL(p.description, '') as description,
+          ISNULL(c.name, '') as categoryName,
+          ISNULL(p.hasSerialControl, 0) as hasSerialControl
         FROM products p
         LEFT JOIN categories c ON p.categoryId = c.id
+        WHERE p.isActive = 1
         ORDER BY p.name
       `);
 
+      console.log(`✅ Found ${result.recordset.length} products with serial control info`);
       return result.recordset;
     } catch (error) {
-      console.error('Error fetching products with serial control:', error);
+      console.error('❌ Error fetching products with serial control:', error);
       throw error;
     }
   }
@@ -1794,32 +1796,37 @@ export class SimpleStorage {
   async searchProducts(searchTerm: string, limit: number = 10): Promise<any[]> {
     try {
       const request = this.pool.request();
-      request.input('searchTerm', `%${searchTerm.toLowerCase()}%`);
-      request.input('limit', limit);
-
-      const result = await request.query(`
-        SELECT TOP (@limit)
-          p.id,
-          p.sku,
-          p.name,
-          p.description,
-          c.name as categoryName,
-          0 as hasSerialControl
-        FROM products p
-        LEFT JOIN categories c ON p.categoryId = c.id
-        WHERE LOWER(p.sku) LIKE @searchTerm 
-           OR LOWER(p.name) LIKE @searchTerm
-           OR LOWER(p.description) LIKE @searchTerm
-        ORDER BY 
-          CASE 
-            WHEN LOWER(p.sku) = LOWER(@searchTerm) THEN 1
-            WHEN LOWER(p.name) = LOWER(@searchTerm) THEN 2
-            WHEN LOWER(p.sku) LIKE @searchTerm THEN 3
-            WHEN LOWER(p.name) LIKE @searchTerm THEN 4
-            ELSE 5
-          END,
-          p.name
-      `);
+      const searchPattern = `%${searchTerm.toLowerCase()}%`;
+      
+      console.log(`Searching products with term: "${searchTerm}"`);
+      
+      const result = await request
+        .input('searchTerm', searchPattern)
+        .input('limit', limit)
+        .query(`
+          SELECT TOP (@limit)
+            p.id,
+            p.sku,
+            p.name,
+            p.description,
+            ISNULL(c.name, '') as categoryName,
+            0 as hasSerialControl
+          FROM products p
+          LEFT JOIN categories c ON p.categoryId = c.id
+          WHERE (
+            LOWER(p.sku) LIKE @searchTerm 
+            OR LOWER(p.name) LIKE @searchTerm
+            OR LOWER(ISNULL(p.description, '')) LIKE @searchTerm
+          )
+          AND p.isActive = 1
+          ORDER BY 
+            CASE 
+              WHEN LOWER(p.sku) LIKE @searchTerm THEN 1
+              WHEN LOWER(p.name) LIKE @searchTerm THEN 2
+              ELSE 3
+            END,
+            p.name
+        `);
 
       console.log(`Search for "${searchTerm}" returned ${result.recordset.length} results`);
       return result.recordset;
