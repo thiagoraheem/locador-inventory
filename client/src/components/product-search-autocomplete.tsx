@@ -33,30 +33,26 @@ export default function ProductSearchAutocomplete({
 
   // Buscar produtos quando há termo de busca
   const { data: products, isLoading } = useQuery({
-    queryKey: ["/api/products", searchTerm],
+    queryKey: ["/api/products/search", searchTerm],
     queryFn: async () => {
-      if (!searchTerm.trim()) return [];
+      if (!searchTerm.trim() || searchTerm.length < 2) return [];
       
       const params = new URLSearchParams();
-      params.set('search', searchTerm);
-      params.set('includeInactive', 'false');
+      params.set('q', searchTerm);
+      params.set('limit', '10');
       
-      const response = await fetch(`/api/products?${params}`, {
+      const response = await fetch(`/api/products/search?${params}`, {
         credentials: 'include',
       });
       if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
       return response.json();
     },
-    enabled: searchTerm.length >= 1,
+    enabled: searchTerm.length >= 2,
     retry: false,
   });
 
-  // Filtrar produtos baseado no termo de busca
-  const filteredProducts = products?.filter((product: Product) => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  ).slice(0, 10) || [];
+  // Produtos já vêm filtrados da API
+  const filteredProducts = products || [];
 
   // Atualizar quantidade externa quando interna mudar
   useEffect(() => {
@@ -121,7 +117,7 @@ export default function ProductSearchAutocomplete({
 
   // Mostrar resultados quando há produtos ou termo de busca
   useEffect(() => {
-    setShowResults(searchTerm.length >= 1 && (filteredProducts.length > 0 || isLoading));
+    setShowResults(searchTerm.length >= 2 && (filteredProducts.length > 0 || isLoading));
   }, [searchTerm, filteredProducts.length, isLoading]);
 
   return (

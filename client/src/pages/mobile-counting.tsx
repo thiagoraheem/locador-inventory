@@ -32,10 +32,10 @@ interface CountedProduct {
   locationId: number;
   locationName: string;
   hasSerialControl: boolean;
-  
+
   // Para produtos sem série (quantidade manual)
   manualQuantity?: number;
-  
+
   // Para produtos com série (números individuais)
   serialNumbers?: string[];
   totalSerialCount?: number;
@@ -82,10 +82,10 @@ export default function MobileCounting() {
   const getCurrentCountStage = () => {
     const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     if (!selectedInv) return 1;
-    
+
     // Cast to any to avoid TypeScript errors with extended status types
     const status = selectedInv.status as any;
-    
+
     switch (status) {
       case 'open':
       case 'count1_open':
@@ -113,7 +113,7 @@ export default function MobileCounting() {
   // Função para leitura de número de série
   const handleSerialScan = async () => {
     if (!serialInput.trim() || !selectedInventoryId) return;
-    
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/inventories/${selectedInventoryId}/serial-reading`, {
@@ -125,16 +125,16 @@ export default function MobileCounting() {
           countStage: `count${getCurrentCountStage()}`
         }),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         // Adicionar à lista de produtos contados
         addSerialToProduct(result.productId, result.productName, result.productSku, serialInput.trim());
-        
+
         // Atualizar histórico
         setRecentScans(prev => [serialInput.trim(), ...prev.slice(0, 4)]);
-        
+
         toast({
           title: "Série registrada",
           description: `${result.productName} - ${serialInput}`,
@@ -167,7 +167,7 @@ export default function MobileCounting() {
   // Função para adicionar produto selecionado com quantidade manual
   const handleAddSelectedProduct = async () => {
     if (!selectedProduct || !quantityInput || !selectedInventoryId) return;
-    
+
     setIsLoading(true);
     try {
       // Verificar se produto tem controle de série
@@ -179,17 +179,17 @@ export default function MobileCounting() {
         });
         return;
       }
-      
+
       // Registrar contagem manual
       await registerManualCount(selectedProduct.id, quantityInput);
-      
+
       addManualProduct(selectedProduct, quantityInput);
-      
+
       toast({
         title: "Produto adicionado",
         description: `${selectedProduct.name} - Qtd: ${quantityInput}`,
       });
-      
+
     } catch (error) {
       toast({
         title: "Erro ao adicionar",
@@ -207,7 +207,7 @@ export default function MobileCounting() {
   const addSerialToProduct = (productId: number, productName: string, productSku: string, serialNumber: string) => {
     setCountedProducts(prev => {
       const existingIndex = prev.findIndex(p => p.productId === productId);
-      
+
       if (existingIndex >= 0) {
         // Produto já existe, adicionar série
         const updated = [...prev];
@@ -237,7 +237,7 @@ export default function MobileCounting() {
   const addManualProduct = (product: SearchedProduct, quantity: number) => {
     setCountedProducts(prev => {
       const existingIndex = prev.findIndex(p => p.productId === product.id);
-      
+
       if (existingIndex >= 0) {
         // Produto já existe, somar quantidade
         const updated = [...prev];
@@ -387,7 +387,7 @@ export default function MobileCounting() {
               <p className="text-sm text-blue-600 mb-3">
                 Escaneie o código de barras do produto para identificação automática
               </p>
-              
+
               {/* Histórico de últimas leituras */}
               {recentScans.length > 0 && (
                 <div>
@@ -422,7 +422,7 @@ export default function MobileCounting() {
                   placeholder="Buscar por SKU/Descrição..."
                   className="w-full"
                 />
-                
+
                 <div className="flex gap-2">
                   <Input
                     type="number"
@@ -440,7 +440,7 @@ export default function MobileCounting() {
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
                   </Button>
                 </div>
-                
+
                 {selectedProduct && (
                   <div className="p-3 bg-green-100 rounded-lg border border-green-200">
                     <div className="font-medium text-green-800">{selectedProduct.name}</div>
@@ -513,7 +513,7 @@ export default function MobileCounting() {
                       <p className="text-sm text-gray-600">
                         SKU: {product.productSku}
                       </p>
-                      
+
                       {/* Informações de contagem */}
                       <div className="mt-2 space-y-1">
                         {product.hasSerialControl ? (
@@ -524,7 +524,7 @@ export default function MobileCounting() {
                                 Séries: {product.totalSerialCount}
                               </Badge>
                             </div>
-                            
+
                             {/* Lista de séries lidas */}
                             <div className="flex flex-wrap gap-1 mt-2">
                               {product.serialNumbers?.slice(0, 5).map((serial, idx) => (
@@ -549,7 +549,7 @@ export default function MobileCounting() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2 ml-4">
                       <Button
                         size="sm"

@@ -1336,7 +1336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sku: p.sku,
           name: p.name,
           categoryName: p.category?.name || 'Sem categoria',
-          hasSerialControl: p.hasSerialControl || false
+          hasSerialControl: false // Por enquanto, já que não temos essa propriedade implementada
         }));
       
       res.json(filteredProducts);
