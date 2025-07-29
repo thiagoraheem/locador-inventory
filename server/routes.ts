@@ -334,6 +334,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
         }
+
+        // Create serial items for products with serial control
+        console.log('🔧 Creating serial items for inventory...');
+        try {
+          await storage.createInventorySerialItems(inventory.id);
+          console.log('✅ Serial items created successfully');
+        } catch (serialError) {
+          console.warn('⚠️ Failed to create serial items:', serialError);
+          // Don't fail the inventory creation if serial items fail
+        }
       }
 
       // Temporarily disable audit log to test inventory creation

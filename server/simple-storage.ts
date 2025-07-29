@@ -241,8 +241,7 @@ export class SimpleStorage {
       createdAt: location.createdAt
         ? new Date(location.createdAt).getTime()
         : Date.now(),
-      updatedAt: location.updatedAt
-        ? new Date(location.updatedAt).getTime()
+      updatedAt: new Date(location.updatedAt).getTime()
         : Date.now(),
     };
   }
@@ -1492,13 +1491,62 @@ export class SimpleStorage {
 
   // Criar itens de série para inventário
   async createInventorySerialItems(inventoryId: number): Promise<void> {
-    const query = `
-      EXEC sp_CreateInventorySerialItems @InventoryId = @inventoryId
-    `;
+    console.log(`📋 Creating serial items for inventory ${inventoryId}...`);
 
-    await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .query(query);
+    try {
+      // First ensure the stored procedure exists
+      await this.ensureSerialItemsProcedure();
+
+      const result = await this.pool.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .execute('sp_CreateInventorySerialItems');
+
+      console.log(`✅ Created serial items for inventory ${inventoryId}`);
+    } catch (error) {
+      console.error('❌ Error creating inventory serial items:', error);
+      throw error;
+    }
+  }
+
+  private async ensureSerialItemsProcedure(): Promise<void> {
+    try {
+      await this.pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_CreateInventorySerialItems')
+        BEGIN
+          EXEC('
+            CREATE PROCEDURE sp_CreateInventorySerialItems
+                @InventoryId INT
+            AS
+            BEGIN
+                INSERT INTO inventory_serial_items (
+                    inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus
+                )
+                SELECT 
+                    @InventoryId,
+                    si.id,
+                    si.serialNumber,
+                    si.productId,
+                    si.locationId,
+                    1
+                FROM stock_items si
+                JOIN products p ON si.productId = p.id
+                WHERE p.hasSerialControl = 1 
+                  AND si.serialNumber IS NOT NULL
+                  AND si.serialNumber != ''''
+                  AND NOT EXISTS (
+                      SELECT 1 FROM inventory_serial_items isi
+                      WHERE isi.inventoryId = @InventoryId
+                      AND isi.serialNumber = si.serialNumber
+                  );
+
+                SELECT @@ROWCOUNT as itemsCreated;
+            END
+          ')
+        END
+      `);
+    } catch (error) {
+      console.warn('⚠️ Could not ensure stored procedure exists:', error);
+    }
   }
 
   // Buscar todos os itens de série de um inventário
@@ -1694,7 +1742,7 @@ export class SimpleStorage {
       WHERE id = @id
     `);
 
-    // Retornar item atualizado
+    //    // Retornar item atualizado
     const result = await this.pool.request()
       .input('id', sql.Int, id)
       .query('SELECT * FROM inventory_serial_items WHERE id = @id');
