@@ -241,7 +241,8 @@ export class SimpleStorage {
       createdAt: location.createdAt
         ? new Date(location.createdAt).getTime()
         : Date.now(),
-      updatedAt: new Date(location.updatedAt).getTime()
+      updatedAt: location.updatedAt
+        ? new Date(location.updatedAt).getTime()
         : Date.now(),
     };
   }
