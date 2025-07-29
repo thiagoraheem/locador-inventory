@@ -1,8 +1,6 @@
 // APIs de integração e testes implementadas separadamente para evitar conflitos
 import express from 'express';
 import { SimpleStorage } from './simple-storage';
-import { serialReadingRequestSchema } from '../shared/schema';
-import { InventoryIntegrityValidator } from './validation';
 
 export function addIntegrationRoutes(app: express.Application, getStorage: () => Promise<SimpleStorage>, isAuthenticated: any) {
   

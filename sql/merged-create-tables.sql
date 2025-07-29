@@ -1,64 +1,164 @@
--- ===================================================================
--- MIGRAÇÃO: CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE
--- ===================================================================
+-- Merged SQL script for creating database tables and applying schema migrations
+-- Run this script on your SQL Server database
 
--- FASE 1: ALTERAÇÕES EM TABELAS EXISTENTES
+-- Users table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
+CREATE TABLE users (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    email NVARCHAR(255) UNIQUE NOT NULL,
+    username NVARCHAR(255) UNIQUE NOT NULL,
+    password NVARCHAR(255) NOT NULL,
+    firstName NVARCHAR(255),
+    lastName NVARCHAR(255),
+    role NVARCHAR(50) DEFAULT 'user',
+    isActive BIT DEFAULT 1,
+    createdAt DATETIME2,
+    updatedAt DATETIME2
+);
 
--- 1. ALTERAÇÃO NA TABELA products
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND COLUMN_NAME = 'hasSerialControl')
-BEGIN
-    ALTER TABLE products ADD hasSerialControl BIT DEFAULT 0;
-    PRINT 'Coluna hasSerialControl adicionada à tabela products';
-END
-ELSE
-BEGIN
-    PRINT 'Coluna hasSerialControl já existe na tabela products';
-END;
+-- Categories table (View)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='categories' AND xtype='V')
+EXEC('CREATE VIEW [dbo].[categories]
+AS
+select id = CodCategoria, idcompany, name = DesCategoria, description = DesCategoria, isActive = 1, createdAt = DatCadastro, updatedAt = DatAlteracao
+from Locador..tbl_Categorias');
+GO
 
--- 2. ALTERAÇÃO NA TABELA inventory_items
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'inventory_items' AND COLUMN_NAME = 'serialItemsCount')
-BEGIN
-    ALTER TABLE inventory_items ADD serialItemsCount INT DEFAULT 0;
-    PRINT 'Coluna serialItemsCount adicionada à tabela inventory_items';
-END
-ELSE
-BEGIN
-    PRINT 'Coluna serialItemsCount já existe na tabela inventory_items';
-END;
+-- Products table (View)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='products' AND xtype='V')
+EXEC('CREATE VIEW [dbo].[products]
+  AS 
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'inventory_items' AND COLUMN_NAME = 'serialItemsFound')
-BEGIN
-    ALTER TABLE inventory_items ADD serialItemsFound INT DEFAULT 0;
-    PRINT 'Coluna serialItemsFound adicionada à tabela inventory_items';
-END
-ELSE
-BEGIN
-    PRINT 'Coluna serialItemsFound já existe na tabela inventory_items';
-END;
+  select id, sku = CodProduto, 
+			name = DesResumida, 
+			description = Descricao, 
+			categoryId = CodCategoria, 
+			costValue = VlrCusto, 
+			isActive = 1, 
+			createadAt = DatCadastro, 
+			updatedAt = DatAlteracao,
+			hasSerialControl = CAST( CASE WHEN
+								(SELECT COUNT(1) FROM Locador..tbl_ProdutoSerial PS WHERE PS.CodProduto = P.CodProduto) > 0 THEN 1
+								ELSE 0 END
+								AS bit)
+			--,qtySerial = (SELECT COUNT(1) FROM Locador..tbl_ProdutoSerial PS WHERE PS.CodProduto = P.CodProduto)
+  from Locador..tbl_Produtos P;');
+GO
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'inventory_items' AND COLUMN_NAME = 'serialItemsMissing')
-BEGIN
-    ALTER TABLE inventory_items ADD serialItemsMissing INT DEFAULT 0;
-    PRINT 'Coluna serialItemsMissing adicionada à tabela inventory_items';
-END
-ELSE
-BEGIN
-    PRINT 'Coluna serialItemsMissing já existe na tabela inventory_items';
-END;
+-- Locations table (View)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='locations' AND xtype='V')
+EXEC('CREATE VIEW [dbo].[locations]
+  AS
 
-IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'inventory_items' AND COLUMN_NAME = 'hasSerialDiscrepancy')
-BEGIN
-    ALTER TABLE inventory_items ADD hasSerialDiscrepancy BIT DEFAULT 0;
-    PRINT 'Coluna hasSerialDiscrepancy adicionada à tabela inventory_items';
-END
-ELSE
-BEGIN
-    PRINT 'Coluna hasSerialDiscrepancy já existe na tabela inventory_items';
-END;
+  select id = CodLocalizacao, code = ''EST'' + RIGHT(''000'' + CAST(CodLocalizacao AS varchar), 3), 
+		name = DesLocalizacao, description = Observacao, isActive = 1, createdAt = GETDATE(), updatedAt = GETDATE()
+  from Locador..tbl_EstoqueLocalizacao;');
+GO
 
--- FASE 2: CRIAÇÃO DA NOVA TABELA
+-- Stock table (View)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='stock' AND xtype='V')
+EXEC('CREATE VIEW [dbo].[stock]
+  AS
+  select id = 0, productId = B.id, locationId = CodLocalizacao, quantity = QtdEstoque, createdAt = A.DatEstoque, updatedAt = A.DatEstoque
+  from Locador..tbl_Estoque A
+  inner join Locador..tbl_Produtos B ON B.CodProduto = A.CodProduto;');
+GO
 
--- 3. NOVA TABELA: inventory_serial_items
+-- Stock item table (View)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='stock_items' AND xtype='V')
+EXEC('CREATE VIEW [dbo].[stock_items]
+AS
+
+select	ES.id,
+		productId = P.id, 
+		locationId = ES.CodLocalizacao, 
+		serialNumber = ES.NumSerie, 
+		isActive = PS.FlgAtivo, 
+		createdAt = PS.DatCriacao, 
+		updatedAt = DataMovimento
+from Locador..tbl_EstoqueSerial ES
+inner join Locador..tbl_Produtos P ON P.CodProduto = ES.CodProduto
+left join Locador..tbl_ProdutoSerial PS ON PS.NumSerie = ES.NumSerie;');
+GO
+
+
+-- Inventory types table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventory_types' AND xtype='U')
+CREATE TABLE inventory_types (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(255) UNIQUE NOT NULL,
+    description NVARCHAR(1000),
+    isActive BIT DEFAULT 1
+);
+
+-- Inventories table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventories' AND xtype='U')
+CREATE TABLE inventories (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    code NVARCHAR(50) UNIQUE NOT NULL,
+    typeId INT NOT NULL FOREIGN KEY REFERENCES inventory_types(id),
+    status NVARCHAR(50) DEFAULT 'OPEN',
+    startDate DATETIME2 NOT NULL,
+    endDate DATETIME2,
+    description NVARCHAR(1000),
+    createdBy INT NOT NULL FOREIGN KEY REFERENCES users(id),
+    createdAt DATETIME2,
+    updatedAt DATETIME2
+);
+
+-- Inventory items table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='inventory_items' AND xtype='U')
+CREATE TABLE inventory_items (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    inventoryId INT NOT NULL FOREIGN KEY REFERENCES inventories(id),
+    productId INT NOT NULL FOREIGN KEY REFERENCES products(id),
+    locationId INT NOT NULL FOREIGN KEY REFERENCES locations(id),
+    expectedQuantity REAL DEFAULT 0,
+    finalQuantity REAL,
+    status NVARCHAR(50) DEFAULT 'PENDING',
+    createdAt DATETIME2,
+    updatedAt DATETIME2,
+    serialItemsCount INT DEFAULT 0,
+    serialItemsFound INT DEFAULT 0,
+    serialItemsMissing INT DEFAULT 0,
+    hasSerialDiscrepancy BIT DEFAULT 0
+);
+
+-- Counts table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='counts' AND xtype='U')
+CREATE TABLE counts (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    inventoryItemId INT NOT NULL FOREIGN KEY REFERENCES inventory_items(id),
+    countNumber INT NOT NULL,
+    quantity REAL NOT NULL,
+    countedBy INT NOT NULL FOREIGN KEY REFERENCES users(id),
+    countedAt DATETIME2,
+    notes NVARCHAR(1000)
+);
+
+-- Audit logs table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_logs' AND xtype='U')
+CREATE TABLE audit_logs (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    userId INT NOT NULL FOREIGN KEY REFERENCES users(id),
+    action NVARCHAR(255) NOT NULL,
+    entityType NVARCHAR(255) NOT NULL,
+    entityId NVARCHAR(255) NOT NULL,
+    oldValues NVARCHAR(MAX),
+    newValues NVARCHAR(MAX),
+    metadata NVARCHAR(MAX),
+    timestamp DATETIME2 DEFAULT GETDATE()
+);
+
+-- Sessions table for Replit Auth
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='sessions' AND xtype='U')
+CREATE TABLE sessions (
+    sid NVARCHAR(256) PRIMARY KEY,
+    sess NVARCHAR(4000) NOT NULL,
+    expire DATETIME2 NOT NULL
+);
+
+-- New table: inventory_serial_items from patrimonio-schema-migration.sql
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'inventory_serial_items')
 BEGIN
     CREATE TABLE inventory_serial_items (
@@ -77,10 +177,10 @@ BEGIN
         count4_found BIT NULL,
         
         -- Auditoria de contagens
-        count1_by NVARCHAR(255) NULL,
-        count2_by NVARCHAR(255) NULL,
-        count3_by NVARCHAR(255) NULL,
-        count4_by NVARCHAR(255) NULL,
+        count1_by INT NULL,
+        count2_by INT NULL,
+        count3_by INT NULL,
+        count4_by INT NULL,
         count1_at DATETIME2 NULL,
         count2_at DATETIME2 NULL,
         count3_at DATETIME2 NULL,
@@ -103,63 +203,31 @@ BEGIN
         FOREIGN KEY (count3_by) REFERENCES users(id),
         FOREIGN KEY (count4_by) REFERENCES users(id)
     );
-    PRINT 'Tabela inventory_serial_items criada com sucesso';
-END
-ELSE
-BEGIN
-    PRINT 'Tabela inventory_serial_items já existe';
 END;
 
--- FASE 3: CRIAÇÃO DE ÍNDICES
-
--- 4. ÍNDICES PARA PERFORMANCE
+-- Indexes from patrimonio-schema-migration.sql
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_inventory_serial_items_inventory_product')
 BEGIN
     CREATE INDEX IX_inventory_serial_items_inventory_product 
     ON inventory_serial_items (inventoryId, productId);
-    PRINT 'Índice IX_inventory_serial_items_inventory_product criado';
-END
-ELSE
-BEGIN
-    PRINT 'Índice IX_inventory_serial_items_inventory_product já existe';
 END;
-
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_inventory_serial_items_serial_number')
 BEGIN
     CREATE INDEX IX_inventory_serial_items_serial_number 
     ON inventory_serial_items (serialNumber);
-    PRINT 'Índice IX_inventory_serial_items_serial_number criado';
-END
-ELSE
-BEGIN
-    PRINT 'Índice IX_inventory_serial_items_serial_number já existe';
 END;
-
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_inventory_serial_items_status')
 BEGIN
     CREATE INDEX IX_inventory_serial_items_status 
     ON inventory_serial_items (inventoryId, status);
-    PRINT 'Índice IX_inventory_serial_items_status criado';
-END
-ELSE
-BEGIN
-    PRINT 'Índice IX_inventory_serial_items_status já existe';
 END;
-
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_products_serial_control')
 BEGIN
     CREATE INDEX IX_products_serial_control 
     ON products (hasSerialControl) WHERE hasSerialControl = 1;
-    PRINT 'Índice IX_products_serial_control criado';
-END
-ELSE
-BEGIN
-    PRINT 'Índice IX_products_serial_control já existe';
 END;
 
--- FASE 4: CRIAÇÃO DE VIEWS
-
--- 5. VIEW PARA RECONCILIAÇÃO
+-- View for reconciliation from patrimonio-schema-migration.sql
 IF NOT EXISTS (SELECT * FROM sys.views WHERE name = 'vw_inventory_reconciliation')
 BEGIN
     EXEC('CREATE VIEW vw_inventory_reconciliation AS
@@ -182,22 +250,13 @@ BEGIN
     FROM inventory_items ii
     JOIN products p ON ii.productId = p.id
     JOIN locations l ON ii.locationId = l.id');
-    PRINT 'View vw_inventory_reconciliation criada';
-END
-ELSE
-BEGIN
-    PRINT 'View vw_inventory_reconciliation já existe';
 END;
 
--- FASE 5: CRIAÇÃO DE STORED PROCEDURES
-
--- 6. STORED PROCEDURE: Criar itens de série para inventário
+-- Stored Procedures from patrimonio-schema-migration.sql
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_CreateInventorySerialItems')
 BEGIN
     DROP PROCEDURE sp_CreateInventorySerialItems;
-    PRINT 'Procedure sp_CreateInventorySerialItems removida para recriação';
 END;
-
 CREATE PROCEDURE sp_CreateInventorySerialItems
     @InventoryId INT
 AS
@@ -231,22 +290,17 @@ BEGIN
     FROM inventory_items ii
     WHERE ii.inventoryId = @InventoryId;
 END;
-
-PRINT 'Procedure sp_CreateInventorySerialItems criada';
 GO
 
--- 7. STORED PROCEDURE: Registrar leitura de série
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_RegisterSerialReading')
 BEGIN
     DROP PROCEDURE sp_RegisterSerialReading;
-    PRINT 'Procedure sp_RegisterSerialReading removida para recriação';
 END;
-
 CREATE PROCEDURE sp_RegisterSerialReading
     @InventoryId INT,
     @SerialNumber NVARCHAR(255),
     @CountStage NVARCHAR(10),
-    @UserId NVARCHAR(255)
+    @UserId INT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -348,17 +402,12 @@ BEGIN
     FROM products p
     WHERE p.id = @ProductId;
 END;
-
-PRINT 'Procedure sp_RegisterSerialReading criada';
 GO
 
--- 8. STORED PROCEDURE: Reconciliar inventário
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_ReconcileInventorySerial')
 BEGIN
     DROP PROCEDURE sp_ReconcileInventorySerial;
-    PRINT 'Procedure sp_ReconcileInventorySerial removida para recriação';
 END;
-
 CREATE PROCEDURE sp_ReconcileInventorySerial
     @InventoryId INT
 AS
@@ -388,35 +437,20 @@ BEGIN
     JOIN products p ON ii.productId = p.id
     WHERE ii.inventoryId = @InventoryId;
 END;
-
-PRINT 'Procedure sp_ReconcileInventorySerial criada';
 GO
 
--- FASE 6: MIGRAÇÃO DE DADOS
+-- Insert default data
+-- Default admin user
+IF NOT EXISTS (SELECT * FROM users WHERE username = 'admin')
+INSERT INTO users (email, username, password, firstName, lastName, role, isActive, createdAt, updatedAt)
+VALUES ('admin@example.com', 'admin', '$2b$10$D8L3Rq8K9qU8M1WvC9D4CeXqFgV8Z2K3N7P1R8S9T0U1V2W3X4Y5Z6', 'Admin', 'User', 'admin', 1, GETDATE(), GETDATE());
 
--- 9. MIGRAÇÃO DE DADOS: Marcar produtos com stock_items como tendo controle de série
-UPDATE products 
-SET hasSerialControl = 1 
-WHERE id IN (
-    SELECT DISTINCT productId 
-    FROM stock_items 
-    WHERE serialNumber IS NOT NULL 
-    AND serialNumber != ''
-    AND LEN(TRIM(serialNumber)) > 0
-);
+-- Default inventory types
+IF NOT EXISTS (SELECT * FROM inventory_types WHERE name = 'Cíclico')
+INSERT INTO inventory_types (name, description, isActive) VALUES ('Cíclico', 'Contagem completa do estoque', 1);
 
-DECLARE @productsUpdated INT = @@ROWCOUNT;
-PRINT 'Produtos marcados com controle de série: ' + CAST(@productsUpdated AS NVARCHAR(10));
+IF NOT EXISTS (SELECT * FROM inventory_types WHERE name = 'Rotativo')
+INSERT INTO inventory_types (name, description, isActive) VALUES ('Rotativo', 'Contagem parcial do estoque', 1);
 
-PRINT '';
-PRINT '==============================================';
-PRINT 'MIGRAÇÃO CONCLUÍDA COM SUCESSO!';
-PRINT '==============================================';
-PRINT 'Resumo das alterações implementadas:';
-PRINT '✓ Nova tabela inventory_serial_items';
-PRINT '✓ Colunas adicionadas em products e inventory_items';
-PRINT '✓ Índices de performance criados';
-PRINT '✓ View de reconciliação implementada';
-PRINT '✓ Stored procedures criadas';
-PRINT '✓ Migração de dados realizada';
-PRINT '==============================================';
+-- Default categories (assuming categories view is based on existing data, so no insert needed here)
+-- Default locations (assuming locations view is based on existing data, so no insert needed here)

@@ -3,7 +3,6 @@ import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import MemoryStore from "memorystore";
 import { getStorage } from "./db";
-import { loginSchema, registerSchema } from "@shared/schema";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -42,10 +41,11 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   try {
     // Verify user still exists and is active
     const storage = await getStorage();
-    const user = await storage.getUser(session.userId);
+    const user = await storage.getUser(Number(session.userId));
+
     if (!user || !user.isActive) {
       // Clear invalid session
-      session.destroy(() => {});
+      session.destroy(() => { });
       return res.status(401).json({ message: "Unauthorized" });
     }
 

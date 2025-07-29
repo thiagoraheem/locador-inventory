@@ -13,7 +13,7 @@ export async function setupSqlServerDatabase() {
       -- Users table
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
       CREATE TABLE users (
-          id NVARCHAR(255) PRIMARY KEY,
+          id INT IDENTITY(1,1) PRIMARY KEY,
           email NVARCHAR(255) UNIQUE NOT NULL,
           username NVARCHAR(255) UNIQUE NOT NULL,
           password NVARCHAR(255) NOT NULL,
@@ -136,9 +136,9 @@ export async function setupSqlServerDatabase() {
           FOREIGN KEY (productId) REFERENCES products(id),
           FOREIGN KEY (locationId) REFERENCES locations(id),
           FOREIGN KEY (count1By) REFERENCES users(id),
-          FOREIGN KEY (count2By) REFERENCES users(id),
-          FOREIGN KEY (count3By) REFERENCES users(id),
-          FOREIGN KEY (count4By) REFERENCES users(id)
+FOREIGN KEY (count2By) REFERENCES users(id),
+FOREIGN KEY (count3By) REFERENCES users(id),
+FOREIGN KEY (count4By) REFERENCES users(id)
       );
 
       -- Counts table
@@ -159,7 +159,7 @@ export async function setupSqlServerDatabase() {
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_logs' AND xtype='U')
       CREATE TABLE audit_logs (
           id INT IDENTITY(1,1) PRIMARY KEY,
-          userId NVARCHAR(255) NOT NULL,
+          userId INT NOT NULL,
           action NVARCHAR(255) NOT NULL,
           entityType NVARCHAR(255) NOT NULL,
           entityId NVARCHAR(255) NOT NULL,
@@ -229,8 +229,8 @@ export async function setupSqlServerDatabase() {
       // Insert admin user with hashed password (password: "password")
       const hashedPassword = '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; // bcrypt hash for "password"
       await pool.request().query(`
-        INSERT INTO users (id, email, username, password, firstName, lastName, role, isActive, createdAt, updatedAt)
-        VALUES ('user1', 'admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'admin', 1, GETDATE(), GETDATE())
+        INSERT INTO users (email, username, password, firstName, lastName, role, isActive, createdAt, updatedAt)
+VALUES ('admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'admin', 1, GETDATE(), GETDATE())
       `);
       console.log('👤 Admin user created (username: admin, password: password)');
     }

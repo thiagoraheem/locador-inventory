@@ -6,7 +6,6 @@ import {
   isAuthenticated,
   hashPassword,
   verifyPassword,
-  createDefaultAdmin,
 } from "./auth";
 import {
   insertProductSchema,
@@ -85,8 +84,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       storage = await getStorage();
       const user = await storage.getUserByUsername(username);
       if (!user || !user.isActive) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
+        const message = user && !user.isActive ? "Usuário desativado" : "Usuário não encontrado";
+        return res.status(401).json({ message: message });
       }
+
+      /*const hashedPassword = await hashPassword(password);
+      console.log(password);
+      console.log(user.password);
+      console.log(hashedPassword);*/
 
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
@@ -99,7 +104,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Return user without password
       const { password: _, ...userWithoutPassword } = user;
+
       res.json({ user: userWithoutPassword });
+
     } catch (error) {
       console.error("Error during login:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -427,10 +434,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-
-
-
-
   // Inventory items routes
   app.get(
     "/api/inventories/:id/items",
@@ -468,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       storage = await getStorage();
       const countData = insertCountSchema.parse({
         ...req.body,
-        countedBy: req.user.id,
+        countedBy: String(req.user.id),
       });
 
       const count = await storage.createCount(countData);
@@ -477,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user.id,
         action: "CREATE",
         entityType: "COUNT",
-        entityId: count.id.toString(),
+        entityId: "sistema",
         oldValues: null,
         newValues: countData,
         metadata: null,
@@ -534,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user.id,
         action: "CREATE",
         entityType: "USER",
-        entityId: user.id.toString(),
+        entityId: user.id,
         oldValues: null,
         newValues: { ...validatedData, password: "[REDACTED]" },
         metadata: null,
@@ -778,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemId = parseInt(req.params.id);
       const { count } = req.body;
 
-      await storage.updateCount2(itemId, count, req.user.id);
+      await storage.updateCount2(itemId, count, String(req.user.id));
       
       await storage.createAuditLog({
         userId: req.user.id,
@@ -806,7 +809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemId = parseInt(req.params.id);
       const { count } = req.body;
 
-      await storage.updateCount3(itemId, count, req.user.id);
+      await storage.updateCount3(itemId, count, String(req.user.id));
       
       await storage.createAuditLog({
         userId: req.user.id,
@@ -834,7 +837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemId = parseInt(req.params.id);
       const { count } = req.body;
 
-      await storage.updateCount4(itemId, count, req.user.id);
+      await storage.updateCount4(itemId, count, String(req.user.id));
       
       await storage.createAuditLog({
         userId: req.user.id,
@@ -1098,7 +1101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventories/:id/freeze", isAuthenticated, async (req: any, res) => {
     try {
       const inventoryId = parseInt(req.params.id);
-      const userId = (req.session as any).user?.id || "system";
+      const userId = (req.session as any).user?.id || 0;
       
       storage = await getStorage();
       await storage.freezeInventoryData(inventoryId, userId);
@@ -1144,7 +1147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const report = await validator.validateInventoryIntegrity(inventoryId);
       
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: (req.session as any).user?.id || 0,
         action: "VALIDATE_INVENTORY",
         entityType: "inventory",
         entityId: inventoryId.toString(),
@@ -1168,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.reconcileInventory(inventoryId);
       
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: (req.session as any).user?.id || 0,
         action: "RECONCILE_INVENTORY",
         entityType: "inventory",
         entityId: inventoryId.toString(),
@@ -1239,7 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createInventorySerialItems(inventoryId);
       
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: (req.session as any).user?.id || 0,
         action: "INITIALIZE_SERIAL_ITEMS",
         entityType: "inventory",
         entityId: inventoryId.toString(),
@@ -1268,7 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (result.success) {
         await storage.createAuditLog({
-          userId: (req.session as any).user?.id || "system",
+          userId: (req.session as any).user?.id || 0,
           action: "SERIAL_READING",
           entityType: "inventory_serial_item",
           entityId: `${inventoryId}-${validatedData.serialNumber}`,
@@ -1330,7 +1333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedItem = await storage.updateInventorySerialItem(itemId, updateData);
       
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: (req.session as any).user?.id || 0,
         action: "UPDATE_SERIAL_ITEM",
         entityType: "inventory_serial_item",
         entityId: itemId.toString(),
@@ -1354,7 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reconciliation = await storage.getInventoryReconciliation(inventoryId);
       
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: (req.session as any).user?.id || 0,
         action: "INVENTORY_RECONCILIATION",
         entityType: "inventory",
         entityId: inventoryId.toString(),
@@ -1404,32 +1407,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error validating serial:", error);
       res.status(500).json({ message: "Failed to validate serial number" });
-    }
-  });
-
-  
-
-  // Atualizar controle de série do produto
-  app.put("/api/products/:id/serial-control", isAuthenticated, async (req: any, res) => {
-    try {
-      const productId = parseInt(req.params.id);
-      const validatedData = updateProductSerialControlSchema.parse(req.body);
-      
-      storage = await getStorage();
-      await storage.updateProductSerialControl(productId, validatedData.hasSerialControl);
-      
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
-        action: "UPDATE_SERIAL_CONTROL",
-        entityType: "product",
-        entityId: productId.toString(),
-        newValues: JSON.stringify(validatedData),
-      });
-      
-      res.json({ message: "Serial control updated successfully" });
-    } catch (error) {
-      console.error("Error updating serial control:", error);
-      res.status(500).json({ message: "Failed to update serial control" });
     }
   });
 

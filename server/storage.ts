@@ -23,13 +23,13 @@ import {
 
 export interface IStorage {
   // User operations
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
   getUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
-  upsertUser(user: InsertUser & { id: string }): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
+  upsertUser(user: InsertUser & { id: number }): Promise<User>;
 
   // Category operations
   getCategories(): Promise<Category[]>;
@@ -94,7 +94,7 @@ export interface IStorage {
 
 // In-memory storage implementation (kept for fallback/testing)
 export class MemStorage implements IStorage {
-  private users: Map<string, User> = new Map();
+  private users: Map<number, User> = new Map();
   private categories: Map<number, Category> = new Map();
   private products: Map<number, Product> = new Map();
   private locations: Map<number, Location> = new Map();
@@ -135,10 +135,10 @@ export class MemStorage implements IStorage {
 
     // Seed with some initial data for testing  
     const bcrypt = await import('bcrypt');
-    const hashedPassword = await bcrypt.hash("password", 12);
+    const hashedPassword = await bcrypt.hash("admin123", 12);
 
     const defaultUser: User = {
-      id: "user1",
+      id: 1,
       email: "admin@example.com",
       username: "admin",
       password: hashedPassword,
@@ -185,7 +185,7 @@ export class MemStorage implements IStorage {
   }
 
   // User operations
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
 
@@ -204,7 +204,7 @@ export class MemStorage implements IStorage {
 
   async createUser(userData: InsertUser): Promise<User> {
     const user: User = {
-      id: `user-${Date.now()}`,
+      id: this.users.size + 1,
       ...userData,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -213,7 +213,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: string, userData: Partial<InsertUser>): Promise<User> {
+  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User> {
     const existingUser = this.users.get(id);
     if (!existingUser) throw new Error("User not found");
 
@@ -226,7 +226,7 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
-  async upsertUser(userData: InsertUser & { id: string }): Promise<User> {
+  async upsertUser(userData: InsertUser & { id: number }): Promise<User> {
     const existingUser = this.users.get(userData.id);
     if (existingUser) {
       return this.updateUser(userData.id, userData);

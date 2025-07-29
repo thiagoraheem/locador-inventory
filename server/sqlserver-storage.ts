@@ -45,7 +45,7 @@ export class SqlServerStorage implements IStorage {
   }
 
   // User operations
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const users = await this.query<User>(
       'SELECT * FROM users WHERE id = @id',
       { id }
@@ -82,7 +82,7 @@ export class SqlServerStorage implements IStorage {
        OUTPUT INSERTED.*
        VALUES (@id, @email, @username, @password, @firstName, @lastName, @role, @isActive, @createdAt, @updatedAt)`,
       {
-        id: user.id,
+        // id is auto-incrementing
         email: user.email,
         username: user.username,
         password: hashedPassword,
@@ -97,7 +97,7 @@ export class SqlServerStorage implements IStorage {
     return result[0];
   }
 
-  async updateUser(id: string, user: Partial<InsertUser>): Promise<User> {
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User> {
     const updates = Object.entries(user)
       .filter(([_, value]) => value !== undefined)
       .map(([key]) => `${key} = @${key}`)
@@ -118,7 +118,7 @@ export class SqlServerStorage implements IStorage {
     return result[0];
   }
 
-  async upsertUser(user: InsertUser & { id: string }): Promise<User> {
+  async upsertUser(user: InsertUser & { id: number }): Promise<User> {
     const existing = await this.getUser(user.id);
     if (existing) {
       return this.updateUser(user.id, user);
@@ -467,7 +467,7 @@ export class SqlServerStorage implements IStorage {
       `);
   }
 
-  async cancelInventory(id: number, reason: string, userId: string): Promise<void> {
+  async cancelInventory(id: number, reason: string, userId: number): Promise<void> {
     const request = this.pool.request();
     await request
       .input('id', sql.Int, id)

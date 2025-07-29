@@ -1,4 +1,4 @@
-# Inventory Management System - InventoryPro
+# Sistema Locador - Módulo Inventário
 
 ## Overview
 

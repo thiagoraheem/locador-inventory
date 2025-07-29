@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Types based on SQL Server database structure
 export interface User {
-  id: string;
+  id: number;
   email: string;
   username: string;
   password: string;
@@ -84,7 +84,7 @@ export interface Inventory {
   description?: string;
   selectedLocationIds?: number[];  // JSON array of selected location IDs
   selectedCategoryIds?: number[];  // JSON array of selected category IDs
-  createdBy: string;
+  createdBy: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -105,10 +105,10 @@ export interface InventoryItem {
   difference?: number;
   accuracy?: number;
   // Count audit fields
-  count1By?: string;
-  count2By?: string;
-  count3By?: string;
-  count4By?: string;
+  count1By?: number;
+  count2By?: number;
+  count3By?: number;
+  count4By?: number;  
   count1At?: number;
   count2At?: number;
   count3At?: number;
@@ -122,14 +122,14 @@ export interface Count {
   inventoryItemId: number;
   countNumber: number;
   quantity: number;
-  countedBy: string;
+  countedBy: number;
   countedAt: number;
   notes?: string;
 }
 
 export interface AuditLog {
   id: number;
-  userId: string;
+  userId: number;
   action: string;
   entityType: string;
   entityId: string;
@@ -155,10 +155,10 @@ export interface InventoryStockItem {
   difference?: number;
   accuracy?: number;
   // Count audit fields
-  count1By?: string;
-  count2By?: string;
-  count3By?: string;
-  count4By?: string;
+  count1By?: number;
+  count2By?: number;
+  count3By?: number;
+  count4By?: number;
   count1At?: number;
   count2At?: number;
   count3At?: number;
@@ -303,7 +303,7 @@ export const insertInventorySchema = z.object({
   description: z.string().nullable().optional(),
   selectedLocationIds: z.array(z.number()).optional(),
   selectedCategoryIds: z.array(z.number()).optional(),
-  createdBy: z.string(),
+  createdBy: z.number(),
 });
 
 export const insertInventoryItemSchema = z.object({
@@ -321,10 +321,10 @@ export const insertInventoryItemSchema = z.object({
   difference: z.number().optional(),
   accuracy: z.number().min(0).max(100).optional(),
   // Count audit fields
-  count1By: z.string().optional(),
-  count2By: z.string().optional(),
-  count3By: z.string().optional(),
-  count4By: z.string().optional(),
+  count1By: z.number().optional(),
+  count2By: z.number().optional(),
+  count3By: z.number().optional(),
+  count4By: z.number().optional(),
   count1At: z.number().optional(),
   count2At: z.number().optional(),
   count3At: z.number().optional(),
@@ -335,7 +335,7 @@ export const insertCountSchema = z.object({
   inventoryItemId: z.number(),
   countNumber: z.number(),
   quantity: z.number(),
-  countedBy: z.string(),
+  countedBy: z.number(),
   notes: z.string().optional(),
 });
 
@@ -354,10 +354,10 @@ export const insertInventoryStockItemSchema = z.object({
   difference: z.number().optional(),
   accuracy: z.number().min(0).max(100).optional(),
   // Count audit fields
-  count1By: z.string().optional(),
-  count2By: z.string().optional(),
-  count3By: z.string().optional(),
-  count4By: z.string().optional(),
+  count1By: z.number().optional(),
+  count2By: z.number().optional(),
+  count3By: z.number().optional(),
+  count4By: z.number().optional(),
   count1At: z.number().optional(),
   count2At: z.number().optional(),
   count3At: z.number().optional(),
@@ -365,7 +365,7 @@ export const insertInventoryStockItemSchema = z.object({
 });
 
 export const insertAuditLogSchema = z.object({
-  userId: z.string(),
+  userId: z.number(),
   action: z.string(),
   entityType: z.string(),
   entityId: z.string(),

@@ -333,7 +333,7 @@ export class InventoryLogger {
   logSerialReading(data: {
     inventoryId: number;
     serialNumber: string;
-    userId: string;
+    userId: number;
     countStage: string;
     success: boolean;
     productId?: number;
