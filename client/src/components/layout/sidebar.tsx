@@ -233,10 +233,8 @@ export default function Sidebar({
               <Box className="h-4 w-4 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">
-                InventoryPro
-              </h1>
-              <p className="text-xs text-gray-600">Sistema de Estoque</p>
+              <h1 className="text-lg font-semibold text-gray-900">Locador</h1>
+              <p className="text-xs text-gray-600">Módulo de Inventário</p>
             </div>
           </div>
           {isMobile && (
