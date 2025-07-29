@@ -1,10 +1,24 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, createContext, useContext } from "react";
 import Sidebar from "./sidebar";
-import Header from "./header";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
+
+interface LayoutContextType {
+  toggleSidebar: () => void;
+  isMobile: boolean;
+}
+
+const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
+
+export const useLayout = () => {
+  const context = useContext(LayoutContext);
+  if (!context) {
+    throw new Error('useLayout must be used within MainLayout');
+  }
+  return context;
+};
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const [isMobile, setIsMobile] = useState(false);
@@ -28,26 +42,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      {/* Mobile overlay */}
-      {isMobile && sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      <Sidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
-      
-      <main className="flex-1 overflow-x-hidden">
-        <Header 
-          onMenuToggle={toggleSidebar} 
-          isMobile={isMobile}
-        />
-        <div className="p-4 md:p-6">
+    <LayoutContext.Provider value={{ toggleSidebar, isMobile }}>
+      <div className="min-h-screen flex bg-gray-50">
+        {/* Mobile overlay */}
+        {isMobile && sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-20"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        <Sidebar isOpen={sidebarOpen} isMobile={isMobile} onClose={() => setSidebarOpen(false)} />
+        
+        <main className="flex-1 overflow-x-hidden">
           {children}
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </LayoutContext.Provider>
   );
 }

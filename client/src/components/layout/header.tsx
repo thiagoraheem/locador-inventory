@@ -4,15 +4,15 @@ import { Search, Menu } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useLayout } from "./main-layout";
 
 interface HeaderProps {
   title?: string;
   subtitle?: string;
-  onMenuToggle?: () => void;
-  isMobile?: boolean;
 }
 
-export default function Header({ title = "Dashboard", subtitle = "Visão geral do sistema de inventário", onMenuToggle, isMobile }: HeaderProps) {
+export default function Header({ title = "Dashboard", subtitle = "Visão geral do sistema de inventário" }: HeaderProps) {
+  const { toggleSidebar, isMobile } = useLayout();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -131,7 +131,7 @@ export default function Header({ title = "Dashboard", subtitle = "Visão geral d
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {isMobile && (
-            <Button variant="ghost" size="sm" onClick={onMenuToggle}>
+            <Button variant="ghost" size="sm" onClick={toggleSidebar}>
               <Menu className="h-5 w-5" />
             </Button>
           )}

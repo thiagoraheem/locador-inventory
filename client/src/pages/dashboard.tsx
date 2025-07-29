@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, BarChart3, MapPin, ClipboardCheck } from "lucide-react";
 import { Link } from "wouter";
+import Header from "@/components/layout/header";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -41,8 +42,10 @@ export default function Dashboard() {
 
   if (statsLoading || inventoriesLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div>
+        <Header title="Dashboard" subtitle="Visão geral do sistema de inventário" />
+        <div className="space-y-6 p-4 md:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i}>
               <CardContent className="p-6">
@@ -53,6 +56,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ))}
+          </div>
         </div>
       </div>
     );
@@ -60,8 +64,11 @@ export default function Dashboard() {
 
   if (!stats) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Erro ao carregar dados do dashboard</p>
+      <div>
+        <Header title="Dashboard" subtitle="Visão geral do sistema de inventário" />
+        <div className="text-center py-12 p-4 md:p-6">
+          <p className="text-gray-500">Erro ao carregar dados do dashboard</p>
+        </div>
       </div>
     );
   }
@@ -79,9 +86,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <StatsCards stats={mappedStats} />
+    <div>
+      <Header title="Dashboard" subtitle="Visão geral do sistema de inventário" />
+      <div className="space-y-6 p-4 md:p-6">
+        {/* Stats Cards */}
+        <StatsCards stats={mappedStats} />
 
       {/* Quick Actions */}
       <Card>
@@ -209,6 +218,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
