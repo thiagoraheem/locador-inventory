@@ -109,7 +109,10 @@ export default function AuditLogs() {
       sortable: true,
       cell: (value: string, row: any) => {
         const user = row.user;
-        return `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Sistema';
+        if (!user) return 'Sistema';
+        
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        return fullName || user.email || user.username || 'Sistema';
       },
     },
     {
@@ -163,9 +166,10 @@ export default function AuditLogs() {
   // Filter logs based on search and filters
   const filteredLogs = auditLogs?.filter((log: any) => {
     const matchesSearch = !searchQuery || 
-      log.user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.user?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.user?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.user?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.entityType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.entityId.includes(searchQuery);
@@ -187,7 +191,7 @@ export default function AuditLogs() {
     <div>
       <Header title="Logs de Auditoria" subtitle="Histórico de operações do sistema" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Registros de Auditoria</CardTitle>
