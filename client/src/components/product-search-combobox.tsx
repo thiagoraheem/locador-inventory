@@ -41,25 +41,36 @@ export default function ProductSearchCombobox({
   }, [searchTerm]);
 
   // Query to search products
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading, error } = useQuery<Product[]>({
     queryKey: ["/api/products/search", debouncedTerm],
     queryFn: async () => {
       if (!debouncedTerm || debouncedTerm.length < 2) return [];
+      
+      console.log('Buscando produtos para:', debouncedTerm);
       
       const response = await fetch(`/api/products/search?q=${encodeURIComponent(debouncedTerm)}&limit=10`, {
         credentials: 'include'
       });
       
-      if (!response.ok) throw new Error('Failed to search products');
-      return response.json();
+      if (!response.ok) {
+        console.error('Erro na busca:', response.status, response.statusText);
+        throw new Error(`Failed to search products: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Produtos encontrados:', result);
+      return result;
     },
     enabled: debouncedTerm.length >= 2,
+    retry: 1,
   });
 
   const handleSelect = (product: Product) => {
     onSelect(product);
     setOpen(false);
     setSearchTerm("");
+    // Debug: log para verificar se a seleção está funcionando
+    console.log('Produto selecionado:', product);
   };
 
   const handleClear = () => {
