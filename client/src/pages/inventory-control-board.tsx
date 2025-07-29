@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import Header from "@/components/layout/header";
 import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -327,9 +328,15 @@ export default function InventoryControlBoard() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Inventory Selection */}
-      <Card>
+    <div>
+      <Header 
+        title="Mesa de Controle" 
+        subtitle="Controle centralizado de inventários ativos" 
+      />
+      
+      <div className="space-y-6">
+        {/* Inventory Selection */}
+        <Card>
         <CardHeader>
           <CardTitle>Selecionar Inventário</CardTitle>
           <CardDescription>
@@ -389,9 +396,9 @@ export default function InventoryControlBoard() {
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl font-bold">Mesa de Controle</h1>
+                <h2 className="text-xl font-bold">Inventário: {selectedInventory.code}</h2>
                 <p className="text-muted-foreground">
-                  Inventário: {selectedInventory.code} - Status: <Badge variant="outline">{getCountingStageText(selectedInventory.status)}</Badge>
+                  Status: <Badge variant="outline">{getCountingStageText(selectedInventory.status)}</Badge>
                 </p>
               </div>
               <Button onClick={handleExport} className="flex items-center gap-2">
@@ -605,6 +612,7 @@ export default function InventoryControlBoard() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

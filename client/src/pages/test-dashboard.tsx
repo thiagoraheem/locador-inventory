@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Header from "@/components/layout/header";
 import { 
   Play, 
   CheckCircle, 
@@ -124,20 +125,22 @@ export default function TestDashboard() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard de Testes</h1>
-          <p className="text-gray-600">Execute e monitore cenários de teste do sistema de patrimônio</p>
+    <div>
+      <Header 
+        title="Dashboard de Testes" 
+        subtitle="Execute e monitore cenários de teste do sistema de patrimônio" 
+      />
+      
+      <div className="container mx-auto py-6 space-y-6">
+        {/* Header Buttons */}
+        <div className="flex justify-end items-center">
+          <div className="flex gap-2">
+            <Button onClick={runAllTests} disabled={runningTests.size > 0}>
+              <Play className="h-4 w-4 mr-2" />
+              Executar Todos
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={runAllTests} disabled={runningTests.size > 0}>
-            <Play className="h-4 w-4 mr-2" />
-            Executar Todos
-          </Button>
-        </div>
-      </div>
 
       {/* Resumo dos Testes */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -319,6 +322,7 @@ export default function TestDashboard() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
