@@ -1725,8 +1725,7 @@ export class SimpleStorage {
         ), 0),
         serialItemsMissing = ISNULL((
           SELECT COUNT(*) FROM inventory_serial_items isi           WHERE isi.inventoryId = ii.inventoryId 
-          AND isi.productId = ii.productId 
-          AND isi.locationId = ii.locationId
+          AND isi.productId = ii.productId           AND isi.locationId = ii.locationId
           AND isi.status IN ('PENDING', 'MISSING')
         ), 0)
       FROM inventory_items ii
@@ -1770,25 +1769,64 @@ export class SimpleStorage {
 
   //  // Buscar produtos com controle de série
   async getProductsWithSerialControl(): Promise<ProductWithSerialControl[]> {
-    const result = await this.pool.request()
-      .query(`
+    try {
+      const request = this.pool.request();
+      const result = await request.query(`
         SELECT 
-          p.*,
-          CASE WHEN COUNT(si.id) > 0 THEN 1 ELSE 0 END as hasSerialControl,
-          COUNT(si.id) as serialItemsCount
+          p.id,
+          p.sku,
+          p.name,
+          p.description,
+          c.name as categoryName,
+          0 as hasSerialControl
         FROM products p
-        LEFT JOIN stock_items si ON p.id = si.productId AND si.isActive = 1
-        WHERE p.isActive = 1
-        GROUP BY p.id, p.sku, p.name, p.description, p.categoryId, p.costValue, p.isActive, p.createdAt, p.updatedAt
+        LEFT JOIN categories c ON p.categoryId = c.id
         ORDER BY p.name
       `);
 
-    return result.recordset.map(row => ({
-      ...row,
-      hasSerialControl: !!row.hasSerialControl,
-      createdAt: new Date(row.createdAt).getTime(),
-      updatedAt: new Date(row.updatedAt).getTime(),
-    }));
+      return result.recordset;
+    } catch (error) {
+      console.error('Error fetching products with serial control:', error);
+      throw error;
+    }
+  }
+
+  async searchProducts(searchTerm: string, limit: number = 10): Promise<any[]> {
+    try {
+      const request = this.pool.request();
+      request.input('searchTerm', `%${searchTerm.toLowerCase()}%`);
+      request.input('limit', limit);
+
+      const result = await request.query(`
+        SELECT TOP (@limit)
+          p.id,
+          p.sku,
+          p.name,
+          p.description,
+          c.name as categoryName,
+          0 as hasSerialControl
+        FROM products p
+        LEFT JOIN categories c ON p.categoryId = c.id
+        WHERE LOWER(p.sku) LIKE @searchTerm 
+           OR LOWER(p.name) LIKE @searchTerm
+           OR LOWER(p.description) LIKE @searchTerm
+        ORDER BY 
+          CASE 
+            WHEN LOWER(p.sku) = LOWER(@searchTerm) THEN 1
+            WHEN LOWER(p.name) = LOWER(@searchTerm) THEN 2
+            WHEN LOWER(p.sku) LIKE @searchTerm THEN 3
+            WHEN LOWER(p.name) LIKE @searchTerm THEN 4
+            ELSE 5
+          END,
+          p.name
+      `);
+
+      console.log(`Search for "${searchTerm}" returned ${result.recordset.length} results`);
+      return result.recordset;
+    } catch (error) {
+      console.error('Error searching products:', error);
+      throw error;
+    }
   }
 
   // Atualizar controle de série do produto (esta função é conceitual, já que products é uma VIEW)

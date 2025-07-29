@@ -1316,33 +1316,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q, limit = 10 } = req.query;
       
+      console.log('Search request received:', { q, limit });
+      
       if (!q || q.length < 2) {
+        console.log('Search term too short or empty');
         return res.json([]);
       }
       
       storage = await getStorage();
-      const products = await storage.getProducts();
+      const products = await storage.searchProducts(q, parseInt(limit));
       
-      // Filtrar produtos por SKU ou nome (case insensitive)
-      const searchTerm = q.toLowerCase();
-      const filteredProducts = products
-        .filter(p => 
-          p.sku?.toLowerCase().includes(searchTerm) || 
-          p.name?.toLowerCase().includes(searchTerm)
-        )
-        .slice(0, parseInt(limit))
-        .map(p => ({
-          id: p.id,
-          sku: p.sku,
-          name: p.name,
-          categoryName: p.category?.name || 'Sem categoria',
-          hasSerialControl: false // Por enquanto, já que não temos essa propriedade implementada
-        }));
-      
-      res.json(filteredProducts);
+      console.log(`Found ${products.length} products for search term: ${q}`);
+      res.json(products);
     } catch (error) {
       console.error("Error searching products:", error);
-      res.status(500).json({ message: "Failed to search products" });
+      res.status(500).json({ message: "Failed to search products", error: error.message });
     }
   });
 
@@ -1528,17 +1516,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== ROTAS PARA PRODUTOS COM CONTROLE DE SÉRIE =====
-
-  // Listar produtos com controle de série
+  // Get products with serial control information
   app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
       const products = await storage.getProductsWithSerialControl();
+      console.log(`Fetched ${products.length} products with serial control info`);
       res.json(products);
     } catch (error) {
-      console.error("Error fetching products with serial control:", error);
-      res.status(500).json({ message: "Failed to fetch products" });
+      console.error('Error fetching products with serial control:', error);
+      res.status(500).json({ message: "Failed to fetch products with serial control" });
     }
   });
 

@@ -46,23 +46,25 @@ export default function ProductSearchCombobox({
     queryFn: async () => {
       if (!debouncedTerm || debouncedTerm.length < 2) return [];
       
-      console.log('Buscando produtos para:', debouncedTerm);
+      console.log('🔍 Buscando produtos para:', debouncedTerm);
       
       const response = await fetch(`/api/products/search?q=${encodeURIComponent(debouncedTerm)}&limit=10`, {
         credentials: 'include'
       });
       
       if (!response.ok) {
-        console.error('Erro na busca:', response.status, response.statusText);
-        throw new Error(`Failed to search products: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Erro na busca:', response.status, response.statusText, errorText);
+        throw new Error(`Failed to search products: ${response.status} - ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('Produtos encontrados:', result);
+      console.log('✅ Produtos encontrados:', result.length, result);
       return result;
     },
     enabled: debouncedTerm.length >= 2,
-    retry: 1,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const handleSelect = (product: Product) => {
@@ -109,7 +111,13 @@ export default function ProductSearchCombobox({
                 <CommandEmpty>Buscando produtos...</CommandEmpty>
               )}
               
-              {!isLoading && searchTerm.length >= 2 && products.length === 0 && (
+              {error && searchTerm.length >= 2 && (
+                <CommandEmpty className="text-red-600">
+                  Erro na busca: {error.message}
+                </CommandEmpty>
+              )}
+              
+              {!isLoading && !error && searchTerm.length >= 2 && products.length === 0 && (
                 <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
               )}
               
