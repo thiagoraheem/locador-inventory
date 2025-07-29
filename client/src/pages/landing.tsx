@@ -13,8 +13,8 @@ export default function Landing() {
               <Package className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">InventoryPro</h1>
-              <p className="text-gray-600">Sistema de Gerenciamento de Inventário</p>
+              <h1 className="text-3xl font-bold text-gray-900">LOCADOR</h1>
+              <p className="text-gray-600">Módulo de Inventário</p>
             </div>
           </div>
           <p className="text-xl text-gray-700 max-w-2xl mx-auto">

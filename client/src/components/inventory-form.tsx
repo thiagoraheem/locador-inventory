@@ -30,7 +30,7 @@ import { z } from "zod";
 const formSchema = insertInventorySchema.extend({
   startDate: z.string().min(1, "Data de início é obrigatória"),
   endDate: z.string().optional(),
-  predictedEndDate: z.string().optional(),
+  predictedEndDate: z.string().min(1, "Data de previsão é obrigatória"),
   selectedLocationIds: z.array(z.number()).min(1, "Selecione pelo menos um local"),
   selectedCategoryIds: z.array(z.number()).min(1, "Selecione pelo menos uma categoria"),
 }).omit({ createdBy: true });
@@ -115,8 +115,8 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
     onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
+          title: "Não autorizado",
+          description: "Você não está autenticado. Faça login novamente...",
           variant: "destructive",
         });
         setTimeout(() => {
@@ -209,18 +209,19 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
           />
           
           <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Data de Término</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          control={form.control}
+          name="predictedEndDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Previsão de Término *</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -322,20 +323,6 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="predictedEndDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Previsão de Término</FormLabel>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <FormField
           control={form.control}

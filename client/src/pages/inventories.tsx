@@ -137,8 +137,9 @@ export default function Inventories() {
     },
     {
       header: "Tipo",
-      accessorKey: "type.name",
+      accessorKey: "typeId",
       sortable: true,
+      cell: (value: any) => value || 'N/A',
     },
     {
       header: "Status",
@@ -149,15 +150,23 @@ export default function Inventories() {
       header: "Data de Início",
       accessorKey: "startDate",
       sortable: true,
-      cell: (value: string) => new Date(value).toLocaleDateString(),
+      cell: (value: string) => value ? new Date(value).toLocaleDateString() : 'N/A',
+    },
+    {
+      header: "Data Previsão Fim",
+      accessorKey: "predictedEndDate",
+      sortable: true,
+      cell: (value: string) => value ? new Date(value).toLocaleDateString() : 'N/A',
     },
     {
       header: "Criado por",
-      accessorKey: "createdByUser.firstName",
+      accessorKey: "createdBy",
       cell: (value: string, row: any) => {
-        if (!row.createdByUser) return 'N/A';
-        const fullName = `${row.createdByUser.firstName || ''} ${row.createdByUser.lastName || ''}`.trim();
-        return fullName || row.createdByUser.email || 'N/A';
+        if (!row.createdBy) return 'N/A';
+        if (typeof row.createdBy === 'string') return row.createdBy;
+        if (row.createdBy.name) return row.createdBy.name;
+        if (row.createdBy.email) return row.createdBy.email;
+        return 'N/A';
       },
     },
     {
