@@ -17,6 +17,7 @@ import {
   RefreshCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/layout/header";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
 
 export default function InventoryCounts() {
@@ -182,18 +183,12 @@ export default function InventoryCounts() {
   const currentStage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Contagens de Inventário</h1>
-          <p className="text-muted-foreground">
-            Registre as contagens dos itens de inventário
-          </p>
-        </div>
-      </div>
-
-      {/* Inventory Selection */}
-      <Card>
+    <div>
+      <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
+      
+      <div className="space-y-6 p-4 md:p-6">
+        {/* Inventory Selection */}
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
@@ -377,6 +372,7 @@ export default function InventoryCounts() {
           </Card>
         </>
       )}
+      </div>
     </div>
   );
 }

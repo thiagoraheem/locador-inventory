@@ -58,7 +58,7 @@ export default function StockItems() {
     
     // Filter by category
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter((item: any) => 
         item.category && item.category.toLowerCase().includes(selectedCategory.toLowerCase())
       );
     }
@@ -153,9 +153,9 @@ export default function StockItems() {
 
   if (stockItemsLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
         <Header title="Controle de Patrimônio" subtitle="Visualização de itens patrimoniais (somente leitura)" />
-        <div className="space-y-6">
+        <div className="space-y-6 p-4 md:p-6">
           <Card className="mobile-card">
             <CardContent className="p-4 sm:p-6">
               <div className="animate-pulse space-y-4">
@@ -172,10 +172,10 @@ export default function StockItems() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div>
       <Header title="Controle de Patrimônio" subtitle="Visualização de itens patrimoniais (somente leitura)" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Alert>
           <Eye className="h-4 w-4" />
           <AlertDescription>
