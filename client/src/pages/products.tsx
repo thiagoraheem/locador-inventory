@@ -120,7 +120,7 @@ export default function Products() {
     return (
       <div>
         <Header title="Produtos" subtitle="Gerenciamento de produtos do estoque" />
-        <div className="space-y-6">
+        <div className="space-y-6 p-4 md:p-6">
           <Card>
             <CardContent className="p-6">
               <div className="animate-pulse space-y-4">
@@ -137,10 +137,10 @@ export default function Products() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div>
       <Header title="Produtos" subtitle="Visualização de produtos do estoque (somente leitura)" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Alert>
           <Eye className="h-4 w-4" />
           <AlertDescription>

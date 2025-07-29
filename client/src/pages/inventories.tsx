@@ -255,7 +255,7 @@ export default function Inventories() {
     <div>
       <Header title="Inventários" subtitle="Gerenciamento de inventários de estoque" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Lista de Inventários</CardTitle>

@@ -70,7 +70,7 @@ export default function Locations() {
     <div>
       <Header title="Locais de Estoque" subtitle="Visualização de locais de armazenamento (somente leitura)" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Alert>
           <Eye className="h-4 w-4" />
           <AlertDescription>

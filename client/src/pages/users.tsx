@@ -284,9 +284,9 @@ export default function Users() {
 
   if (usersLoading) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
         <Header title="Usuários" subtitle="Gerenciamento de usuários do sistema" />
-        <div className="space-y-6">
+        <div className="space-y-6 p-4 md:p-6">
           <Card className="mobile-card">
             <CardContent className="p-4 sm:p-6">
               <div className="animate-pulse space-y-4">
@@ -303,10 +303,10 @@ export default function Users() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div>
       <Header title="Usuários" subtitle="Gerenciamento de usuários do sistema" />
       
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 md:p-6">
         <Card className="mobile-card">
           <CardHeader className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
