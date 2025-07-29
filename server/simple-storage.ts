@@ -313,40 +313,78 @@ export class SimpleStorage {
   }
 
   // Inventories operations
-  async getInventories(): Promise<Inventory[]> {
-    const result = await this.pool
-      .request()
-      .query("SELECT * FROM inventories ORDER BY startDate DESC");
-    return result.recordset.map((inv) => ({
-      ...inv,
-      createdAt: inv.createdAt ? new Date(inv.createdAt).getTime() : Date.now(),
-      updatedAt: inv.updatedAt ? new Date(inv.updatedAt).getTime() : Date.now(),
-      startDate: inv.startDate ? new Date(inv.startDate).getTime() : Date.now(),
-      endDate: inv.endDate ? new Date(inv.endDate).getTime() : null,
+  async getInventories() {
+    const result = await this.pool.request().query(`
+      SELECT i.*, 
+             it.name as typeName, 
+             it.description as typeDescription,
+             u.firstName, u.lastName, u.email as createdByEmail
+      FROM inventories i
+      LEFT JOIN inventory_types it ON i.typeId = it.id
+      LEFT JOIN users u ON i.createdBy = u.id
+      ORDER BY i.createdAt DESC
+    `);
+
+    return result.recordset.map(inventory => ({
+      ...inventory,
+      createdAt: new Date(inventory.createdAt).getTime(),
+      updatedAt: new Date(inventory.updatedAt).getTime(),
+      startDate: new Date(inventory.startDate).getTime(),
+      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
+      type: {
+        id: inventory.typeId,
+        name: inventory.typeName,
+        description: inventory.typeDescription,
+      },
+      createdByUser: {
+        firstName: inventory.firstName,
+        lastName: inventory.lastName,
+        email: inventory.createdByEmail,
+      },
+      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
+      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
     }));
   }
 
-  async getInventory(id: number): Promise<Inventory | null> {
-    const result = await this.pool
-      .request()
-      .input("id", id)
-      .query("SELECT * FROM inventories WHERE id = @id");
+  async getInventory(id: number) {
+    const result = await this.pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT i.*, 
+               it.name as typeName, 
+               it.description as typeDescription,
+               u.firstName, u.lastName, u.email as createdByEmail
+        FROM inventories i
+        LEFT JOIN inventory_types it ON i.typeId = it.id
+        LEFT JOIN users u ON i.createdBy = u.id
+        WHERE i.id = @id
+      `);
 
-    if (result.recordset.length === 0) return null;
+    if (result.recordset.length === 0) {
+      return null;
+    }
 
     const inventory = result.recordset[0];
     return {
       ...inventory,
-      createdAt: inventory.createdAt
-        ? new Date(inventory.createdAt).getTime()
-        : Date.now(),
-      updatedAt: inventory.updatedAt
-        ? new Date(inventory.updatedAt).getTime()
-        : Date.now(),
-      startDate: inventory.startDate
-        ? new Date(inventory.startDate).getTime()
-        : Date.now(),
+      createdAt: new Date(inventory.createdAt).getTime(),
+      updatedAt: new Date(inventory.updatedAt).getTime(),
+      startDate: new Date(inventory.startDate).getTime(),
       endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
+      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
+      type: {
+        id: inventory.typeId,
+        name: inventory.typeName,
+        description: inventory.typeDescription,
+      },
+      createdByUser: {
+        firstName: inventory.firstName,
+        lastName: inventory.lastName,
+        email: inventory.createdByEmail,
+      },
+      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
+      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
     };
   }
 
@@ -1686,8 +1724,7 @@ export class SimpleStorage {
           AND isi.status = 'FOUND'
         ), 0),
         serialItemsMissing = ISNULL((
-          SELECT COUNT(*) FROM inventory_serial_items isi 
-          WHERE isi.inventoryId = ii.inventoryId 
+          SELECT COUNT(*) FROM inventory_serial_items isi           WHERE isi.inventoryId = ii.inventoryId 
           AND isi.productId = ii.productId 
           AND isi.locationId = ii.locationId
           AND isi.status IN ('PENDING', 'MISSING')

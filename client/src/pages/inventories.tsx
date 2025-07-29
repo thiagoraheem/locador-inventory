@@ -137,9 +137,9 @@ export default function Inventories() {
     },
     {
       header: "Tipo",
-      accessorKey: "typeId",
+      accessorKey: "type.name",
       sortable: true,
-      cell: (value: any) => value || 'N/A',
+      cell: (value: any, row: any) => row.type?.name || 'N/A',
     },
     {
       header: "Status",
