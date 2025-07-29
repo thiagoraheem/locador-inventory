@@ -1,3 +1,7 @@
+` tag. Since the file is already a script for removing unnecessary snapshot tables, which aligns with the intention of removing obsolete code, it should be kept as is.
+
+```
+<replit_final_file>
 import sql from 'mssql';
 
 const config = {

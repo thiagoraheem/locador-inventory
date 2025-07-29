@@ -1797,9 +1797,9 @@ export class SimpleStorage {
     try {
       const request = this.pool.request();
       const searchPattern = `%${searchTerm.toLowerCase()}%`;
-      
+
       console.log(`Searching products with term: "${searchTerm}"`);
-      
+
       const result = await request
         .input('searchTerm', searchPattern)
         .input('limit', limit)
@@ -1888,21 +1888,6 @@ export class SimpleStorage {
 
     const result = await this.pool.request()
       .input('serialNumber', serialNumber)
-      .query(query);
-
-    return result.recordset[0] || null;
-  }
-
-  async searchProductBySKU(sku: string): Promise<ProductWithSerialControl | null> {
-    const query = `
-      SELECT *, 
-        CASE WHEN hasSerialControl = 1 THEN 1 ELSE 0 END as hasSerialControl
-      FROM vw_products 
-      WHERE sku = @sku AND isActive = 1
-    `;
-
-    const result = await this.pool.request()
-      .input('sku', sku)
       .query(query);
 
     return result.recordset[0] || null;
