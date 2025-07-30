@@ -128,7 +128,7 @@ export default function Header({ title = "Dashboard", subtitle = "Visão geral d
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-4 md:px-6 py-4">
+    <header className="bg-background shadow-sm border-b border-border px-4 md:px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           {isMobile && (
@@ -137,8 +137,8 @@ export default function Header({ title = "Dashboard", subtitle = "Visão geral d
             </Button>
           )}
           <div>
-            <h2 className="text-xl md:text-2xl font-semibold text-gray-900">{title}</h2>
-            <p className="text-sm text-gray-600 hidden md:block">{subtitle}</p>
+            <h2 className="text-xl md:text-2xl font-semibold text-foreground">{title}</h2>
+            <p className="text-sm text-muted-foreground hidden md:block">{subtitle}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2 md:space-x-4">
@@ -153,23 +153,23 @@ export default function Header({ title = "Dashboard", subtitle = "Visão geral d
               onFocus={() => searchQuery.length > 2 && setShowResults(true)}
               className="w-48 md:w-64 pl-10"
             />
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             
             {showResults && searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto">
                 {searchResults.map((result, index) => (
                   <div
                     key={index}
-                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="px-4 py-3 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
                     onClick={() => handleResultClick(result.route)}
                   >
                     <div className="flex items-center space-x-3">
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
                         {result.type}
                       </span>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{result.title}</p>
-                        <p className="text-xs text-gray-500">{result.subtitle}</p>
+                        <p className="text-sm font-medium text-foreground">{result.title}</p>
+                        <p className="text-xs text-muted-foreground">{result.subtitle}</p>
                       </div>
                     </div>
                   </div>
