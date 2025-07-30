@@ -92,8 +92,8 @@ export default function ProductListingReport() {
       />
 
       <div className="space-y-6 p-4 md:p-6">
-        {/* Inventory Selection */}
-        <Card>
+        {/* Inventory Selection - Hidden when printing */}
+        <Card className="print:hidden">
           <CardHeader>
             <CardTitle>Selecionar Inventário</CardTitle>
             <CardDescription>
@@ -137,66 +137,73 @@ export default function ProductListingReport() {
         </Card>
 
         {selectedInventoryId && selectedInventory && !isLoadingItems ? (
-          <div ref={printRef}>
-            {/* Report Header */}
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex justify-between items-start">
+          <div ref={printRef} className="print:space-y-3">
+            {/* Report Header - Condensed */}
+            <Card className="mb-4 print:mb-3 print:shadow-none">
+              <CardHeader className="pb-3 print:pb-2">
+                <div className="flex justify-between items-center">
                   <div>
-                    <CardTitle className="text-xl">Relatório de Produtos</CardTitle>
-                    <CardDescription className="mt-2">
+                    <CardTitle className="text-lg print:text-base">Relatório de Produtos</CardTitle>
+                    <CardDescription className="text-sm print:text-xs mt-1">
                       Inventário: {selectedInventory.code} - {selectedInventory.description || 'Sem descrição'}
                     </CardDescription>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="outline" className="text-lg px-3 py-1">
-                      {totalProducts} produtos
-                    </Badge>
-                  </div>
+                  <Badge variant="outline" className="text-sm print:text-xs px-2 py-1">
+                    {totalProducts} produtos
+                  </Badge>
                 </div>
               </CardHeader>
             </Card>
 
-            {/* Products by Category */}
+            {/* Products by Category - Condensed */}
             {isLoadingItems ? (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <div className="text-lg">Carregando produtos do inventário...</div>
+                <CardContent className="py-8 text-center">
+                  <div className="text-base">Carregando produtos do inventário...</div>
                 </CardContent>
               </Card>
             ) : Object.keys(groupedProducts).length > 0 ? (
-              <div className="space-y-6">
+              <div className="space-y-3 print:space-y-1">
                 {Object.entries(groupedProducts).map(([categoryName, categoryProducts]) => (
-                  <Card key={categoryName}>
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <Package className="h-5 w-5" />
-                        <CardTitle className="text-lg">{categoryName.toUpperCase()}</CardTitle>
-                        <Badge variant="secondary">
+                  <Card key={categoryName} className="print:shadow-none print:border print:break-inside-avoid">
+                    <CardHeader className="pb-2 print:pb-1">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 print:hidden" />
+                        <CardTitle className="text-base print:text-sm font-semibold">
+                          {categoryName.toUpperCase()}
+                        </CardTitle>
+                        <Badge variant="secondary" className="text-xs">
                           {categoryProducts.length} produtos
                         </Badge>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="border rounded-lg">
+                    <CardContent className="pt-0 print:pt-0">
+                      <div className="border rounded print:rounded-none">
                         <Table>
                           <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-[120px]">SKU</TableHead>
-                              <TableHead>Descrição</TableHead>
+                            <TableRow className="print:border-b">
+                              <TableHead className="w-[100px] print:w-[80px] text-xs print:text-xs py-2 print:py-1 font-semibold">
+                                SKU
+                              </TableHead>
+                              <TableHead className="text-xs print:text-xs py-2 print:py-1 font-semibold">
+                                Descrição
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {categoryProducts.map((product) => (
-                              <TableRow key={product.id}>
-                                <TableCell className="font-mono text-sm">
+                            {categoryProducts.map((product, index) => (
+                              <TableRow 
+                                key={product.id} 
+                                className={`print:border-b ${index % 2 === 0 ? 'print:bg-gray-50' : ''}`}
+                              >
+                                <TableCell className="font-mono text-xs print:text-xs py-1.5 print:py-0.5 align-top">
                                   {product.sku}
                                 </TableCell>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium">{product.name}</div>
-                                    {product.description && (
-                                      <div className="text-sm text-muted-foreground">
+                                <TableCell className="py-1.5 print:py-0.5 align-top">
+                                  <div className="text-xs print:text-xs leading-tight">
+                                    <div className="font-medium leading-tight">{product.name}</div>
+                                    {product.description && product.description !== product.name && (
+                                      <div className="text-muted-foreground text-xs print:text-xs leading-tight mt-0.5">
                                         {product.description}
                                       </div>
                                     )}
@@ -213,10 +220,10 @@ export default function ProductListingReport() {
               </div>
             ) : (
               <Card>
-                <CardContent className="py-12 text-center">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Nenhum produto encontrado</h3>
-                  <p className="text-muted-foreground">
+                <CardContent className="py-8 text-center">
+                  <Package className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-base font-semibold mb-2">Nenhum produto encontrado</h3>
+                  <p className="text-sm text-muted-foreground">
                     Nenhum produto encontrado para este inventário.
                   </p>
                 </CardContent>
