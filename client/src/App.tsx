@@ -28,6 +28,7 @@ import Companies from "@/pages/companies";
 import StockItems from "@/pages/stock-items";
 import ParametersRules from "@/pages/parameters-rules";
 import InventoryTestSuite from "@/pages/inventory-test-suite";
+import InventoryFinalReport from "@/pages/inventory-final-report";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
@@ -84,6 +85,7 @@ function Router() {
           <Route path="/stock-items" component={StockItems} />
           <Route path="/parameters-rules" component={ParametersRules} />
           <Route path="/inventory-test-suite" component={InventoryTestSuite} />
+          <Route path="/inventory-final-report" component={InventoryFinalReport} />
         </MainLayout>
       )}
       <Route component={NotFound} />

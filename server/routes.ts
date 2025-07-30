@@ -807,6 +807,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get comprehensive final report for inventory
+  app.get("/api/inventories/:id/final-report", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const report = await storage.getInventoryFinalReport(inventoryId);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating final report:", error as Error);
+      res.status(500).json({
+        message: "Failed to generate final report",
+        details: (error as Error).message,
+      });
+    }
+  });
+
   // Update count 1 for inventory item
   app.put("/api/inventory-items/:id/count1", isAuthenticated, async (req: any, res) => {
     try {

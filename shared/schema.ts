@@ -179,12 +179,62 @@ export interface ControlPanelStats {
   itemsCompleted: number;
   accuracyRate: number;
   divergenceCount: number;
+  totalDifference: number;
+  accuracyItems: number;
+  divergentItems: number;
+  financialImpact?: number;
   countingProgress: {
     count1: number;
     count2: number;
     count3: number;
     audit: number;
   };
+}
+
+// Final Report interface for comprehensive inventory summary
+export interface InventoryFinalReport {
+  inventoryId: number;
+  inventoryName: string;
+  status: string;
+  startDate: number;
+  endDate?: number;
+  totalItems: number;
+  completedItems: number;
+  accuracy: {
+    totalItems: number;
+    accurateItems: number;
+    divergentItems: number;
+    accuracyRate: number;
+  };
+  differences: {
+    totalDifference: number;
+    positiveAdjustments: number;
+    negativeAdjustments: number;
+    adjustmentCount: number;
+  };
+  financial: {
+    totalValue: number;
+    differenceValue: number;
+    impactPercentage: number;
+  };
+  countingSummary: {
+    count1Items: number;
+    count2Items: number;
+    count3Items: number;
+    auditItems: number;
+  };
+  divergentItems: Array<{
+    id: number;
+    productName: string;
+    productSku: string;
+    locationName: string;
+    expectedQuantity: number;
+    finalQuantity: number;
+    difference: number;
+    costValue?: number;
+    totalImpact?: number;
+  }>;
+  recommendations: string[];
 }
 
 // Controle de Patrimônio - Número de Série

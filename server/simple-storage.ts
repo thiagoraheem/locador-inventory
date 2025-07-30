@@ -25,6 +25,7 @@ import type {
   Company,
   StockItem,
   ControlPanelStats,
+  InventoryFinalReport,
   InventoryStatus,
   InventorySerialItem,
   InsertInventorySerialItem,
@@ -952,11 +953,11 @@ export class SimpleStorage {
     }));
   }
 
-  // Get inventory statistics for Control Panel
+  // Get inventory statistics for Control Panel using finalQuantity
   async getInventoryStats(inventoryId: number): Promise<ControlPanelStats> {
     const request = this.pool.request();
 
-    const [inventoryResult, itemsResult, countsResult] = await Promise.all([
+    const [inventoryResult, itemsResult, countsResult, differencesResult] = await Promise.all([
       request.input("id", inventoryId).query(`
         SELECT COUNT(*) as activeInventories FROM inventories 
         WHERE status NOT IN ('closed', 'cancelled')
@@ -964,9 +965,9 @@ export class SimpleStorage {
       request.input("inventoryId", inventoryId).query(`
         SELECT 
           COUNT(*) as totalItems,
-          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completedItems,
-          AVG(CASE WHEN accuracy IS NOT NULL THEN accuracy END) as avgAccuracy,
-          COUNT(CASE WHEN difference > 0 THEN 1 END) as divergenceCount
+          COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity = expectedQuantity THEN 1 END) as accurateItems,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity != expectedQuantity THEN 1 END) as divergentItems
         FROM inventory_items 
         WHERE inventoryId = @inventoryId
       `),
@@ -978,19 +979,40 @@ export class SimpleStorage {
           COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as auditTotal
         FROM inventory_items 
         WHERE inventoryId = @inventoryId2
+      `),
+      request.input("inventoryId3", inventoryId).query(`
+        SELECT 
+          SUM(CASE WHEN finalQuantity IS NOT NULL THEN (finalQuantity - expectedQuantity) ELSE 0 END) as totalDifference,
+          SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity > expectedQuantity THEN (finalQuantity - expectedQuantity) ELSE 0 END) as positiveAdjustments,
+          SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity < expectedQuantity THEN ABS(finalQuantity - expectedQuantity) ELSE 0 END) as negativeAdjustments
+        FROM inventory_items 
+        WHERE inventoryId = @inventoryId3
       `)
     ]);
 
     const items = itemsResult.recordset[0];
     const counts = countsResult.recordset[0];
+    const differences = differencesResult.recordset[0];
+
+    const totalItems = items.totalItems || 0;
+    const completedItems = items.completedItems || 0;
+    const accurateItems = items.accurateItems || 0;
+    const divergentItems = items.divergentItems || 0;
+
+    // Calculate accuracy rate based on completed items with finalQuantity
+    const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
 
     return {
       totalInventories: 1,
       activeInventories: inventoryResult.recordset[0].activeInventories,
-      itemsInProgress: items.totalItems - items.completedItems,
-      itemsCompleted: items.completedItems,
-      accuracyRate: 0, // Removed accuracy calculation due to missing columns
-      divergenceCount: 0, // Removed divergence calculation due to missing columns
+      itemsInProgress: totalItems - completedItems,
+      itemsCompleted: completedItems,
+      accuracyRate: Math.round(accuracyRate * 10) / 10, // Round to 1 decimal
+      divergenceCount: divergentItems,
+      totalDifference: differences.totalDifference || 0,
+      accuracyItems: accurateItems,
+      divergentItems: divergentItems,
+      financialImpact: undefined, // Will be calculated separately if needed
       countingProgress: {
         count1: counts.count1Total,
         count2: counts.count2Total,
@@ -1065,6 +1087,151 @@ export class SimpleStorage {
             finalQuantity = @finalQuantity, updatedAt = @updatedAt
         WHERE id = @id
       `);
+  }
+
+  // Generate comprehensive final report for inventory
+  async getInventoryFinalReport(inventoryId: number): Promise<InventoryFinalReport> {
+    const request = this.pool.request();
+
+    // Get inventory basic info
+    const inventoryResult = await request
+      .input("inventoryId", inventoryId)
+      .query(`
+        SELECT i.*, it.name as typeName
+        FROM inventories i
+        LEFT JOIN inventory_types it ON i.typeId = it.id
+        WHERE i.id = @inventoryId
+      `);
+
+    if (inventoryResult.recordset.length === 0) {
+      throw new Error("Inventory not found");
+    }
+
+    const inventory = inventoryResult.recordset[0];
+
+    // Get comprehensive statistics
+    const [itemsResult, divergentItemsResult, financialResult] = await Promise.all([
+      request.input("inventoryId1", inventoryId).query(`
+        SELECT 
+          COUNT(*) as totalItems,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity = expectedQuantity THEN 1 END) as accurateItems,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity != expectedQuantity THEN 1 END) as divergentItems,
+          COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Items,
+          COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Items,
+          COUNT(CASE WHEN count3 IS NOT NULL THEN 1 END) as count3Items,
+          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as auditItems,
+          SUM(CASE WHEN finalQuantity IS NOT NULL THEN (finalQuantity - expectedQuantity) ELSE 0 END) as totalDifference,
+          SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity > expectedQuantity THEN (finalQuantity - expectedQuantity) ELSE 0 END) as positiveAdjustments,
+          SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity < expectedQuantity THEN ABS(finalQuantity - expectedQuantity) ELSE 0 END) as negativeAdjustments,
+          COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity != expectedQuantity THEN 1 END) as adjustmentCount
+        FROM inventory_items 
+        WHERE inventoryId = @inventoryId1
+      `),
+      request.input("inventoryId2", inventoryId).query(`
+        SELECT 
+          ii.id,
+          p.name as productName,
+          p.sku as productSku,
+          l.name as locationName,
+          ii.expectedQuantity,
+          ii.finalQuantity,
+          (ii.finalQuantity - ii.expectedQuantity) as difference,
+          p.costValue
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN locations l ON ii.locationId = l.id
+        WHERE ii.inventoryId = @inventoryId2 
+          AND ii.finalQuantity IS NOT NULL 
+          AND ii.finalQuantity != ii.expectedQuantity
+        ORDER BY ABS(ii.finalQuantity - ii.expectedQuantity) DESC
+      `),
+      request.input("inventoryId3", inventoryId).query(`
+        SELECT 
+          SUM(ii.expectedQuantity * ISNULL(p.costValue, 0)) as totalValue,
+          SUM((ii.finalQuantity - ii.expectedQuantity) * ISNULL(p.costValue, 0)) as differenceValue
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        WHERE ii.inventoryId = @inventoryId3 AND ii.finalQuantity IS NOT NULL
+      `)
+    ]);
+
+    const stats = itemsResult.recordset[0];
+    const divergentItems = divergentItemsResult.recordset;
+    const financial = financialResult.recordset[0];
+
+    const accuracyRate = stats.completedItems > 0 ? (stats.accurateItems / stats.completedItems) * 100 : 0;
+    const totalValue = financial.totalValue || 0;
+    const differenceValue = financial.differenceValue || 0;
+    const impactPercentage = totalValue > 0 ? Math.abs(differenceValue / totalValue) * 100 : 0;
+
+    // Generate recommendations based on results
+    const recommendations: string[] = [];
+    
+    if (accuracyRate < 95) {
+      recommendations.push("Taxa de acurácia abaixo de 95%. Considere revisar processos de contagem.");
+    }
+    
+    if (stats.divergentItems > stats.totalItems * 0.1) {
+      recommendations.push("Mais de 10% dos itens apresentam divergências. Recomenda-se auditoria adicional.");
+    }
+    
+    if (Math.abs(differenceValue) > totalValue * 0.05) {
+      recommendations.push("Impacto financeiro superior a 5%. Necessária aprovação gerencial para ajustes.");
+    }
+    
+    if (stats.auditItems > 0) {
+      recommendations.push(`${stats.auditItems} itens passaram por auditoria manual (C4). Documentar justificativas.`);
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push("Inventário concluído com excelentes resultados. Nenhuma ação adicional necessária.");
+    }
+
+    return {
+      inventoryId: inventory.id,
+      inventoryName: `${inventory.typeName} - ${new Date(inventory.startDate).toLocaleDateString()}`,
+      status: inventory.status,
+      startDate: inventory.startDate,
+      endDate: inventory.endDate || undefined,
+      totalItems: stats.totalItems,
+      completedItems: stats.completedItems,
+      accuracy: {
+        totalItems: stats.totalItems,
+        accurateItems: stats.accurateItems,
+        divergentItems: stats.divergentItems,
+        accuracyRate: Math.round(accuracyRate * 10) / 10
+      },
+      differences: {
+        totalDifference: stats.totalDifference || 0,
+        positiveAdjustments: stats.positiveAdjustments || 0,
+        negativeAdjustments: stats.negativeAdjustments || 0,
+        adjustmentCount: stats.adjustmentCount || 0
+      },
+      financial: {
+        totalValue: totalValue,
+        differenceValue: differenceValue,
+        impactPercentage: Math.round(impactPercentage * 100) / 100
+      },
+      countingSummary: {
+        count1Items: stats.count1Items,
+        count2Items: stats.count2Items,
+        count3Items: stats.count3Items,
+        auditItems: stats.auditItems
+      },
+      divergentItems: divergentItems.map((item: any) => ({
+        id: item.id,
+        productName: item.productName,
+        productSku: item.productSku,
+        locationName: item.locationName,
+        expectedQuantity: item.expectedQuantity,
+        finalQuantity: item.finalQuantity,
+        difference: item.difference,
+        costValue: item.costValue,
+        totalImpact: item.costValue ? item.difference * item.costValue : undefined
+      })),
+      recommendations
+    };
   }
 
   // Calculate difference and accuracy (simplified - no need to update DB since columns don't exist)
