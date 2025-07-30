@@ -106,6 +106,19 @@
     size: A4;
   }
   
+  /* Hide everything except the report content when printing */
+  body > * {
+    visibility: hidden;
+  }
+  
+  [data-print-content] {
+    visibility: visible;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
   /* Hide print buttons and selection UI when printing */
   .print\\:hidden {
     display: none !important;

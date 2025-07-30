@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Header from "@/components/layout/header";
-import { Download, FileText, Printer, Package } from "lucide-react";
+import { Printer, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Inventory, InventoryItem, Product, Category } from "@shared/schema";
 
@@ -62,25 +62,11 @@ export default function ProductListingReport() {
   }, {} as Record<string, any[]>);
 
   const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-
-    const originalContents = document.body.innerHTML;
-    const printContents = printContent.innerHTML;
-
-    document.body.innerHTML = printContents;
+    // Use CSS media queries for print instead of replacing HTML
     window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
   };
 
-  const handleExportPDF = () => {
-    // Implement PDF export functionality
-    toast({
-      title: "Exportar PDF",
-      description: "Funcionalidade de exportação em desenvolvimento",
-    });
-  };
+
 
   const totalProducts = inventoryProducts.length;
 
@@ -121,23 +107,17 @@ export default function ProductListingReport() {
               </div>
 
               {selectedInventoryId && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handlePrint}>
-                    <Printer className="h-4 w-4 mr-2" />
-                    Imprimir
-                  </Button>
-                  <Button size="sm" onClick={handleExportPDF}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar PDF
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Imprimir
+                </Button>
               )}
             </div>
           </CardContent>
         </Card>
 
         {selectedInventoryId && selectedInventory && !isLoadingItems ? (
-          <div ref={printRef} className="print:space-y-3">
+          <div ref={printRef} data-print-content className="print:space-y-3">
             {/* Report Header - Condensed */}
             <Card className="mb-4 print:mb-3 print:shadow-none">
               <CardHeader className="pb-3 print:pb-2">
@@ -158,8 +138,14 @@ export default function ProductListingReport() {
             {/* Products by Category - Condensed */}
             {isLoadingItems ? (
               <Card>
-                <CardContent className="py-8 text-center">
-                  <div className="text-base">Carregando produtos do inventário...</div>
+                <CardContent className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <div className="text-base font-medium">Carregando produtos do inventário...</div>
+                    <div className="text-sm text-muted-foreground">
+                      Aguarde enquanto buscamos os dados...
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ) : Object.keys(groupedProducts).length > 0 ? (
