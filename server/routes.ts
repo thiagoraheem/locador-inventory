@@ -209,6 +209,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Buscar produtos por termo (SKU ou descrição) - API para combobox dinâmico
+  app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const { q, limit = 10 } = req.query;
+      
+      console.log('🔍 Search request received:', { q, limit });
+      
+      if (!q || typeof q !== 'string' || q.trim().length < 1) {
+        console.log('❌ Search term too short or empty');
+        return res.json([]);
+      }
+      
+      storage = await getStorage();
+      const products = await storage.searchProducts(q.trim(), parseInt(limit.toString()));
+      
+      console.log(`✅ Found ${products.length} products for search term: "${q}"`);
+      res.json(products);
+    } catch (error) {
+      console.error("❌ Error searching products:", error);
+      res.status(500).json({ 
+        message: "Failed to search products", 
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   app.get("/api/products/:id", isAuthenticated, async (req, res) => {
     try {
       storage = await getStorage();
@@ -1196,32 +1222,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching reconciliation report:", error);
       res.status(500).json({ message: "Failed to fetch reconciliation report" });
-    }
-  });
-
-  // Buscar produtos por termo (SKU ou descrição) - API para combobox dinâmico
-  app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
-    try {
-      const { q, limit = 10 } = req.query;
-      
-      console.log('🔍 Search request received:', { q, limit });
-      
-      if (!q || typeof q !== 'string' || q.trim().length < 1) {
-        console.log('❌ Search term too short or empty');
-        return res.json([]);
-      }
-      
-      storage = await getStorage();
-      const products = await storage.searchProducts(q.trim(), parseInt(limit.toString()));
-      
-      console.log(`✅ Found ${products.length} products for search term: "${q}"`);
-      res.json(products);
-    } catch (error) {
-      console.error("❌ Error searching products:", error);
-      res.status(500).json({ 
-        message: "Failed to search products", 
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
     }
   });
 
