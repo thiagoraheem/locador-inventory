@@ -152,6 +152,16 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Auditoria Completa**: Logs de todas as alterações em audit_mode
 ✅ **Automatização Final**: count4 atualiza automaticamente finalQuantity
 
+**Interface de Contagem com Filtragem Inteligente (January 30, 2025)**:
+✅ **Filtro de Itens Divergentes**: inventory-counts.tsx filtra apenas itens que precisam de 3ª contagem
+✅ **Indicadores Visuais**: Badge "Apenas itens divergentes" quando status = count3_open
+✅ **Badges de Status Final**: "Finalizado" (verde) para itens com finalQuantity, "Divergente" (vermelho) para itens sem
+✅ **Contador Inteligente**: Mostra quantidade de itens contados vs total (incluindo divergentes)
+✅ **Interface Mobile Otimizada**: mobile-counting.tsx com indicador "X itens divergentes"
+✅ **Mensagens Contextuais**: Textos específicos para 3ª contagem vs contagem normal
+✅ **Endpoint Dinâmico**: Usa /items/divergent automaticamente quando status = count3_open
+✅ **Filtragem Automática**: Sistema decide qual endpoint usar baseado no status do inventário
+
 **Sistema de Integração e Testes Completo (January 29, 2025)**:
 ✅ **Validação de Integridade**: Sistema completo para validar discrepâncias e integridade do inventário
 ✅ **Reconciliação Automática**: Processo automatizado de reconciliação com relatórios detalhados

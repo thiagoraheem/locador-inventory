@@ -36,11 +36,23 @@ export default function InventoryCounts() {
     queryKey: ["/api/inventories"],
   });
 
+  // Get selected inventory details
+  const selectedInventoryData = inventories?.find(inv => inv.id === selectedInventory);
+
   // Fetch inventory items for selected inventory
   const { data: inventoryItems, refetch: refetchItems } = useQuery<InventoryItem[]>({
     queryKey: [`/api/inventories/${selectedInventory}/items`],
-    enabled: !!selectedInventory,
+    enabled: !!selectedInventory && selectedInventoryData?.status !== 'count3_open',
   });
+
+  // Fetch divergent items for 3rd count (only items that need 3rd count)
+  const { data: divergentItems } = useQuery<InventoryItem[]>({
+    queryKey: [`/api/inventories/${selectedInventory}/items/divergent`],
+    enabled: !!selectedInventory && selectedInventoryData?.status === 'count3_open',
+  });
+
+  // Use appropriate data source based on inventory status
+  const currentItems = selectedInventoryData?.status === 'count3_open' ? divergentItems : inventoryItems;
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -121,8 +133,18 @@ export default function InventoryCounts() {
     return currentCount !== undefined && currentCount !== null ? 'counted' : 'pending';
   };
 
+  // Get final quantity status badge
+  const getFinalQuantityStatus = (item: InventoryItem) => {
+    if (item.finalQuantity !== null && item.finalQuantity !== undefined) {
+      return { label: "Finalizado", variant: "secondary" as const };
+    } else if (selectedInventoryData?.status === 'count3_required' || selectedInventoryData?.status === 'count3_open') {
+      return { label: "Divergente", variant: "destructive" as const };
+    }
+    return null;
+  };
+
   // Filter items based on search and status - BLIND COUNTING: hide already counted items
-  const filteredItems = inventoryItems?.filter(item => {
+  const filteredItems = currentItems?.filter(item => {
     const product = products?.find(p => p.id === item.productId);
     const location = locations?.find(l => l.id === item.locationId);
     
@@ -292,12 +314,23 @@ export default function InventoryCounts() {
           {/* Counting Table */}
           <Card>
             <CardHeader>
-              <CardTitle>{getStageLabel(currentStage)}</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                {getStageLabel(currentStage)}
+                {selectedInventoryData?.status === 'count3_open' && (
+                  <Badge variant="destructive" className="ml-2">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Apenas itens divergentes
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>
-                Contagem às cegas - registre apenas o que você consegue contar fisicamente
-                {inventoryItems && (
+                {selectedInventoryData?.status === 'count3_open' ? 
+                  "3ª Contagem - Apenas itens com divergência entre 1ª e 2ª contagem" :
+                  "Contagem às cegas - registre apenas o que você consegue contar fisicamente"
+                }
+                {currentItems && (
                   <span className="ml-2 font-medium">
-                    ({inventoryItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{inventoryItems.length} itens contados)
+                    ({currentItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{currentItems.length} itens {selectedInventoryData?.status === 'count3_open' ? 'divergentes ' : ''}contados)
                   </span>
                 )}
               </CardDescription>
@@ -310,17 +343,20 @@ export default function InventoryCounts() {
                       <TableHead>Produto</TableHead>
                       <TableHead>Local</TableHead>
                       <TableHead>Qtd. Contada</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Status Final</TableHead>
+                      <TableHead>Status Contagem</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredItems.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <div className="text-muted-foreground">
-                            {inventoryItems?.length === 0 ? 
-                              "Nenhum item encontrado para este inventário" :
+                            {currentItems?.length === 0 ? 
+                              selectedInventoryData?.status === 'count3_open' ?
+                                "Nenhum item divergente encontrado - todas as contagens estão alinhadas!" :
+                                "Nenhum item encontrado para este inventário" :
                               statusFilter === 'all' ? 
                                 "Todos os itens pendentes já foram contados!" :
                                 "Nenhum item corresponde aos filtros aplicados"
@@ -335,6 +371,7 @@ export default function InventoryCounts() {
                         const currentCount = getCurrentCount(item, currentStage);
                         const status = getItemStatus(item, currentStage);
                         const countValue = countValues[item.id] ?? (currentCount || "");
+                        const finalStatus = getFinalQuantityStatus(item);
 
                         return (
                           <TableRow key={item.id}>
@@ -360,6 +397,24 @@ export default function InventoryCounts() {
                                 disabled={!canPerformCounting(selectedInv?.status || '')}
                                 autoFocus
                               />
+                            </TableCell>
+                            <TableCell>
+                              {finalStatus ? (
+                                <Badge variant={finalStatus.variant}>
+                                  <div className="flex items-center gap-1">
+                                    {finalStatus.variant === 'secondary' ? 
+                                      <CheckCircle className="h-3 w-3" /> : 
+                                      <AlertTriangle className="h-3 w-3" />
+                                    }
+                                    {finalStatus.label}
+                                  </div>
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Em andamento
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                               {canPerformCounting(selectedInv?.status || '') ? (

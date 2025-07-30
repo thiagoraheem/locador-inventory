@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   RefreshCcw,
   Trash2,
-  Eye
+  Eye,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { 
@@ -330,6 +331,20 @@ export default function MobileCounting() {
   const selectedInventory = inventories?.find(inv => inv.id === selectedInventoryId);
   const currentStage = selectedInventory ? getCurrentCountStage() : 1;
 
+  // Fetch divergent items count for 3rd counting stage
+  const { data: divergentItems } = useQuery<any[]>({
+    queryKey: [`/api/inventories/${selectedInventoryId}/items/divergent`],
+    enabled: !!selectedInventoryId && selectedInventory?.status === 'count3_open',
+  });
+
+  // Get total items count for mobile display
+  const getItemsCountDisplay = () => {
+    if (selectedInventory?.status === 'count3_open' && divergentItems) {
+      return `${divergentItems.length} itens divergentes`;
+    }
+    return "Contagem móvel ativa";
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-950 p-4">
       {/* Header */}
@@ -343,7 +358,20 @@ export default function MobileCounting() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Contagem Mobile</h1>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">Contagem Mobile</h1>
+            {selectedInventory?.status === 'count3_open' && (
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="destructive" className="text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Apenas itens divergentes
+                </Badge>
+                <span className="text-sm text-blue-200">
+                  {getItemsCountDisplay()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Inventory Selection */}
