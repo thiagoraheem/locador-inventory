@@ -26,6 +26,7 @@ import {
   BarChart3,
   Users,
   FolderOpen,
+  TestTube,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -80,6 +81,11 @@ const navigation: NavigationItem[] = [
             name: "Suite de Testes",
             href: "/inventory-test-suite",
             icon: FileText,
+          },
+          {
+            name: "Validação de Fluxos",
+            href: "/inventory-test-validation",
+            icon: TestTube,
           },
         ],
       },
