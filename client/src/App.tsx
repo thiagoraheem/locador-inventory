@@ -18,7 +18,9 @@ import InventoryCounts from "@/pages/inventory-counts";
 import MobileCounting from "@/pages/mobile-counting";
 import InventoryReview from "@/pages/inventory-review";
 import InventoryControlBoard from "@/pages/inventory-control-board";
+import InventoryControlBoardCP from "@/pages/inventory-control-board-cp";
 import InventoryAssetControl from "@/pages/inventory-asset-control";
+import ProductListingReport from "@/pages/product-listing-report";
 import AuditLogs from "@/pages/audit-logs";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
@@ -67,6 +69,8 @@ function Router() {
           <Route path="/stock" component={Stock} />
           <Route path="/inventories" component={Inventories} />
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
+          <Route path="/inventory-control-board-cp" component={InventoryControlBoardCP} />
+          <Route path="/product-listing-report" component={ProductListingReport} />
           <Route path="/inventory-review/:id" component={InventoryReview} />
           <Route path="/inventory-counting/:id" component={InventoryCounting} />
           <Route path="/inventory-counts" component={InventoryCounts} />

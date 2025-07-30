@@ -83,7 +83,22 @@ const navigation: NavigationItem[] = [
         href: "/inventory-control-board",
         icon: Settings,
       },
-      { name: "Relatórios", href: "/inventory-reports", icon: BarChart3 },
+      {
+        name: "Mesa de Controle CP",
+        href: "/inventory-control-board-cp",
+        icon: Settings,
+      },
+      {
+        name: "Relatórios",
+        icon: BarChart3,
+        children: [
+          {
+            name: "Listagem de Produtos",
+            href: "/product-listing-report",
+            icon: FileText,
+          },
+        ],
+      },
       {
         name: "Parâmetros / Regras",
         href: "/parameters-rules",

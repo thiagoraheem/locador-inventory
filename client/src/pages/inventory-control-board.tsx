@@ -286,7 +286,7 @@ export default function InventoryControlBoard() {
 
   const handleCancelInventory = () => {
     if (selectedInventoryId && cancelReason.trim()) {
-      cancelInventoryMutation.mutate({ id: selectedInventoryId, reason: cancelReason });
+      // cancelInventoryMutation.mutate({ id: selectedInventoryId, reason: cancelReason });
       setCancelReason("");
     }
   };
@@ -513,7 +513,7 @@ export default function InventoryControlBoard() {
                         <TableCell>
                           <CountIndicator
                             count={item.count1}
-                            countBy={item.count1By}
+                            countBy={item.count1By?.toString()}
                             countAt={item.count1At}
                             stage="C1"
                           />
@@ -521,7 +521,7 @@ export default function InventoryControlBoard() {
                         <TableCell>
                           <CountIndicator
                             count={item.count2}
-                            countBy={item.count2By}
+                            countBy={item.count2By?.toString()}
                             countAt={item.count2At}
                             stage="C2"
                           />
@@ -529,7 +529,7 @@ export default function InventoryControlBoard() {
                         <TableCell>
                           <CountIndicator
                             count={item.count3}
-                            countBy={item.count3By}
+                            countBy={item.count3By?.toString()}
                             countAt={item.count3At}
                             stage="C3"
                           />
@@ -537,7 +537,7 @@ export default function InventoryControlBoard() {
                         <TableCell>
                           <CountIndicator
                             count={item.count4}
-                            countBy={item.count4By}
+                            countBy={item.count4By?.toString()}
                             countAt={item.count4At}
                             stage="C4"
                           />
