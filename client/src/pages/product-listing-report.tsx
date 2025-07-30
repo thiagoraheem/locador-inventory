@@ -219,7 +219,7 @@ export default function ProductListingReport() {
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Selecione um Inventário</h3>
               <p className="text-muted-foreground">
                 Escolha um inventário acima para gerar o relatório de produtos
