@@ -808,14 +808,11 @@ export class SimpleStorage {
     if (newStatus === 'count2_closed') {
       const smartStatus = await this.determinePostCount2Status(inventoryId);
       newStatus = smartStatus;
-      
-      // Calculate final quantities after 2nd count
-      await this.calculateFinalQuantities(inventoryId);
     }
-    // If closing count3, move to audit mode and calculate final quantities
+    // If closing count3, automatically move to audit mode
     else if (newStatus === 'count3_closed') {
-      newStatus = 'audit_mode';
       await this.calculateFinalQuantities(inventoryId);
+      newStatus = 'audit_mode';
     }
 
     const request = this.pool.request();
@@ -842,26 +839,17 @@ export class SimpleStorage {
 
   // Determine status after count2 closes based on business rules
   async determinePostCount2Status(inventoryId: number): Promise<InventoryStatus> {
+    // First calculate final quantities
+    await this.calculateFinalQuantities(inventoryId);
+    
+    // Then check if any items still need 3rd count (have null finalQuantity)
     const items = await this.getInventoryItemsByInventory(inventoryId);
     
-    let needsThirdCount = false;
+    const itemsNeedingThirdCount = items.filter(item => 
+      item.finalQuantity === null || item.finalQuantity === undefined
+    );
     
-    for (const item of items) {
-      const count1 = item.count1 || 0;
-      const count2 = item.count2 || 0;
-      const expected = item.expectedQuantity || 0;
-      
-      // If C1 ≠ C2, third count is required
-      if (count1 !== count2) {
-        needsThirdCount = true;
-        break;
-      }
-      
-      // Optional: if C1 = C2 but both differ significantly from expected, could also trigger third count
-      // For now, implementing basic rule: C1 ≠ C2 requires third count
-    }
-    
-    return needsThirdCount ? 'count3_required' : 'count2_completed';
+    return itemsNeedingThirdCount.length > 0 ? 'count3_required' : 'count2_completed';
   }
 
   // Calculate final quantities based on business rules

@@ -31,6 +31,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize SQL Server storage
   let storage = await getStorage();
 
+  // Middleware to check if user has Mesa de Controle access for audit mode operations
+  const hasAuditModeAccess = async (req: any, res: any, next: any) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Check if user has appropriate role for audit mode access
+      const userRole = req.user.role?.toLowerCase();
+      const allowedRoles = ['admin', 'gerente', 'supervisor'];
+      
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({ 
+          message: "Access denied. Only users with Mesa de Controle access can perform audit mode operations." 
+        });
+      }
+
+      // If inventory ID is provided, check if it's in audit mode
+      if (req.params.id) {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        const inventory = await storage.getInventory(inventoryId);
+        
+        if (inventory && inventory.status !== 'audit_mode') {
+          return res.status(400).json({ 
+            message: "This operation is only allowed when inventory is in audit mode." 
+          });
+        }
+      }
+
+      next();
+    } catch (error) {
+      console.error("Error checking audit mode access:", error);
+      res.status(500).json({ message: "Failed to verify audit mode access" });
+    }
+  };
+
   // Database setup endpoint
   app.post("/api/setup-sqlserver", async (req, res) => {
     try {
@@ -1418,6 +1455,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching divergent inventory items:", error);
       res.status(500).json({ message: "Failed to fetch divergent inventory items" });
+    }
+  });
+
+  // Update count4 for audit mode (Mesa de Controle only)
+  app.put("/api/inventory-items/:id/count4", hasAuditModeAccess, async (req: any, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const { quantity } = req.body;
+      
+      if (typeof quantity !== 'number') {
+        return res.status(400).json({ message: "Quantity must be a number" });
+      }
+
+      storage = await getStorage();
+      
+      // Update count4 and automatically update finalQuantity
+      await storage.updateCount4(itemId, quantity, req.user.id);
+      
+      // Create audit log for count4 change
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "UPDATE_COUNT4",
+        entityType: "inventory_item",
+        entityId: itemId.toString(),
+        newValues: JSON.stringify({ count4: quantity, finalQuantity: quantity }),
+        metadata: JSON.stringify({ timestamp: Date.now() }),
+      });
+
+      res.json({ 
+        message: "Count4 updated successfully and finalQuantity automatically updated",
+        count4: quantity,
+        finalQuantity: quantity
+      });
+    } catch (error) {
+      console.error("Error updating count4:", error);
+      res.status(500).json({ message: "Failed to update count4" });
+    }
+  });
+
+  // Validate inventory can transition from audit_mode to closed
+  app.post("/api/inventories/:id/validate-closure", hasAuditModeAccess, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      if (inventory.status !== 'audit_mode') {
+        return res.status(400).json({ message: "Inventory must be in audit mode to validate closure" });
+      }
+
+      // Check if all items have finalQuantity defined
+      const items = await storage.getInventoryItemsByInventory(inventoryId);
+      const itemsWithoutFinalQuantity = items.filter(item => 
+        item.finalQuantity === null || item.finalQuantity === undefined
+      );
+
+      const canClose = itemsWithoutFinalQuantity.length === 0;
+
+      res.json({
+        canClose,
+        itemsWithoutFinalQuantity: itemsWithoutFinalQuantity.length,
+        totalItems: items.length,
+        message: canClose ? 
+          "Inventory is ready to be closed" : 
+          `${itemsWithoutFinalQuantity.length} items still need final quantity validation`
+      });
+    } catch (error) {
+      console.error("Error validating inventory closure:", error);
+      res.status(500).json({ message: "Failed to validate inventory closure" });
     }
   });
 

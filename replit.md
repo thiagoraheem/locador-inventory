@@ -136,6 +136,22 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Menu Integrado**: "Suite de Testes" adicionada no submenu Inventários → Contagens
 ✅ **Backend Inteligente**: Lógica de transição de status baseada em regras de negócio implementada
 
+**Validações Automáticas de Status e Permissões (January 30, 2025)**:
+✅ **Cálculo Automático de Quantidade Final**: Implementado com todas as regras de negócio
+  - C1 == C2 == estoque → finalQuantity = estoque
+  - C1 == estoque OU C2 == estoque → finalQuantity = estoque  
+  - C1 == C2 ≠ estoque → finalQuantity = C2
+  - C1 ≠ C2 ≠ estoque → finalQuantity = null (3ª contagem necessária)
+✅ **Validação Inteligente de Status**: 
+  - Após 2ª contagem: count2_completed se todos têm finalQuantity, senão count3_required
+  - Após 3ª contagem: transição automática para audit_mode
+✅ **Middleware de Permissão Audit Mode**: Apenas Admin/Gerente/Supervisor podem acessar
+✅ **Endpoint Protegido Count4**: `/api/inventory-items/:id/count4` com validação de acesso
+✅ **Validação de Fechamento**: Endpoint para verificar se inventário pode sair de audit_mode
+✅ **Endpoint Itens Divergentes**: `/api/inventories/:id/items/divergent` para 3ª contagem
+✅ **Auditoria Completa**: Logs de todas as alterações em audit_mode
+✅ **Automatização Final**: count4 atualiza automaticamente finalQuantity
+
 **Sistema de Integração e Testes Completo (January 29, 2025)**:
 ✅ **Validação de Integridade**: Sistema completo para validar discrepâncias e integridade do inventário
 ✅ **Reconciliação Automática**: Processo automatizado de reconciliação com relatórios detalhados
