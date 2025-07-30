@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
@@ -21,7 +21,20 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
   const itemsPerPage = 10;
+
+  // Check if screen is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Filter data based on search query
   const filteredData = data.filter((item) => {
@@ -121,8 +134,8 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div className="text-sm text-muted-foreground text-center sm:text-left">
             Mostrando{" "}
             <span className="font-medium">{startIndex + 1}</span> a{" "}
             <span className="font-medium">
@@ -130,30 +143,112 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
             </span>{" "}
             de <span className="font-medium">{sortedData.length}</span> itens
           </div>
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center justify-center space-x-1 flex-wrap gap-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
+              className="flex-shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {[...Array(totalPages)].map((_, i) => (
-              <Button
-                key={i}
-                variant={currentPage === i + 1 ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentPage(i + 1)}
-              >
-                {i + 1}
-              </Button>
-            ))}
+            {/* Smart pagination with ellipsis */}
+            {(() => {
+              const pages = [];
+              const maxVisiblePages = isMobile ? 3 : 5;
+              
+              if (totalPages <= maxVisiblePages) {
+                // Show all pages if total is less than max
+                for (let i = 1; i <= totalPages; i++) {
+                  pages.push(
+                    <Button
+                      key={i}
+                      variant={currentPage === i ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(i)}
+                      className="min-w-[36px]"
+                    >
+                      {i}
+                    </Button>
+                  );
+                }
+              } else {
+                // Always show first page
+                pages.push(
+                  <Button
+                    key={1}
+                    variant={currentPage === 1 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    className="min-w-[36px]"
+                  >
+                    1
+                  </Button>
+                );
+                
+                // Show ellipsis if current page is far from start
+                if (currentPage > 3) {
+                  pages.push(
+                    <span key="start-ellipsis" className="px-2 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                }
+                
+                // Show pages around current page
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                
+                for (let i = start; i <= end; i++) {
+                  if (i !== 1 && i !== totalPages) {
+                    pages.push(
+                      <Button
+                        key={i}
+                        variant={currentPage === i ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(i)}
+                        className="min-w-[36px]"
+                      >
+                        {i}
+                      </Button>
+                    );
+                  }
+                }
+                
+                // Show ellipsis if current page is far from end
+                if (currentPage < totalPages - 2) {
+                  pages.push(
+                    <span key="end-ellipsis" className="px-2 text-muted-foreground">
+                      ...
+                    </span>
+                  );
+                }
+                
+                // Always show last page
+                if (totalPages > 1) {
+                  pages.push(
+                    <Button
+                      key={totalPages}
+                      variant={currentPage === totalPages ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="min-w-[36px]"
+                    >
+                      {totalPages}
+                    </Button>
+                  );
+                }
+              }
+              
+              return pages;
+            })()}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="flex-shrink-0"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
