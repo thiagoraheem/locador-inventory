@@ -41,7 +41,7 @@ export class SimpleStorage {
     this.pool = pool;
   }
 
-  // User operations (main implementation)
+  // User operations
 
   async getUserByUsername(username: string): Promise<User | null> {
     const result = await this.pool
@@ -494,26 +494,9 @@ export class SimpleStorage {
       `);
   }
 
-  // Alias for audit logging
-  async createAuditLog(log: InsertAuditLog): Promise<void> {
-    return this.logAction(log);
-  }
+  
 
-  // User management methods
-  async getUsers(): Promise<User[]> {
-    const result = await this.pool
-      .request()
-      .query("SELECT * FROM users ORDER BY username");
-    return result.recordset.map((user) => ({
-      ...user,
-      createdAt: user.createdAt
-        ? new Date(user.createdAt).getTime()
-        : Date.now(),
-      updatedAt: user.updatedAt
-        ? new Date(user.updatedAt).getTime()
-        : Date.now(),
-    }));
-  }
+  
 
   async createUser(user: InsertUser): Promise<User> {
     // Check if username already exists
@@ -1808,23 +1791,7 @@ export class SimpleStorage {
       .query(query);
   }
 
-  async findProductBySerial(serialNumber: string): Promise<ProductWithSerialControl | null> {
-    const query = `
-      SELECT DISTINCT p.*, 
-        CASE WHEN p.hasSerialControl = 1 THEN 1 ELSE 0 END as hasSerialControl
-      FROM products p
-      INNER JOIN stock_items si ON p.id = si.productId
-      WHERE si.serialNumber = @serialNumber 
-      AND si.isActive = 1
-      AND p.isActive = 1
-    `;
-
-    const result = await this.pool.request()
-      .input('serialNumber', serialNumber)
-      .query(query);
-
-    return result.recordset[0] || null;
-  }
+  
 
   async createInventorySerialItems2(inventoryId: number): Promise<void> {
     // Implementação simplificada - criar registros baseados nos stock_items
