@@ -1408,6 +1408,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get divergent inventory items (items that need 3rd count)
+  app.get("/api/inventories/:id/items/divergent", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+      const divergentItems = await storage.getDivergentInventoryItems(inventoryId);
+      res.json(divergentItems);
+    } catch (error) {
+      console.error("Error fetching divergent inventory items:", error);
+      res.status(500).json({ message: "Failed to fetch divergent inventory items" });
+    }
+  });
+
   // ================= TEST ROUTES =================
   
   // Create test inventory with predefined scenarios

@@ -808,10 +808,14 @@ export class SimpleStorage {
     if (newStatus === 'count2_closed') {
       const smartStatus = await this.determinePostCount2Status(inventoryId);
       newStatus = smartStatus;
+      
+      // Calculate final quantities after 2nd count
+      await this.calculateFinalQuantities(inventoryId);
     }
-    // If closing count3, move to audit mode
+    // If closing count3, move to audit mode and calculate final quantities
     else if (newStatus === 'count3_closed') {
       newStatus = 'audit_mode';
+      await this.calculateFinalQuantities(inventoryId);
     }
 
     const request = this.pool.request();
@@ -858,6 +862,106 @@ export class SimpleStorage {
     }
     
     return needsThirdCount ? 'count3_required' : 'count2_completed';
+  }
+
+  // Calculate final quantities based on business rules
+  async calculateFinalQuantities(inventoryId: number): Promise<void> {
+    const items = await this.getInventoryItemsByInventory(inventoryId);
+    const inventory = await this.getInventory(inventoryId);
+    
+    for (const item of items) {
+      const count1 = item.count1;
+      const count2 = item.count2;
+      const count3 = item.count3;
+      const expected = item.expectedQuantity || 0;
+      
+      let finalQuantity: number | null = null;
+      
+      // After 3rd count: finalQuantity = C3
+      if (count3 !== null && count3 !== undefined) {
+        finalQuantity = count3;
+      }
+      // After 2nd count: apply business rules
+      else if (count1 !== null && count2 !== null) {
+        // If C1 == C2 == estoque → finalQuantity = estoque
+        if (count1 === count2 && count1 === expected) {
+          finalQuantity = expected;
+        }
+        // If C1 == estoque OU C2 == estoque → finalQuantity = estoque
+        else if (count1 === expected || count2 === expected) {
+          finalQuantity = expected;
+        }
+        // If C1 == C2 ≠ estoque → finalQuantity = C2
+        else if (count1 === count2 && count1 !== expected) {
+          finalQuantity = count2 ?? null;
+        }
+        // If C1 ≠ C2 ≠ estoque → finalQuantity = null (necessária 3ª contagem)
+        else if (count1 !== count2) {
+          finalQuantity = null;
+        }
+      }
+      
+      // Update finalQuantity in database if calculated
+      if (finalQuantity !== null) {
+        const request = this.pool.request();
+        await request
+          .input("id", item.id)
+          .input("finalQuantity", finalQuantity)
+          .input("updatedAt", new Date())
+          .query(`
+            UPDATE inventory_items 
+            SET finalQuantity = @finalQuantity, updatedAt = @updatedAt
+            WHERE id = @id
+          `);
+      }
+    }
+  }
+
+  // Get divergent items that need 3rd count (C1 ≠ C2)
+  async getDivergentInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
+    const result = await this.pool.request()
+      .input("inventoryId", inventoryId)
+      .query(`
+        SELECT 
+          ii.*,
+          p.sku,
+          p.name as productName,
+          p.description as productDescription,
+          l.code as locationCode,
+          l.name as locationName,
+          c.name as categoryName
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN locations l ON ii.locationId = l.id
+        LEFT JOIN categories c ON p.categoryId = c.id
+        WHERE ii.inventoryId = @inventoryId
+          AND ii.count1 IS NOT NULL 
+          AND ii.count2 IS NOT NULL
+          AND ii.count1 != ii.count2
+        ORDER BY p.sku, l.code
+      `);
+
+    return result.recordset.map((item) => ({
+      ...item,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).getTime()
+        : Date.now(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).getTime()
+        : Date.now(),
+      count1At: item.count1At
+        ? new Date(item.count1At).getTime()
+        : null,
+      count2At: item.count2At
+        ? new Date(item.count2At).getTime()
+        : null,
+      count3At: item.count3At
+        ? new Date(item.count3At).getTime()
+        : null,
+      count4At: item.count4At
+        ? new Date(item.count4At).getTime()
+        : null,
+    }));
   }
 
   // Get inventory statistics for Control Panel
