@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import Header from "@/components/layout/header";
-import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2 } from "lucide-react";
+import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
@@ -110,6 +110,7 @@ export default function InventoryControlBoard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [cancelReason, setCancelReason] = useState("");
+  const [editingCount4, setEditingCount4] = useState<{ [itemId: number]: number | string }>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -122,6 +123,16 @@ export default function InventoryControlBoard() {
     queryKey: [`/api/inventories/${selectedInventoryId}`],
     enabled: !!selectedInventoryId,
   });
+
+  const { data: user } = useQuery({
+    queryKey: ["/api/auth/user"],
+  });
+
+  // Check if user has audit mode access (Mesa de Controle access)
+  const hasAuditAccess = () => {
+    const userRole = user?.role?.toLowerCase();
+    return ['admin', 'gerente', 'supervisor'].includes(userRole);
+  };
 
   const { data: stats } = useQuery<ControlPanelStats>({
     queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
@@ -240,6 +251,93 @@ export default function InventoryControlBoard() {
     },
   });
 
+  // Mutation to update count4 in audit mode
+  const updateCount4Mutation = useMutation({
+    mutationFn: async ({ itemId, quantity }: { itemId: number; quantity: number }) => {
+      const response = await fetch(`/api/inventory-items/${itemId}/count4`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quantity }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update count4');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: "Auditoria registrada",
+        description: `Count4 atualizado para ${variables.quantity}. Quantidade final atualizada automaticamente.`,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/items`] });
+      setEditingCount4(prev => {
+        const updated = { ...prev };
+        delete updated[variables.itemId];
+        return updated;
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro na auditoria",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to finalize audit and close inventory
+  const finalizeAuditMutation = useMutation({
+    mutationFn: async (inventoryId: number) => {
+      // First validate if inventory can be closed
+      const validateResponse = await fetch(`/api/inventories/${inventoryId}/validate-closure`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!validateResponse.ok) {
+        throw new Error('Failed to validate inventory closure');
+      }
+      
+      const validation = await validateResponse.json();
+      if (!validation.canClose) {
+        throw new Error(validation.message);
+      }
+
+      // If validation passes, close the inventory
+      const response = await fetch(`/api/inventories/${inventoryId}/finish-counting`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: user?.id || 'audit_user' }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to finalize audit');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Auditoria finalizada",
+        description: "O inventário foi fechado com sucesso após auditoria",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/stats`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao finalizar auditoria",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     if (selectedInventory?.startDate) {
       setStartTime(selectedInventory.startDate);
@@ -322,9 +420,52 @@ export default function InventoryControlBoard() {
         return '3ª Contagem Aberta';
       case 'count3_closed':
         return 'Contagens Finalizadas';
+      case 'audit_mode':
+        return 'Modo Auditoria';
+      case 'closed':
+        return 'Finalizado';
+      case 'cancelled':
+        return 'Cancelado';
       default:
         return status;
     }
+  };
+
+  // Handle count4 editing
+  const handleCount4Save = (itemId: number) => {
+    const quantity = editingCount4[itemId];
+    if (typeof quantity === 'number' && quantity >= 0) {
+      updateCount4Mutation.mutate({ itemId, quantity });
+    }
+  };
+
+  const handleCount4Change = (itemId: number, value: string) => {
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setEditingCount4(prev => ({
+        ...prev,
+        [itemId]: numValue
+      }));
+    } else if (value === '') {
+      setEditingCount4(prev => ({
+        ...prev,
+        [itemId]: ''
+      }));
+    }
+  };
+
+  // Check if inventory is in audit mode
+  const isAuditMode = selectedInventory?.status === 'audit_mode';
+
+  // Get items that need audit (items with divergences or without finalQuantity)
+  const getAuditItems = () => {
+    if (!inventoryItems) return [];
+    return inventoryItems.filter(item => 
+      item.finalQuantity === null || 
+      item.finalQuantity === undefined ||
+      (item.count1 !== undefined && item.count2 !== undefined && 
+       item.count1 !== item.count2)
+    );
   };
 
   return (
@@ -535,12 +676,40 @@ export default function InventoryControlBoard() {
                           />
                         </TableCell>
                         <TableCell>
-                          <CountIndicator
-                            count={item.count4}
-                            countBy={item.count4By?.toString()}
-                            countAt={item.count4At}
-                            stage="C4"
-                          />
+                          {isAuditMode && hasAuditAccess() ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="Auditoria..."
+                                value={editingCount4[item.id] ?? item.count4 ?? ''}
+                                onChange={(e) => handleCount4Change(item.id, e.target.value)}
+                                className="w-20 text-center"
+                                disabled={updateCount4Mutation.isPending}
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCount4Save(item.id)}
+                                disabled={
+                                  updateCount4Mutation.isPending || 
+                                  !editingCount4[item.id] ||
+                                  editingCount4[item.id] === ''
+                                }
+                                className="px-2"
+                              >
+                                ✓
+                              </Button>
+                            </div>
+                          ) : (
+                            <CountIndicator
+                              count={item.count4}
+                              countBy={item.count4By?.toString()}
+                              countAt={item.count4At}
+                              stage="C4"
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           {item.finalQuantity !== undefined ? (
@@ -600,6 +769,143 @@ export default function InventoryControlBoard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Audit Mode Section */}
+          {isAuditMode && hasAuditAccess() && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                  Modo Auditoria - Itens com Divergências
+                </CardTitle>
+                <CardDescription>
+                  Revise e ajuste manualmente os itens que precisam de auditoria. 
+                  Alterações em C4 atualizam automaticamente a quantidade final.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {getAuditItems().length > 0 ? (
+                  <>
+                    <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <div className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                        <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                        <span className="font-medium">
+                          {getAuditItems().length} itens precisam de auditoria
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Produto</TableHead>
+                            <TableHead>Local</TableHead>
+                            <TableHead>Estoque</TableHead>
+                            <TableHead>C1</TableHead>
+                            <TableHead>C2</TableHead>
+                            <TableHead>C3</TableHead>
+                            <TableHead>C4 (Auditoria)</TableHead>
+                            <TableHead>Qtd. Final</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {getAuditItems().map((item) => (
+                            <TableRow key={item.id} className="bg-orange-50/50 dark:bg-orange-900/10">
+                              <TableCell className="font-medium">
+                                {getProductName(item.productId)}
+                              </TableCell>
+                              <TableCell>{getLocationName(item.locationId)}</TableCell>
+                              <TableCell>{item.expectedQuantity}</TableCell>
+                              <TableCell className="text-center">{item.count1 ?? '-'}</TableCell>
+                              <TableCell className="text-center">{item.count2 ?? '-'}</TableCell>
+                              <TableCell className="text-center">{item.count3 ?? '-'}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="Quantidade auditada..."
+                                    value={editingCount4[item.id] ?? item.count4 ?? ''}
+                                    onChange={(e) => handleCount4Change(item.id, e.target.value)}
+                                    className="w-32"
+                                    disabled={updateCount4Mutation.isPending}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleCount4Save(item.id)}
+                                    disabled={
+                                      updateCount4Mutation.isPending || 
+                                      !editingCount4[item.id] ||
+                                      editingCount4[item.id] === ''
+                                    }
+                                  >
+                                    {updateCount4Mutation.isPending ? "..." : "Confirmar"}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className={`font-bold ${item.finalQuantity !== null && item.finalQuantity !== undefined ? 'text-green-600' : 'text-orange-600'}`}>
+                                  {item.finalQuantity ?? 'Pendente'}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={item.finalQuantity !== null && item.finalQuantity !== undefined ? 'default' : 'destructive'}>
+                                  {item.finalQuantity !== null && item.finalQuantity !== undefined ? 'Auditado' : 'Pendente'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="mt-4 flex justify-end">
+                      <Button
+                        onClick={() => selectedInventoryId && finalizeAuditMutation.mutate(selectedInventoryId)}
+                        disabled={finalizeAuditMutation.isPending || getAuditItems().some(item => item.finalQuantity === null || item.finalQuantity === undefined)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {finalizeAuditMutation.isPending ? "Finalizando..." : "Confirmar Auditoria e Fechar Inventário"}
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-green-600 mb-2">
+                      <CheckCircle className="h-12 w-12 mx-auto" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Auditoria Concluída</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Todos os itens foram auditados e têm quantidades finais definidas.
+                    </p>
+                    <Button
+                      onClick={() => selectedInventoryId && finalizeAuditMutation.mutate(selectedInventoryId)}
+                      disabled={finalizeAuditMutation.isPending}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {finalizeAuditMutation.isPending ? "Finalizando..." : "Fechar Inventário"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Access Denied for Audit Mode */}
+          {isAuditMode && !hasAuditAccess() && (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Acesso Negado</h3>
+                <p className="text-muted-foreground">
+                  Apenas usuários com acesso à Mesa de Controle (Admin, Gerente, Supervisor) podem realizar operações em modo auditoria.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </>
       ) : (
         <Card>

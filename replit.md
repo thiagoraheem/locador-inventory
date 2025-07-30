@@ -162,6 +162,18 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Endpoint Dinâmico**: Usa /items/divergent automaticamente quando status = count3_open
 ✅ **Filtragem Automática**: Sistema decide qual endpoint usar baseado no status do inventário
 
+**Controles de Auditoria na Mesa de Controle (January 30, 2025)**:
+✅ **Detecção de Audit Mode**: inventory-control-board.tsx detecta status = 'audit_mode'
+✅ **Coluna C4 Editável**: Campo de entrada numérica para count4 apenas em audit_mode
+✅ **Permissões de Auditoria**: Middleware hasAuditAccess() valida Admin/Gerente/Supervisor
+✅ **Seção Modo Auditoria**: Interface dedicada para itens com divergências
+✅ **Tabela de Auditoria**: Lista apenas itens que precisam de ajuste manual
+✅ **Atualização Automática**: count4 atualiza automaticamente finalQuantity
+✅ **Validação de Fechamento**: Botão "Confirmar Auditoria" valida se todos itens têm finalQuantity
+✅ **Controle de Acesso**: Usuários sem permissão veem tela de "Acesso Negado"
+✅ **Indicadores Visuais**: Animações e cores para destacar modo auditoria
+✅ **Integração API**: Usa endpoints protegidos /count4 e /validate-closure
+
 **Sistema de Integração e Testes Completo (January 29, 2025)**:
 ✅ **Validação de Integridade**: Sistema completo para validar discrepâncias e integridade do inventário
 ✅ **Reconciliação Automática**: Processo automatizado de reconciliação com relatórios detalhados
