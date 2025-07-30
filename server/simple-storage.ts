@@ -804,6 +804,16 @@ export class SimpleStorage {
 
   // Transition inventory status
   async transitionInventoryStatus(inventoryId: number, newStatus: InventoryStatus, userId: number): Promise<void> {
+    // If closing count2, determine if it should be completed or require count3
+    if (newStatus === 'count2_closed') {
+      const smartStatus = await this.determinePostCount2Status(inventoryId);
+      newStatus = smartStatus;
+    }
+    // If closing count3, move to audit mode
+    else if (newStatus === 'count3_closed') {
+      newStatus = 'audit_mode';
+    }
+
     const request = this.pool.request();
     await request
       .input("id", inventoryId)
@@ -824,6 +834,30 @@ export class SimpleStorage {
       newValues: JSON.stringify({ status: newStatus }),
       metadata: JSON.stringify({ timestamp: Date.now() }),
     });
+  }
+
+  // Determine status after count2 closes based on business rules
+  async determinePostCount2Status(inventoryId: number): Promise<InventoryStatus> {
+    const items = await this.getInventoryItemsByInventory(inventoryId);
+    
+    let needsThirdCount = false;
+    
+    for (const item of items) {
+      const count1 = item.count1 || 0;
+      const count2 = item.count2 || 0;
+      const expected = item.expectedQuantity || 0;
+      
+      // If C1 ≠ C2, third count is required
+      if (count1 !== count2) {
+        needsThirdCount = true;
+        break;
+      }
+      
+      // Optional: if C1 = C2 but both differ significantly from expected, could also trigger third count
+      // For now, implementing basic rule: C1 ≠ C2 requires third count
+    }
+    
+    return needsThirdCount ? 'count3_required' : 'count2_completed';
   }
 
   // Get inventory statistics for Control Panel
@@ -875,12 +909,13 @@ export class SimpleStorage {
   }
 
   // Update individual count methods
-  async updateCount1(itemId: number, count: number, countedBy: string): Promise<void> {
+  async updateCount1(itemId: number, count: number, countedBy: string | number): Promise<void> {
     const request = this.pool.request();
+    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count1", count)
-      .input("count1By", countedBy)
+      .input("count1By", countedByStr)
       .input("count1At", new Date())
       .input("updatedAt", new Date())
       .query(`
@@ -890,12 +925,13 @@ export class SimpleStorage {
       `);
   }
 
-  async updateCount2(itemId: number, count: number, countedBy: string): Promise<void> {
+  async updateCount2(itemId: number, count: number, countedBy: string | number): Promise<void> {
     const request = this.pool.request();
+    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count2", count)
-      .input("count2By", countedBy)
+      .input("count2By", countedByStr)
       .input("count2At", new Date())
       .input("updatedAt", new Date())
       .query(`
@@ -905,12 +941,13 @@ export class SimpleStorage {
       `);
   }
 
-  async updateCount3(itemId: number, count: number, countedBy: string): Promise<void> {
+  async updateCount3(itemId: number, count: number, countedBy: string | number): Promise<void> {
     const request = this.pool.request();
+    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count3", count)
-      .input("count3By", countedBy)
+      .input("count3By", countedByStr)
       .input("count3At", new Date())
       .input("updatedAt", new Date())
       .query(`
@@ -920,17 +957,20 @@ export class SimpleStorage {
       `);
   }
 
-  async updateCount4(itemId: number, count: number, countedBy: string): Promise<void> {
+  async updateCount4(itemId: number, count: number, countedBy: string | number): Promise<void> {
     const request = this.pool.request();
+    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count4", count)
-      .input("count4By", countedBy)
+      .input("count4By", countedByStr)
       .input("count4At", new Date())
+      .input("finalQuantity", count) // Automatically update finalQuantity when count4 is set
       .input("updatedAt", new Date())
       .query(`
         UPDATE inventory_items 
-        SET count4 = @count4, count4By = @count4By, count4At = @count4At, updatedAt = @updatedAt
+        SET count4 = @count4, count4By = @count4By, count4At = @count4At, 
+            finalQuantity = @finalQuantity, updatedAt = @updatedAt
         WHERE id = @id
       `);
   }

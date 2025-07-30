@@ -27,6 +27,7 @@ import Users from "@/pages/users";
 import Companies from "@/pages/companies";
 import StockItems from "@/pages/stock-items";
 import ParametersRules from "@/pages/parameters-rules";
+import InventoryTestSuite from "@/pages/inventory-test-suite";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
@@ -82,6 +83,7 @@ function Router() {
           <Route path="/companies" component={Companies} />
           <Route path="/stock-items" component={StockItems} />
           <Route path="/parameters-rules" component={ParametersRules} />
+          <Route path="/inventory-test-suite" component={InventoryTestSuite} />
         </MainLayout>
       )}
       <Route component={NotFound} />

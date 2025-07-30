@@ -76,6 +76,11 @@ const navigation: NavigationItem[] = [
             href: "/inventory-counting",
             icon: ClipboardList,
           },
+          {
+            name: "Suite de Testes",
+            href: "/inventory-test-suite",
+            icon: FileText,
+          },
         ],
       },
       {

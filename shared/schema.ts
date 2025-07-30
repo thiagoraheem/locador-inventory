@@ -63,15 +63,19 @@ export interface InventoryType {
 
 // Inventory status enum - expanded for multi-stage counting process
 export type InventoryStatus = 
-  | "planning"      // Planejamento inicial
-  | "open"         // Aberto para contagem
-  | "count1"       // 1ª contagem em andamento
-  | "count2"       // 2ª contagem em andamento
-  | "count3"       // 3ª contagem em andamento
-  | "audit"        // Em auditoria
-  | "divergence"   // Divergência identificada
-  | "closed"       // Fechado/Concluído
-  | "cancelled";   // Cancelado
+  | "planning"         // Planejamento inicial
+  | "open"            // Aberto para contagem
+  | "count1_open"     // 1ª contagem aberta
+  | "count1_closed"   // 1ª contagem fechada
+  | "count2_open"     // 2ª contagem aberta
+  | "count2_closed"   // 2ª contagem fechada
+  | "count2_completed" // 2ª contagem concluída (C1=C2)
+  | "count3_required" // 3ª contagem necessária (C1≠C2)
+  | "count3_open"     // 3ª contagem aberta
+  | "count3_closed"   // 3ª contagem fechada
+  | "audit_mode"      // Modo auditoria (Mesa de Controle)
+  | "closed"          // Fechado/Concluído
+  | "cancelled";      // Cancelado
 
 export interface Inventory {
   id: number;
