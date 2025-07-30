@@ -1501,7 +1501,7 @@ export class SimpleStorage {
   async registerSerialReading(
     inventoryId: number, 
     request: SerialReadingRequest, 
-    userId: string
+    userId: Number
   ): Promise<SerialReadingResponse> {
     // Verificar se série existe
     const product = await this.findProductBySerial(request.serialNumber);
@@ -1533,7 +1533,7 @@ export class SimpleStorage {
         message: "Número de série já foi lido neste estágio" 
       };
     }
-
+    console.log("Usuário: " + userId.toString())
     // Registrar leitura usando stored procedure
     await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
@@ -1796,7 +1796,7 @@ export class SimpleStorage {
         ), 0),
         hasSerialDiscrepancy = CASE 
           WHEN EXISTS (
-            SELECT 1 FROM vw_products p 
+            SELECT 1 FROM products p 
             WHERE p.id = inventory_items.productId 
             AND p.hasSerialControl = 1
           ) THEN 1 ELSE 0 END
@@ -1812,7 +1812,7 @@ export class SimpleStorage {
     const query = `
       SELECT DISTINCT p.*, 
         CASE WHEN p.hasSerialControl = 1 THEN 1 ELSE 0 END as hasSerialControl
-      FROM vw_products p
+      FROM products p
       INNER JOIN stock_items si ON p.id = si.productId
       WHERE si.serialNumber = @serialNumber 
       AND si.isActive = 1
@@ -1826,7 +1826,7 @@ export class SimpleStorage {
     return result.recordset[0] || null;
   }
 
-  async createInventorySerialItems(inventoryId: number): Promise<void> {
+  async createInventorySerialItems2(inventoryId: number): Promise<void> {
     // Implementação simplificada - criar registros baseados nos stock_items
     const query = `
       INSERT INTO inventory_serial_items (
@@ -1844,7 +1844,7 @@ export class SimpleStorage {
         @timestamp,
         @timestamp
       FROM stock_items si
-      INNER JOIN vw_products p ON si.productId = p.id
+      INNER JOIN products p ON si.productId = p.id
       WHERE si.isActive = 1 
       AND p.hasSerialControl = 1
       AND NOT EXISTS (

@@ -402,8 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post(
-    "/api/inventories/:id/close",
+  app.post("/api/inventories/:id/close",
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -435,8 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Inventory items routes
-  app.get(
-    "/api/inventories/:id/items",
+  app.get("/api/inventories/:id/items",
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -451,8 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Count routes
-  app.get(
-    "/api/inventory-items/:id/counts",
+  app.get("/api/inventory-items/:id/counts",
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -1261,17 +1258,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       const validatedData = serialReadingRequestSchema.parse(req.body);
-      
+
       storage = await getStorage();
       const result = await storage.registerSerialReading(
         inventoryId, 
         validatedData, 
-        (req.session as any).user?.id || "system"
+        (req.session as any).userId || 1
       );
       
       if (result.success) {
         await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
+          userId: (req.session as any).userId || 0,
           action: "SERIAL_READING",
           entityType: "inventory_serial_item",
           entityId: `${inventoryId}-${validatedData.serialNumber}`,

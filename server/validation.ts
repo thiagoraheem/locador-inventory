@@ -115,7 +115,7 @@ export class InventoryIntegrityValidator {
   private async getProductsWithSerialControl(inventoryId: number): Promise<any[]> {
     const query = `
       SELECT DISTINCT p.id, p.name, p.sku
-      FROM vw_products p
+      FROM products p
       INNER JOIN inventory_items ii ON p.id = ii.productId
       WHERE ii.inventoryId = @inventoryId 
       AND p.hasSerialControl = 1
@@ -132,7 +132,7 @@ export class InventoryIntegrityValidator {
     const query = `
       SELECT serialNumber
       FROM stock_items si
-      INNER JOIN vw_products p ON si.productId = p.id
+      INNER JOIN products p ON si.productId = p.id
       WHERE p.id = @productId
       AND si.isActive = 1
     `;
@@ -187,7 +187,7 @@ export class InventoryIntegrityValidator {
       LEFT JOIN inventory_serial_items isi ON ii.inventoryId = isi.inventoryId 
         AND ii.productId = isi.productId
         AND isi.count1_found = 1
-      INNER JOIN vw_products p ON ii.productId = p.id
+      INNER JOIN products p ON ii.productId = p.id
       WHERE ii.inventoryId = @inventoryId
       AND p.hasSerialControl = 1
       AND ii.count1 IS NOT NULL
@@ -212,7 +212,7 @@ export class InventoryIntegrityValidator {
       productsWithSerial: `
         SELECT COUNT(DISTINCT ii.productId) as count
         FROM inventory_items ii
-        INNER JOIN vw_products p ON ii.productId = p.id
+        INNER JOIN products p ON ii.productId = p.id
         WHERE ii.inventoryId = @inventoryId
         AND p.hasSerialControl = 1
       `,
@@ -270,7 +270,7 @@ export class InventoryIntegrityValidator {
         ii.hasSerialDiscrepancy,
         COUNT(isi.id) as serialItemsCount
       FROM inventory_items ii
-      INNER JOIN vw_products p ON ii.productId = p.id
+      INNER JOIN products p ON ii.productId = p.id
       LEFT JOIN inventory_serial_items isi ON ii.inventoryId = isi.inventoryId 
         AND ii.productId = isi.productId
       WHERE ii.inventoryId = @inventoryId
@@ -292,7 +292,7 @@ export class InventoryIntegrityValidator {
         COUNT(isi.id) as expected,
         SUM(CASE WHEN isi.count1_found = 1 THEN 1 ELSE 0 END) as found
       FROM inventory_serial_items isi
-      INNER JOIN vw_products p ON isi.productId = p.id
+      INNER JOIN products p ON isi.productId = p.id
       WHERE isi.inventoryId = @inventoryId
       AND isi.expectedStatus = 1
       GROUP BY p.name
