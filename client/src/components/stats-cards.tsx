@@ -28,7 +28,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       value: (stats?.activeInventories || 0).toString(),
       icon: ClipboardList,
       color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      bgColor: "bg-orange-100 dark:bg-orange-900/20",
       trend: null,
       trendText: "em andamento",
     },
@@ -37,7 +37,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       value: stats.stockLocations?.toString() || "0",
       icon: Warehouse,
       color: "text-green-600",
-      bgColor: "bg-green-50",
+      bgColor: "bg-green-100 dark:bg-green-900/20",
       trend: null,
       trendText: "locais cadastrados",
     },
@@ -46,7 +46,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       value: (stats?.lastAuditDays === 0) ? "Hoje" : ((stats?.lastAuditDays || 0).toString() || "N/A"),
       icon: History,
       color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      bgColor: "bg-purple-100 dark:bg-purple-900/20",
       trend: null,
       trendText: (stats?.lastAuditDays === 0) ? "" : "dias atrás",
     },
@@ -62,8 +62,8 @@ export default function StatsCards({ stats }: StatsCardsProps) {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">{card.title}</p>
-                  <p className="text-2xl font-semibold text-gray-900">{card.value}</p>
+                  <p className="text-sm text-muted-foreground">{card.title}</p>
+                  <p className="text-2xl font-semibold text-foreground">{card.value}</p>
                 </div>
                 <div className={`w-12 h-12 ${card.bgColor} rounded-lg flex items-center justify-center`}>
                   <Icon className={`h-6 w-6 ${card.color}`} />
@@ -73,7 +73,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
                 {card.trend && (
                   <span className="text-green-600 text-sm font-medium">{card.trend}</span>
                 )}
-                <span className="text-gray-600 text-sm">{card.trendText}</span>
+                <span className="text-muted-foreground text-sm">{card.trendText}</span>
               </div>
             </CardContent>
           </Card>

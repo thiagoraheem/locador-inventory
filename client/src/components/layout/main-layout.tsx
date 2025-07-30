@@ -43,11 +43,11 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <LayoutContext.Provider value={{ toggleSidebar, isMobile }}>
-      <div className="min-h-screen flex bg-gray-50">
+      <div className="min-h-screen flex bg-background">
         {/* Mobile overlay */}
         {isMobile && sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-20"
+            className="fixed inset-0 bg-black/50 z-20 dark:bg-black/80"
             onClick={() => setSidebarOpen(false)}
           />
         )}

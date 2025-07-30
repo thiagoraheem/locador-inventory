@@ -50,8 +50,8 @@ export default function Dashboard() {
             <Card key={i}>
               <CardContent className="p-6">
                 <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-muted rounded w-1/2"></div>
                 </div>
               </CardContent>
             </Card>
@@ -67,7 +67,7 @@ export default function Dashboard() {
       <div>
         <Header title="Dashboard" subtitle="Visão geral do sistema de inventário" />
         <div className="text-center py-12 p-4 md:p-6">
-          <p className="text-gray-500">Erro ao carregar dados do dashboard</p>
+          <p className="text-muted-foreground">Erro ao carregar dados do dashboard</p>
         </div>
       </div>
     );
@@ -107,7 +107,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Novo Produto</p>
-                    <p className="text-xs text-gray-600">Cadastrar produto</p>
+                    <p className="text-xs text-muted-foreground">Cadastrar produto</p>
                   </div>
                 </div>
               </Button>
@@ -116,12 +116,12 @@ export default function Dashboard() {
             <Link href="/locations">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2 w-full">
                 <div className="flex items-center space-x-2">
-                  <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
                     <MapPin className="h-5 w-5 text-orange-600" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Novo Local</p>
-                    <p className="text-xs text-gray-600">Cadastrar local</p>
+                    <p className="text-xs text-muted-foreground">Cadastrar local</p>
                   </div>
                 </div>
               </Button>
@@ -130,12 +130,12 @@ export default function Dashboard() {
             <Link href="/inventories">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2 w-full">
                 <div className="flex items-center space-x-2">
-                  <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
                     <ClipboardCheck className="h-5 w-5 text-green-600" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Criar Inventário</p>
-                    <p className="text-xs text-gray-600">Novo inventário</p>
+                    <p className="text-xs text-muted-foreground">Novo inventário</p>
                   </div>
                 </div>
               </Button>
@@ -144,12 +144,12 @@ export default function Dashboard() {
             <Link href="/audit-logs">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2 w-full">
                 <div className="flex items-center space-x-2">
-                  <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
                     <BarChart3 className="h-5 w-5 text-purple-600" />
                   </div>
                   <div className="text-left">
                     <p className="font-medium">Relatórios</p>
-                    <p className="text-xs text-gray-600">Gerar relatório</p>
+                    <p className="text-xs text-muted-foreground">Gerar relatório</p>
                   </div>
                 </div>
               </Button>
@@ -171,17 +171,17 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               {activeInventories.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Nenhum inventário ativo</p>
+                <p className="text-muted-foreground text-center py-4">Nenhum inventário ativo</p>
               ) : (
                 activeInventories.slice(0, 3).map((inventory: any) => (
-                  <div key={inventory.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={inventory.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                         <ClipboardCheck className="h-4 w-4 text-primary" />
                       </div>
                       <div>
                         <p className="text-sm font-medium">{inventory.code}</p>
-                        <p className="text-xs text-gray-600">{inventory.type?.name || 'Tipo não especificado'}</p>
+                        <p className="text-xs text-muted-foreground">{inventory.type?.name || 'Tipo não especificado'}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -207,12 +207,12 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center flex-shrink-0">
                   <Plus className="h-4 w-4 text-green-600" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm">Sistema inicializado com sucesso</p>
-                  <p className="text-xs text-gray-600">Agora</p>
+                  <p className="text-xs text-muted-foreground">Agora</p>
                 </div>
               </div>
             </div>

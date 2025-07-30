@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useLayout } from "./main-layout";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface HeaderProps {
   title?: string;
@@ -141,6 +142,7 @@ export default function Header({ title = "Dashboard", subtitle = "Visão geral d
           </div>
         </div>
         <div className="flex items-center space-x-2 md:space-x-4">
+          <ThemeToggle />
           <div className="relative">
             <Input
               type="text"

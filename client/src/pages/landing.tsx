@@ -4,20 +4,20 @@ import { Package, Warehouse, ClipboardList, History } from "lucide-react";
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="max-w-4xl w-full space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center space-x-3 mb-6">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <Package className="h-6 w-6 text-white" />
+              <Package className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">LOCADOR</h1>
-              <p className="text-gray-600">Módulo de Inventário</p>
+              <h1 className="text-3xl font-bold text-foreground">LOCADOR</h1>
+              <p className="text-muted-foreground">Módulo de Inventário</p>
             </div>
           </div>
-          <p className="text-xl text-gray-700 max-w-2xl mx-auto">
+          <p className="text-xl text-foreground max-w-2xl mx-auto">
             Plataforma completa para controle de estoque com processo de contagem em três etapas, 
             logs de auditoria e gerenciamento completo de fluxo de trabalho.
           </p>
@@ -31,7 +31,7 @@ export default function Landing() {
               <CardTitle className="text-lg">Gestão de Produtos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 Cadastro e controle completo de produtos com SKU, categorias e detalhes.
               </p>
             </CardContent>
@@ -83,27 +83,27 @@ export default function Landing() {
           >
             Fazer Login
           </Button>
-          <p className="text-sm text-gray-600 mt-4">
+          <p className="text-sm text-muted-foreground mt-4">
             Entre com sua conta para acessar o sistema
           </p>
         </div>
 
         {/* Benefits */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+        <div className="bg-card rounded-lg p-6 shadow-sm border border-border">
+          <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
             Principais Benefícios
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
             <div>
-              <strong className="text-gray-900">Controle Preciso:</strong> Sistema de três contagens 
+              <strong className="text-foreground">Controle Preciso:</strong> Sistema de três contagens 
               garante máxima precisão nos inventários.
             </div>
             <div>
-              <strong className="text-gray-900">Auditoria Completa:</strong> Rastreamento detalhado 
+              <strong className="text-foreground">Auditoria Completa:</strong> Rastreamento detalhado 
               de todas as operações realizadas.
             </div>
             <div>
-              <strong className="text-gray-900">Interface Profissional:</strong> Design moderno e 
+              <strong className="text-foreground">Interface Profissional:</strong> Design moderno e 
               intuitivo para uso empresarial.
             </div>
           </div>

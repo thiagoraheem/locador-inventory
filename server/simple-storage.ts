@@ -1870,7 +1870,17 @@ export class SimpleStorage {
     } catch (error) {
       // Log error but don't throw - audit log shouldn't break main functionality
       console.warn("Warning: Failed to create audit log:", error);
-      return null;
+      return {
+        id: 0,
+        userId: 0,
+        action: '',
+        entityType: '',
+        entityId: '',
+        oldValues: '',
+        newValues: '',
+        metadata: '',
+        timestamp: Date.now()
+      };
     }
   }
 }

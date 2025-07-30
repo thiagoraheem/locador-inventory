@@ -63,7 +63,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl text-center">
@@ -84,7 +84,7 @@ export default function LoginPage() {
                     <FormLabel>Nome de usuário</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Digite seu nome de usuário"
                           className="pl-10"
@@ -104,7 +104,7 @@ export default function LoginPage() {
                     <FormLabel>Senha</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           type="password"
                           placeholder="Digite sua senha"
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 Usuário padrão: <strong>admin</strong> / Senha: <strong>admin123</strong>
               </span>
             </div>
-            <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 border-t pt-2">
+            <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground border-t border-border pt-2">
               <Globe className="h-3 w-3" />
               <span>
                 IP do Replit: {ipLoading ? (
