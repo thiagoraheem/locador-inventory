@@ -1059,6 +1059,20 @@ export class SimpleStorage {
     }));
   }
 
+  // Get inventory items by inventory ID
+  async getInventoryItemsByInventory(inventoryId: number): Promise<InventoryItem[]> {
+    const result = await this.pool
+      .request()
+      .input("inventoryId", inventoryId)
+      .query("SELECT * FROM inventory_items WHERE inventoryId = @inventoryId ORDER BY id");
+
+    return result.recordset.map(item => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+    }));
+  }
+
   // Get dashboard statistics
   async getDashboardStats(): Promise<{
     totalProducts: number;

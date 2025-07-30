@@ -465,7 +465,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         storage = await getStorage();
-        const items = await storage.getInventoryItems();
+        const inventoryId = parseInt(req.params.id);
+        const items = await storage.getInventoryItemsByInventory(inventoryId);
         res.json(items);
       } catch (error) {
         console.error("Error fetching inventory items:", error as Error);
