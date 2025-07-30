@@ -331,14 +331,14 @@ export default function MobileCounting() {
   const currentStage = selectedInventory ? getCurrentCountStage() : 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-950 p-4">
       {/* Header */}
       <div className="text-white mb-6">
         <div className="flex items-center gap-3 mb-4">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-white hover:bg-blue-700"
+            className="text-white hover:bg-blue-700 dark:hover:bg-blue-800"
             onClick={() => window.history.back()}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -347,7 +347,7 @@ export default function MobileCounting() {
         </div>
 
         {/* Inventory Selection */}
-        <Card className="bg-blue-500/30 border-blue-400 backdrop-blur-sm">
+        <Card className="bg-blue-500/30 border-blue-400 dark:bg-blue-800/30 dark:border-blue-700 backdrop-blur-sm">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-white">
@@ -356,7 +356,7 @@ export default function MobileCounting() {
                   value={selectedInventoryId?.toString() || ""} 
                   onValueChange={(value) => setSelectedInventoryId(Number(value))}
                 >
-                  <SelectTrigger className="bg-blue-700 border-blue-600 text-white">
+                  <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -370,7 +370,7 @@ export default function MobileCounting() {
               </div>
               <div className="text-white">
                 <label className="block text-sm font-medium mb-2">Estágio:</label>
-                <div className="bg-blue-700 rounded px-3 py-2 text-center font-semibold">
+                <div className="bg-blue-700 dark:bg-blue-800 rounded px-3 py-2 text-center font-semibold">
                   {getStageLabel(currentStage)}
                 </div>
               </div>
@@ -388,7 +388,7 @@ export default function MobileCounting() {
             onClick={() => setActiveTab('serial')}
             className={`flex items-center gap-2 ${
               activeTab === 'serial' 
-                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white' 
                 : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
             }`}
           >
@@ -400,7 +400,7 @@ export default function MobileCounting() {
             onClick={() => setActiveTab('sku')}
             className={`flex items-center gap-2 ${
               activeTab === 'sku' 
-                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                ? 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white' 
                 : 'bg-white/20 text-white border-white/30 hover:bg-white/30'
             }`}
           >
@@ -411,9 +411,9 @@ export default function MobileCounting() {
 
         {/* Campo de leitura de série */}
         {activeTab === 'serial' && (
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-800">
+              <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
                 <Barcode className="h-5 w-5" />
                 Leitura de Número de Série
               </CardTitle>
@@ -431,19 +431,19 @@ export default function MobileCounting() {
                 <Button 
                   onClick={handleSerialScan}
                   disabled={!serialInput.trim() || isLoading}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ler'}
                 </Button>
               </div>
-              <p className="text-sm text-blue-600 mb-3">
+              <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
                 Escaneie o código de barras do produto para identificação automática
               </p>
 
               {/* Histórico de últimas leituras */}
               {recentScans.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Últimas leituras:</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Últimas leituras:</p>
                   <div className="flex flex-wrap gap-1">
                     {recentScans.slice(0, 3).map((scan, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
@@ -459,9 +459,9 @@ export default function MobileCounting() {
 
         {/* Campo de busca por SKU */}
         {activeTab === 'sku' && (
-          <Card className="bg-green-50 border-green-200">
+          <Card className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-800">
+              <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-400">
                 <Search className="h-5 w-5" />
                 Buscar Produto
               </CardTitle>
@@ -498,27 +498,27 @@ export default function MobileCounting() {
                   <Button 
                     onClick={handleAddSelectedProduct}
                     disabled={!selectedProduct || !quantityInput || isLoading}
-                    className="bg-green-600 hover:bg-green-700 flex-1"
+                    className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 flex-1"
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
                   </Button>
                 </div>
 
                 {selectedProduct && (
-                  <div className="p-3 bg-green-100 rounded-lg border border-green-200">
-                    <div className="font-medium text-green-800">{selectedProduct.name}</div>
-                    <div className="text-sm text-green-600">
+                  <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="font-medium text-green-800 dark:text-green-400">{selectedProduct.name}</div>
+                    <div className="text-sm text-green-600 dark:text-green-500">
                       {selectedProduct.categoryName} • SKU: {selectedProduct.sku}
                     </div>
                     {selectedProduct.hasSerialControl && (
-                      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mt-1 inline-block">
+                      <div className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-2 py-1 rounded mt-1 inline-block">
                         ⚠️ Produto com controle de série - Use a leitura de código
                       </div>
                     )}
                   </div>
                 )}
               </div>
-              <p className="text-sm text-green-600 mt-2">
+              <p className="text-sm text-green-600 dark:text-green-400 mt-2">
                 Busque por código SKU ou descrição e informe a quantidade
               </p>
             </CardContent>
@@ -530,7 +530,7 @@ export default function MobileCounting() {
       <Card className="bg-white">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-blue-800">
+            <div className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
               <Package className="h-5 w-5" />
               Produtos Contados ({countedProducts.length})
             </div>
@@ -540,7 +540,7 @@ export default function MobileCounting() {
                 variant="outline"
                 onClick={() => setCountedProducts([])}
                 disabled={countedProducts.length === 0}
-                className="text-red-600 border-red-300 hover:bg-red-50"
+                className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/50"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 Limpar
@@ -549,7 +549,7 @@ export default function MobileCounting() {
                 size="sm"
                 variant="outline"
                 onClick={() => window.location.reload()}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50"
               >
                 <RefreshCcw className="h-4 w-4 mr-1" />
                 Atualizar
@@ -559,7 +559,7 @@ export default function MobileCounting() {
         </CardHeader>
         <CardContent>
           {countedProducts.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>Nenhum produto contado</p>
               <p className="text-sm">Use os métodos de entrada acima</p>
@@ -567,13 +567,13 @@ export default function MobileCounting() {
           ) : (
             <div className="space-y-4">
               {countedProducts.map((product, index) => (
-                <div key={`${product.productId}-${index}`} className="border rounded-lg p-4">
+                <div key={`${product.productId}-${index}`} className="border rounded-lg p-4 dark:border-gray-700">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">
+                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
                         {product.productName}
                       </h4>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         SKU: {product.productSku}
                       </p>
 
@@ -582,7 +582,7 @@ export default function MobileCounting() {
                         {product.hasSerialControl ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs bg-blue-50">
+                              <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
                                 <Barcode className="h-3 w-3 mr-1" />
                                 Séries: {product.totalSerialCount}
                               </Badge>
@@ -604,10 +604,10 @@ export default function MobileCounting() {
                           </>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs bg-green-50">
-                              <Package className="h-3 w-3 mr-1" />
-                              Quantidade: {product.manualQuantity}
-                            </Badge>
+                            <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950 dark:border-green-800">
+                                <Package className="h-3 w-3 mr-1" />
+                                Quantidade: {product.manualQuantity}
+                              </Badge>
                           </div>
                         )}
                       </div>
@@ -617,7 +617,7 @@ export default function MobileCounting() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50"
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -627,7 +627,7 @@ export default function MobileCounting() {
                         onClick={() => setCountedProducts(prev => 
                           prev.filter((_, i) => i !== index)
                         )}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/50"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

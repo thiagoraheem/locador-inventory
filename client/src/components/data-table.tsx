@@ -62,7 +62,7 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
     return (
       <div className="space-y-4">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-12 bg-gray-200 rounded animate-pulse"></div>
+          <div key={i} className="h-12 bg-muted rounded animate-pulse"></div>
         ))}
       </div>
     );
@@ -98,12 +98,12 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="text-center py-8">
-                  <p className="text-gray-500">Nenhum item encontrado</p>
+                  <p className="text-muted-foreground">Nenhum item encontrado</p>
                 </TableCell>
               </TableRow>
             ) : (
               paginatedData.map((row, index) => (
-                <TableRow key={index} className="hover:bg-gray-50">
+                <TableRow key={index}>
                   {columns.map((column) => (
                     <TableCell key={column.accessorKey}>
                       {column.cell 
@@ -122,7 +122,7 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             Mostrando{" "}
             <span className="font-medium">{startIndex + 1}</span> a{" "}
             <span className="font-medium">

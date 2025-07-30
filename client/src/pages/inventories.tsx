@@ -210,7 +210,7 @@ export default function Inventories() {
                       }
                     }}
                     disabled={!cancelReason.trim() || cancelInventoryMutation.isPending}
-                    className="bg-orange-600 hover:bg-orange-700"
+                    className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800"
                   >
                     Cancelar Inventário
                   </AlertDialogAction>
@@ -238,7 +238,7 @@ export default function Inventories() {
                   <AlertDialogAction 
                     onClick={() => deleteInventoryMutation.mutate(row.id)}
                     disabled={deleteInventoryMutation.isPending}
-                    className="bg-red-600 hover:bg-red-700"
+                    className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
                   >
                     Excluir Permanentemente
                   </AlertDialogAction>

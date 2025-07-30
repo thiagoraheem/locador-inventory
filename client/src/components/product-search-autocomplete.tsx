@@ -125,7 +125,7 @@ export default function ProductSearchAutocomplete({
       {/* Campo de busca */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             ref={inputRef}
             placeholder={placeholder}
@@ -144,7 +144,7 @@ export default function ProductSearchAutocomplete({
             className="pl-10 pr-4"
           />
           {isLoading && (
-            <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-gray-400" />
+            <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
           )}
         </div>
         
@@ -167,7 +167,7 @@ export default function ProductSearchAutocomplete({
             }
           }}
           disabled={disabled || filteredProducts.length !== 1 || !searchTerm.trim()}
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
         >
           Adicionar
         </Button>
@@ -181,7 +181,7 @@ export default function ProductSearchAutocomplete({
         >
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
                 Buscando produtos...
               </div>
@@ -190,15 +190,15 @@ export default function ProductSearchAutocomplete({
                 {filteredProducts.map((product: Product, index: number) => (
                   <div
                     key={product.id}
-                    className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      index === selectedIndex ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                    className={`p-3 cursor-pointer hover:bg-accent transition-colors ${
+                      index === selectedIndex ? 'bg-primary/10 border-l-4 border-primary' : ''
                     }`}
                     onClick={() => handleProductSelect(product)}
                   >
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-foreground">
                       {product.name}
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className="text-sm text-muted-foreground mt-1">
                       <span className="font-medium">SKU:</span> {product.sku}
                       {product.categoryId && (
                         <>
@@ -208,7 +208,7 @@ export default function ProductSearchAutocomplete({
                       )}
                     </div>
                     {product.description && (
-                      <div className="text-xs text-gray-400 mt-1 truncate">
+                      <div className="text-xs text-muted-foreground mt-1 truncate">
                         {product.description}
                       </div>
                     )}
@@ -216,7 +216,7 @@ export default function ProductSearchAutocomplete({
                 ))}
               </div>
             ) : searchTerm.trim() && (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-muted-foreground">
                 Nenhum produto encontrado para "{searchTerm}"
               </div>
             )}

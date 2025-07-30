@@ -356,7 +356,7 @@ export default function InventoryReview() {
                     <Button 
                       onClick={handleCloseInventory}
                       disabled={closeInventoryMutation.isPending || stats.pending > 0}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
                     >
                       <Lock className="h-4 w-4 mr-2" />
                       {closeInventoryMutation.isPending ? "Fechando..." : "Fechar Inventário"}

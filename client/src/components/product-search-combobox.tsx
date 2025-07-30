@@ -142,13 +142,13 @@ export default function ProductSearchCombobox({
                     >
                       <div className="flex flex-col min-w-0 flex-1">
                         <div className="font-medium truncate">{product.name}</div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-muted-foreground">
                           {product.categoryName} • SKU: {product.sku}
                         </div>
                       </div>
                       <div className="flex items-center ml-2">
                         {product.hasSerialControl && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded mr-2">
                             Série
                           </span>
                         )}

@@ -139,7 +139,7 @@ export default function LocationForm({ location, onSuccess }: LocationFormProps)
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <FormLabel className="text-base">Status</FormLabel>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   {field.value ? "Local ativo" : "Local inativo"}
                 </div>
               </div>

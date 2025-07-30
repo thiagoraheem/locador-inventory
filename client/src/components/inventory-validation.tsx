@@ -204,7 +204,7 @@ export default function InventoryValidation({ inventoryId }: InventoryValidation
                 <Badge variant={validationReport.isValid ? "default" : "destructive"}>
                   {validationReport.isValid ? "VÁLIDO" : "PROBLEMAS ENCONTRADOS"}
                 </Badge>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   Executado em: {new Date(validationReport.timestamp).toLocaleString()}
                 </span>
               </div>
@@ -258,31 +258,31 @@ export default function InventoryValidation({ inventoryId }: InventoryValidation
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-primary">
                     {reconciliationReport.summary.totalProducts}
                   </div>
-                  <div className="text-sm text-gray-600">Total de Produtos</div>
+                  <div className="text-sm text-muted-foreground">Total de Produtos</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
                     {reconciliationReport.summary.serialItemsFound}
                   </div>
-                  <div className="text-sm text-gray-600">Séries Encontradas</div>
+                  <div className="text-sm text-muted-foreground">Séries Encontradas</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-600">
                     {reconciliationReport.summary.serialItemsMissing}
                   </div>
-                  <div className="text-sm text-gray-600">Séries Faltando</div>
+                  <div className="text-sm text-muted-foreground">Séries Faltando</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">
                     {reconciliationReport.summary.productsWithDiscrepancy}
                   </div>
-                  <div className="text-sm text-gray-600">Com Discrepância</div>
+                  <div className="text-sm text-muted-foreground">Com Discrepância</div>
                 </div>
               </div>
             </CardContent>
