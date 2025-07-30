@@ -19,9 +19,11 @@ export default function ProductListingReport() {
     queryKey: ["/api/inventories"],
   });
 
-  const { data: inventoryItems } = useQuery<InventoryItem[]>({
+  const { data: inventoryItems, isLoading: isLoadingItems } = useQuery<InventoryItem[]>({
     queryKey: [`/api/inventories/${selectedInventoryId}/items`],
     enabled: !!selectedInventoryId,
+    staleTime: 0, // Force fresh data fetch
+    cacheTime: 0, // Don't cache to ensure fresh data
   });
 
   const { data: products } = useQuery<Product[]>({
@@ -39,6 +41,11 @@ export default function ProductListingReport() {
     const product = products?.find(p => p.id === item.productId);
     return product ? { ...product, inventoryItem: item } : null;
   }).filter(Boolean) || [];
+
+  // Debug log to verify filtering
+  console.log('Selected Inventory ID:', selectedInventoryId);
+  console.log('Inventory Items:', inventoryItems);
+  console.log('Filtered Products:', inventoryProducts);
 
   // Group products by category
   const groupedProducts = inventoryProducts.reduce((acc, product) => {
@@ -129,7 +136,7 @@ export default function ProductListingReport() {
           </CardContent>
         </Card>
 
-        {selectedInventoryId && selectedInventory ? (
+        {selectedInventoryId && selectedInventory && !isLoadingItems ? (
           <div ref={printRef}>
             {/* Report Header */}
             <Card className="mb-6">
@@ -151,7 +158,13 @@ export default function ProductListingReport() {
             </Card>
 
             {/* Products by Category */}
-            {Object.keys(groupedProducts).length > 0 ? (
+            {isLoadingItems ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <div className="text-lg">Carregando produtos do inventário...</div>
+                </CardContent>
+              </Card>
+            ) : Object.keys(groupedProducts).length > 0 ? (
               <div className="space-y-6">
                 {Object.entries(groupedProducts).map(([categoryName, categoryProducts]) => (
                   <Card key={categoryName}>
