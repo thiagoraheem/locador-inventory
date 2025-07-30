@@ -114,6 +114,17 @@ export default function MobileCounting() {
   const handleSerialScan = async () => {
     if (!serialInput.trim() || !selectedInventoryId) return;
 
+    // Verificar se o inventário permite contagem
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
+    if (!selectedInv || !canPerformCounting(selectedInv.status)) {
+      toast({
+        title: "Contagem não permitida",
+        description: "O inventário deve estar em status de contagem aberta (1ª, 2ª, 3ª ou 4ª contagem).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`/api/inventories/${selectedInventoryId}/serial-reading`, {
@@ -272,8 +283,19 @@ export default function MobileCounting() {
     });
   };
 
+  // Função para verificar se o inventário permite contagem
+  const canPerformCounting = (status: string): boolean => {
+    return ['count1_open', 'count2_open', 'count3_open', 'count4_open'].includes(status);
+  };
+
   // Função para registrar contagem manual (tradicional)
   const registerManualCount = async (productId: number, quantity: number) => {
+    // Verificar se o inventário está em status de contagem aberta
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
+    if (!selectedInv || !canPerformCounting(selectedInv.status)) {
+      throw new Error('Contagem não permitida. O inventário deve estar em status de contagem aberta (1ª, 2ª, 3ª ou 4ª contagem).');
+    }
+
     try {
       const response = await fetch(`/api/inventories/${selectedInventoryId}/manual-count`, {
         method: 'POST',
@@ -294,8 +316,7 @@ export default function MobileCounting() {
       return result;
     } catch (error) {
       console.error('Erro ao registrar contagem manual:', error);
-      // Por enquanto, simular sucesso para desenvolvimento
-      return Promise.resolve({ success: true });
+      throw error;
     }
   };
 

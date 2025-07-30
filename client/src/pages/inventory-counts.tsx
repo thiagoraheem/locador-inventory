@@ -145,7 +145,23 @@ export default function InventoryCounts() {
     }
   }) || [];
 
+  // Função para verificar se o inventário permite contagem
+  const canPerformCounting = (status: string): boolean => {
+    return ['count1_open', 'count2_open', 'count3_open', 'count4_open'].includes(status);
+  };
+
   const handleSaveCount = (itemId: number, stage: number) => {
+    // Verificar se o inventário permite contagem
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventory);
+    if (!selectedInv || !canPerformCounting(selectedInv.status)) {
+      toast({
+        title: "Contagem não permitida",
+        description: "O inventário deve estar em status de contagem aberta (1ª, 2ª, 3ª ou 4ª contagem).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const countValue = countValues[itemId];
     if (!countValue || countValue === "" || isNaN(Number(countValue)) || Number(countValue) < 0) {
       toast({
@@ -334,29 +350,39 @@ export default function InventoryCounts() {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                placeholder="Quantidade contada..."
+                                placeholder={canPerformCounting(selectedInv?.status || '') ? "Quantidade contada..." : "Contagem bloqueada"}
                                 value={countValue}
                                 onChange={(e) => setCountValues(prev => ({
                                   ...prev,
                                   [item.id]: e.target.value
                                 }))}
                                 className="w-32"
+                                disabled={!canPerformCounting(selectedInv?.status || '')}
                                 autoFocus
                               />
                             </TableCell>
                             <TableCell>
-                              <Badge variant="secondary">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Aguardando Contagem
-                                </div>
-                              </Badge>
+                              {canPerformCounting(selectedInv?.status || '') ? (
+                                <Badge variant="secondary">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Aguardando Contagem
+                                  </div>
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Contagem Bloqueada
+                                  </div>
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Button
                                 size="sm"
                                 onClick={() => handleSaveCount(item.id, currentStage)}
-                                disabled={updateCountMutation.isPending || !countValue || countValue === ""}
+                                disabled={updateCountMutation.isPending || !countValue || countValue === "" || !canPerformCounting(selectedInv?.status || '')}
                               >
                                 {updateCountMutation.isPending ? "Salvando..." : "Registrar"}
                               </Button>

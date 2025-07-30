@@ -7,7 +7,7 @@ import StatsCards from "@/components/stats-cards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BarChart3, MapPin, ClipboardCheck } from "lucide-react";
+import { List, Users, BarChart3, ClipboardCheck, Plus } from "lucide-react";
 import { Link } from "wouter";
 import Header from "@/components/layout/header";
 
@@ -73,16 +73,16 @@ export default function Dashboard() {
     );
   }
 
-  const activeInventories = inventories?.filter((inv: any) => inv.status === 'open' || inv.status === 'count1' || inv.status === 'count2' || inv.status === 'count3') || [];
+  const activeInventories = (inventories || []).filter((inv: any) => inv.status === 'open' || inv.status === 'count1' || inv.status === 'count2' || inv.status === 'count3');
 
   // Map API stats to component expected format
   const mappedStats = {
-    totalProducts: stats?.totalProducts || 0,
+    totalProducts: (stats as any)?.totalProducts || 0,
     activeInventories: activeInventories?.length || 0,
-    stockLocations: stats?.totalLocations || 0,
+    stockLocations: (stats as any)?.totalLocations || 0,
     lastAuditDays: 0, // Default value since not provided by API
-    totalCategories: stats?.totalCategories || 0,
-    totalLocations: stats?.totalLocations || 0,
+    totalCategories: (stats as any)?.totalCategories || 0,
+    totalLocations: (stats as any)?.totalLocations || 0,
   };
 
   return (
@@ -99,29 +99,29 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link href="/products">
+            <Link href="/mobile-counting">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2 w-full">
                 <div className="flex items-center space-x-2">
                   <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Plus className="h-5 w-5 text-primary" />
+                    <List className="h-5 w-5 text-primary" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium">Novo Produto</p>
-                    <p className="text-xs text-muted-foreground">Cadastrar produto</p>
+                    <p className="font-medium">Realizar Contagem Lista</p>
+                    <p className="text-xs text-muted-foreground">Contagem em lista móvel</p>
                   </div>
                 </div>
               </Button>
             </Link>
 
-            <Link href="/locations">
+            <Link href="/inventory-counts">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-start space-y-2 w-full">
                 <div className="flex items-center space-x-2">
                   <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
-                    <MapPin className="h-5 w-5 text-orange-600" />
+                    <Users className="h-5 w-5 text-orange-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium">Novo Local</p>
-                    <p className="text-xs text-muted-foreground">Cadastrar local</p>
+                    <p className="font-medium">Realizar Contagem Individual</p>
+                    <p className="text-xs text-muted-foreground">Contagem item por item</p>
                   </div>
                 </div>
               </Button>
