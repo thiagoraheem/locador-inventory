@@ -121,6 +121,16 @@ export default function MobileCounting() {
   const handleSerialScan = async () => {
     if (!serialInput.trim() || !selectedInventoryId) return;
 
+    // Verificar se inventário e local estão selecionados
+    if (!selectedLocationId) {
+      toast({
+        title: "Local de estoque obrigatório",
+        description: "Selecione um local de estoque antes de realizar a leitura.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Verificar se o inventário permite contagem
     const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     if (!selectedInv || !canPerformCounting(selectedInv.status)) {
@@ -199,6 +209,16 @@ export default function MobileCounting() {
       toast({
         title: "Dados incompletos",
         description: "Selecione um produto e informe uma quantidade válida",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar se inventário e local estão selecionados
+    if (!selectedLocationId) {
+      toast({
+        title: "Local de estoque obrigatório",
+        description: "Selecione um local de estoque antes de adicionar produtos.",
         variant: "destructive",
       });
       return;
@@ -423,16 +443,17 @@ export default function MobileCounting() {
                 </div>
                 
                 <div className="text-white">
-                  <label className="block text-sm font-medium mb-2">Local de Estoque:</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Local de Estoque: <span className="text-red-300">*</span>
+                  </label>
                   <Select 
-                    value={selectedLocationId?.toString() || "all"} 
-                    onValueChange={(value) => setSelectedLocationId(value === "all" ? null : Number(value))}
+                    value={selectedLocationId?.toString() || ""} 
+                    onValueChange={(value) => setSelectedLocationId(value ? Number(value) : null)}
                   >
-                    <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
-                      <SelectValue placeholder="Todos os locais" />
+                    <SelectTrigger className={`bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white ${!selectedLocationId ? 'border-red-400' : ''}`}>
+                      <SelectValue placeholder="Selecione um local..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todos os locais</SelectItem>
                       {locations?.map((location) => (
                         <SelectItem key={location.id} value={location.id.toString()}>
                           {location.name}
@@ -440,6 +461,11 @@ export default function MobileCounting() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {!selectedLocationId && (
+                    <p className="text-red-300 text-xs mt-1">
+                      Local obrigatório para realizar contagem
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -498,7 +524,7 @@ export default function MobileCounting() {
                 />
                 <Button 
                   onClick={handleSerialScan}
-                  disabled={!serialInput.trim() || isLoading}
+                  disabled={!serialInput.trim() || isLoading || !selectedLocationId}
                   className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                 >
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Ler'}
@@ -506,6 +532,11 @@ export default function MobileCounting() {
               </div>
               <p className="text-sm text-blue-600 dark:text-blue-400 mb-3">
                 Escaneie o código de barras do produto para identificação automática
+                {!selectedLocationId && (
+                  <span className="block text-red-500 dark:text-red-400 text-xs mt-1">
+                    ⚠️ Selecione um local de estoque para habilitar a leitura
+                  </span>
+                )}
               </p>
 
               {/* Histórico de últimas leituras */}
@@ -565,7 +596,7 @@ export default function MobileCounting() {
                   />
                   <Button 
                     onClick={handleAddSelectedProduct}
-                    disabled={!selectedProduct || !quantityInput || isLoading}
+                    disabled={!selectedProduct || !quantityInput || isLoading || !selectedLocationId}
                     className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 flex-1"
                   >
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
@@ -588,6 +619,11 @@ export default function MobileCounting() {
               </div>
               <p className="text-sm text-green-600 dark:text-green-400 mt-2">
                 Busque por código SKU ou descrição e informe a quantidade
+                {!selectedLocationId && (
+                  <span className="block text-red-500 dark:text-red-400 text-xs mt-1">
+                    ⚠️ Selecione um local de estoque para habilitar a adição
+                  </span>
+                )}
               </p>
             </CardContent>
           </Card>
