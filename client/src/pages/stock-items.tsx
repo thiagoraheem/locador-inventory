@@ -8,17 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import DataTable from "@/components/data-table";
 import CategoryFilter from "@/components/category-filter";
 import { Search, Eye, Package2 } from "lucide-react";
-import type { StockItem } from "@shared/schema";
+import type { StockItem, Location } from "@shared/schema";
 
 export default function StockItems() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showInactive, setShowInactive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // all, active, inactive
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -38,13 +39,19 @@ export default function StockItems() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: stockItems, isLoading: stockItemsLoading } = useQuery({
-    queryKey: ["/api/stock-items", searchQuery, showInactive],
+    queryKey: ["/api/stock-items"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      if (showInactive) params.set('includeInactive', 'true');
-      
-      const response = await fetch(`/api/stock-items?${params}`);
+      const response = await fetch("/api/stock-items");
+      if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const { data: locations, isLoading: locationsLoading } = useQuery({
+    queryKey: ["/api/locations"],
+    queryFn: async () => {
+      const response = await fetch("/api/locations");
       if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
       return response.json();
     },
@@ -56,6 +63,24 @@ export default function StockItems() {
     
     let filtered = stockItems;
     
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter((item: any) =>
+        item.assetTag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((item: any) => {
+        if (statusFilter === "active") return item.isActive;
+        if (statusFilter === "inactive") return !item.isActive;
+        return true;
+      });
+    }
+    
     // Filter by category
     if (selectedCategory !== "all") {
       filtered = filtered.filter((item: any) => 
@@ -63,12 +88,19 @@ export default function StockItems() {
       );
     }
     
+    // Filter by location
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter((item: any) => 
+        item.location && item.location.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+    
     return filtered;
-  }, [stockItems, selectedCategory]);
+  }, [stockItems, searchQuery, statusFilter, selectedCategory, selectedLocation]);
 
   const columns = [
     {
-      header: "SKU/Tag",
+      header: "SKU",
       accessorKey: "assetTag",
       sortable: true,
     },
@@ -81,69 +113,37 @@ export default function StockItems() {
       header: "Categoria",
       accessorKey: "category",
       sortable: true,
-      cell: (value: string) => value || "Sem categoria",
+      cell: (value: any) => value || "Sem categoria",
     },
     {
       header: "Localização",
       accessorKey: "location",
       sortable: true,
-      cell: (value: any, row: StockItem) => {
-        if (row.locationCode && row.location) {
-          return `${row.locationCode} - ${row.location}`;
-        }
-        return value || "Não informado";
-      },
+      cell: (value: any) => value || "Sem localização",
     },
     {
-      header: "Quantidade",
-      accessorKey: "quantity",
-      sortable: true,
-      cell: (value: number) => value || 0,
-    },
-    {
-      header: "SKU/Série",
+      header: "Núm. Série",
       accessorKey: "serialNumber",
       sortable: true,
-      cell: (value: string) => value || "Não informado",
+      cell: (value: any) => value || "-",
     },
     {
-      header: "Valor de Custo",
+      header: "Valor Custo",
       accessorKey: "costValue",
       sortable: true,
-      cell: (value: number) => {
-        if (value == null) return "R$ 0,00";
+      cell: (value: any) => {
+        if (!value || value === 0) return "R$ 0,00";
         return new Intl.NumberFormat('pt-BR', {
           style: 'currency',
-          currency: 'BRL'
+          currency: 'BRL',
         }).format(value);
       },
-    },
-    {
-      header: "Valor Atual",
-      accessorKey: "currentValue",
-      sortable: true,
-      cell: (value: number) => {
-        if (value == null) return "R$ 0,00";
-        return new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL'
-        }).format(value);
-      },
-    },
-    {
-      header: "Condição",
-      accessorKey: "condition",
-      sortable: true,
-      cell: (value: string) => (
-        <Badge variant={value === "Bom" ? "default" : value === "Regular" ? "secondary" : "destructive"}>
-          {value || "Não informado"}
-        </Badge>
-      ),
     },
     {
       header: "Status",
       accessorKey: "isActive",
-      cell: (value: boolean) => (
+      sortable: true,
+      cell: (value: any) => (
         <Badge variant={value ? "default" : "secondary"}>
           {value ? "Ativo" : "Inativo"}
         </Badge>
@@ -151,22 +151,10 @@ export default function StockItems() {
     },
   ];
 
-  if (stockItemsLoading) {
+  if (isLoading) {
     return (
-      <div>
-        <Header title="Controle de Patrimônio" subtitle="Visualização de itens patrimoniais (somente leitura)" />
-        <div className="space-y-6 p-4 md:p-6">
-          <Card className="mobile-card">
-            <CardContent className="p-4 sm:p-6">
-              <div className="animate-pulse space-y-4">
-                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-                <div className="h-10 bg-gray-200 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Carregando...</div>
       </div>
     );
   }
@@ -179,26 +167,48 @@ export default function StockItems() {
         <Alert>
           <Eye className="h-4 w-4" />
           <AlertDescription>
-            Esta tela é somente para visualização. Os dados de patrimônio são gerenciados externamente.
+            Esta tela é somente para visualização. Os dados são obtidos da tabela stock_items.
           </AlertDescription>
         </Alert>
         
         <Card className="mobile-card">
           <CardHeader className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <CardTitle className="flex items-center">
-                <Package2 className="h-5 w-5 mr-2" />
-                Lista de Itens Patrimoniais
-              </CardTitle>
+              <CardTitle>Lista de Patrimônio</CardTitle>
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
                 <CategoryFilter
                   selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                   placeholder="Filtrar por categoria"
                 />
+                <div className="flex space-x-2">
+                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filtrar por local" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os locais</SelectItem>
+                      {locations?.map((location: Location) => (
+                        <SelectItem key={location.id} value={location.name}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[150px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="active">Ativos</SelectItem>
+                      <SelectItem value="inactive">Inativos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="relative">
                   <Input
-                    placeholder="Filtrar itens..."
+                    placeholder="Buscar itens..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full sm:w-64 pl-10"
@@ -206,16 +216,6 @@ export default function StockItems() {
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-              <Switch
-                id="show-inactive"
-                checked={showInactive}
-                onCheckedChange={setShowInactive}
-              />
-              <Label htmlFor="show-inactive" className="text-sm text-gray-600 text-responsive">
-                Mostrar itens inativos
-              </Label>
             </div>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">

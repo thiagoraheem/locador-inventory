@@ -210,6 +210,13 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Páginas Essenciais**: Primeira e última página sempre visíveis com reticências intermediárias
 ✅ **Largura Mínima**: Botões de página com largura mínima para consistência visual
 
+**Correções Tela Controle de Patrimônio (January 30, 2025)**:
+✅ **Colunas Corretas**: SKU, Descrição, Categoria, Localização, Núm. Série, Valor Custo, Status
+✅ **Filtros Avançados**: Todos|Ativos|Inativos e filtro por Local de Estoque
+✅ **Fonte de Dados**: Busca essencialmente da tabela stock_items conforme especificado
+✅ **Interface Responsiva**: Layout adaptativo para dispositivos móveis
+✅ **Localização Simplificada**: Apenas descrição sem código conforme solicitado
+
 **Sistema de Integração e Testes Completo (January 29, 2025)**:
 ✅ **Validação de Integridade**: Sistema completo para validar discrepâncias e integridade do inventário
 ✅ **Reconciliação Automática**: Processo automatizado de reconciliação com relatórios detalhados
