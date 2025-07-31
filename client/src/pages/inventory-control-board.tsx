@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import Header from "@/components/layout/header";
 import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle, RefreshCw, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 
