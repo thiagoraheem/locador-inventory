@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-// InventoryForm component removed during cleanup
+import InventoryForm from "@/components/inventory-form";
 import DataTable from "@/components/data-table";
 import {
   Plus,
@@ -334,15 +334,14 @@ export default function Inventories() {
                     Novo Inventário
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Criar Novo Inventário</DialogTitle>
                   </DialogHeader>
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">
-                      Formulário de inventário em desenvolvimento
-                    </p>
-                  </div>
+                  <InventoryForm 
+                    onSuccess={() => setIsFormOpen(false)}
+                    onCancel={() => setIsFormOpen(false)}
+                  />
                 </DialogContent>
               </Dialog>
             </div>
