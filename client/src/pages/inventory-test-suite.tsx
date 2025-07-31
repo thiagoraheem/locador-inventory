@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Play, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCcw, Target, TestTube } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Play, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCcw, Target, TestTube, FileText, Shield, Settings, PlayCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import Header from "@/components/layout/header";
@@ -29,7 +30,7 @@ interface TestResult {
 }
 
 export default function InventoryTestSuite() {
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [runningTests, setRunningTests] = useState<Set<string>>(new Set());
   const [testResults, setTestResults] = useState<Map<string, TestResult>>(new Map());
   const { toast } = useToast();
