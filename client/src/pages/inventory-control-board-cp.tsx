@@ -207,7 +207,7 @@ export default function InventoryControlBoardCP() {
                     <SelectValue placeholder="Selecione um inventário..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {inventories?.filter(inventory => inventory.id).map((inventory) => (
+                    {inventories?.filter(inventory => inventory.id && inventory.id > 0).map((inventory) => (
                       <SelectItem key={inventory.id} value={inventory.id.toString()}>
                         {inventory.code} - {inventory.description || 'Sem descrição'} ({inventory.status})
                       </SelectItem>
