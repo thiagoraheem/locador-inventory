@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Filter, Package, Clock, CheckCircle, Target, Scan, ArrowLeft } from "lucide-react";
+import { Plus, Search, Filter, Package, Clock, CheckCircle, Target, Scan, ArrowLeft, AlertTriangle, Barcode, Loader2, Trash2, RefreshCcw, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import Header from "@/components/layout/header";
@@ -59,8 +59,8 @@ export default function MobileCounting() {
   });
 
   // Fetch products with serial control information
-  const { data: products } = useQuery<ProductWithSerialControl[]>({
-    queryKey: ["/api/products/with-serial-control"],
+  const { data: products } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
   });
 
   // Fetch locations

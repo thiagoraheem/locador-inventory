@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Filter, Download, Trash2, Edit, Eye, Package, AlertCircle, CheckCircle, Clock, Target } from "lucide-react";
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, Package, AlertCircle, CheckCircle, Clock, Target, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
 import Header from "@/components/layout/header";
+import SelectedInventoryInfo from "@/components/selected-inventory-info";
 
 export default function InventoryCounts() {
   const [searchTerm, setSearchTerm] = useState("");
