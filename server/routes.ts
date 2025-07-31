@@ -117,6 +117,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix inventory schema endpoint
+  app.post("/api/fix-inventory-schema", async (req, res) => {
+    try {
+      console.log("🔧 Fixing inventory table schema...");
+      storage = await getStorage();
+      
+      // Execute the schema fix using SimpleStorage method
+      await storage.fixInventorySchema();
+      
+      console.log("✅ Inventory schema fixed successfully");
+      res.json({ 
+        message: "Inventory schema fixed successfully",
+        details: "Added selectedLocationIds, selectedCategoryIds, predictedEndDate, and isToBlockSystem columns"
+      });
+    } catch (error) {
+      console.error("Error fixing inventory schema:", error as Error);
+      res.status(500).json({
+        error: "Failed to fix inventory schema",
+        details: (error as Error).message,
+      });
+    }
+  });
+
   // Auth routes
   app.post("/api/auth/login", async (req, res) => {
     try {
