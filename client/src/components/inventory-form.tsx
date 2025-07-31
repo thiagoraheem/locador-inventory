@@ -35,6 +35,7 @@ const formSchema = insertInventorySchema.extend({
   predictedEndDate: z.string().min(1, "Data de previsão é obrigatória"),
   selectedLocationIds: z.array(z.number()).min(1, "Selecione pelo menos um local"),
   selectedCategoryIds: z.array(z.number()).min(1, "Selecione pelo menos uma categoria"),
+  isToBlockSystem: z.boolean().optional()
 }).omit({ createdBy: true });
 
 interface InventoryFormProps {
@@ -53,6 +54,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       endDate: "",
       predictedEndDate: "",
       description: "",
+      isToBlockSystem: false,
       selectedLocationIds: [],
       selectedCategoryIds: [],
     },
@@ -97,6 +99,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         predictedEndDate: data.predictedEndDate ? new Date(data.predictedEndDate).getTime() : null,
         description: data.description,
         status: 'open',
+        isToBlockSystem: data.isToBlockSystem,
         selectedLocationIds: data.selectedLocationIds,
         selectedCategoryIds: data.selectedCategoryIds,
       };

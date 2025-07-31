@@ -122,6 +122,8 @@ export default function Inventories() {
         return <Badge variant="secondary">3ª Contagem Aberta</Badge>;
       case 'count3_closed':
         return <Badge variant="outline">3ª Contagem Fechada</Badge>;
+      case 'count3_required':
+        return <Badge variant="destructive">3ª Contagem Requerida</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Cancelado</Badge>;
       default:
@@ -159,15 +161,8 @@ export default function Inventories() {
       cell: (value: string) => value ? new Date(value).toLocaleDateString() : 'N/A',
     },
     {
-      header: "Criado por",
-      accessorKey: "createdBy",
-      cell: (value: string, row: any) => {
-        if (!row.createdBy) return 'N/A';
-        if (typeof row.createdBy === 'string') return row.createdBy;
-        if (row.createdBy.name) return row.createdBy.name;
-        if (row.createdBy.email) return row.createdBy.email;
-        return 'N/A';
-      },
+      header: "Descrição",
+      accessorKey: "description"
     },
     {
       header: "Ações",
