@@ -356,6 +356,7 @@ export const insertInventorySchema = z.object({
   endDate: z.number().nullable().optional(),
   predictedEndDate: z.number().nullable().optional(),
   description: z.string().nullable().optional(),
+  isToBlockSystem: z.boolean().nullable().optional(),
   selectedLocationIds: z.array(z.number()).optional(),
   selectedCategoryIds: z.array(z.number()).optional(),
   createdBy: z.number(),
@@ -570,20 +571,12 @@ export interface StockItem {
   id: number;
   productId?: number;
   locationId?: number;
-  quantity?: number;
   assetTag: string;
   description: string;
   category?: string;
   location?: string;
-  locationCode?: string;
-  companyId?: number;
-  acquisitionDate?: number;
   costValue?: number;
-  currentValue?: number;
-  condition?: string;
   serialNumber?: string;
-  brand?: string;
-  model?: string;
   isActive: boolean;
   createdAt: number;
   updatedAt: number;

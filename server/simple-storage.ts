@@ -679,17 +679,12 @@ export class SimpleStorage {
         si.id,
         si.productId,
         si.locationId,
-        0 as quantity,
         p.sku as assetTag,
         p.name as description,
         c.name as category,
         l.name as location,
-        l.code as locationCode,
         p.costValue,
         si.serialNumber,
-        'Bom' as condition,
-        '' as brand,
-        '' as model,
         si.isActive,
         si.createdAt,
         si.updatedAt
@@ -698,7 +693,7 @@ export class SimpleStorage {
       LEFT JOIN categories c ON p.categoryId = c.id  
       LEFT JOIN locations l ON si.locationId = l.id
       WHERE si.serialNumber IS NOT NULL
-      ORDER BY p.sku
+      ORDER BY p.description
     `);
 
     return result.recordset.map((item) => ({
