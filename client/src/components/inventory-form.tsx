@@ -26,140 +26,176 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
-import { insertInventorySchema, type InsertInventory } from "@shared/schema";
+import { insertInventorySchema } from "@shared/schema";
 import { z } from "zod";
-import { useAuth } from "@/hooks/useAuth";
 
-// Extended schema for form validation
-const inventoryFormSchema = insertInventorySchema.extend({
-  startDate: z.date(),
-  endDate: z.date().optional(),
-  predictedEndDate: z.date().optional(),
-});
-
-type InventoryFormData = z.infer<typeof inventoryFormSchema>;
+const formSchema = insertInventorySchema
+  .extend({
+    startDate: z.string().min(1, "Data de início é obrigatória"),
+    endDate: z.string().optional(),
+    predictedEndDate: z.string().min(1, "Data de previsão é obrigatória"),
+    selectedLocationIds: z
+      .array(z.number())
+      .min(1, "Selecione pelo menos um local"),
+    selectedCategoryIds: z
+      .array(z.number())
+      .min(1, "Selecione pelo menos uma categoria"),
+    isToBlockSystem: z.boolean().optional(),
+  })
+  .omit({ createdBy: true });
 
 interface InventoryFormProps {
   onSuccess?: () => void;
-  onCancel?: () => void;
 }
 
-export default function InventoryForm({ onSuccess, onCancel }: InventoryFormProps) {
+export default function InventoryForm({ onSuccess }: InventoryFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  // Fetch inventory types
-  const { data: inventoryTypes, isLoading: typesLoading } = useQuery({
-    queryKey: ["/api/inventory-types"],
-    retry: false,
-  });
-
-  // Fetch locations
-  const { data: locations, isLoading: locationsLoading } = useQuery({
-    queryKey: ["/api/locations"],
-    retry: false,
-  });
-
-  // Fetch categories
-  const { data: categories, isLoading: categoriesLoading } = useQuery({
-    queryKey: ["/api/categories"],
-    retry: false,
-  });
-
-  const form = useForm<InventoryFormData>({
-    resolver: zodResolver(inventoryFormSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      typeId: 1,
-      status: "planning",
-      startDate: new Date(),
+      code: "",
+      typeId: 0,
+      startDate: "",
+      endDate: "",
+      predictedEndDate: "",
       description: "",
       isToBlockSystem: false,
       selectedLocationIds: [],
       selectedCategoryIds: [],
-      createdBy: user?.id || 1,
     },
   });
 
-  const createInventoryMutation = useMutation({
-    mutationFn: async (data: InventoryFormData) => {
-      // Convert dates to timestamps
-      const inventoryData: InsertInventory = {
-        ...data,
-        startDate: data.startDate.getTime(),
-        endDate: data.endDate ? data.endDate.getTime() : undefined,
-        predictedEndDate: data.predictedEndDate ? data.predictedEndDate.getTime() : undefined,
-        createdBy: user?.id || 1,
+  const { data: inventoryTypes } = useQuery({
+    queryKey: ["/api/inventory-types"],
+    retry: false,
+  });
+
+  const { data: locations } = useQuery({
+    queryKey: ["/api/locations"],
+    retry: false,
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["/api/products"],
+    retry: false,
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ["/api/categories"],
+    retry: false,
+  });
+
+  const { data: stock } = useQuery({
+    queryKey: ["/api/stock"],
+    retry: false,
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      // Generate unique code if not provided
+      const code =
+        data.code ||
+        `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+      // Create inventory
+      const inventoryPayload = {
+        code,
+        typeId: data.typeId,
+        startDate: new Date(data.startDate).getTime(),
+        endDate: data.endDate ? new Date(data.endDate).getTime() : null,
+        predictedEndDate: data.predictedEndDate
+          ? new Date(data.predictedEndDate).getTime()
+          : null,
+        description: data.description,
+        status: "open",
+        isToBlockSystem: data.isToBlockSystem || false,
+        selectedLocationIds: data.selectedLocationIds,
+        selectedCategoryIds: data.selectedCategoryIds,
       };
 
-      return await apiRequest("/api/inventories", {
-        method: "POST",
-        body: JSON.stringify(inventoryData),
-      });
+      const response = await apiRequest(
+        "POST",
+        "/api/inventories",
+        inventoryPayload,
+      );
+      const inventory = await response.json();
+
+      return inventory;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
       toast({
         title: "Sucesso",
-        description: "Inventário criado com sucesso",
+        description: "Inventário criado com sucesso!",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
-      form.reset();
       onSuccess?.();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       if (isUnauthorizedError(error)) {
         toast({
-          title: "Sessão expirada",
-          description: "Faça login novamente",
+          title: "Não autorizado",
+          description: "Você não está autenticado. Faça login novamente...",
           variant: "destructive",
         });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
         return;
       }
       toast({
         title: "Erro",
-        description: error.message || "Erro ao criar inventário",
+        description: "Erro ao criar inventário",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: InventoryFormData) => {
-    createInventoryMutation.mutate(data);
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    mutation.mutate(data);
   };
 
-  const isLoading = typesLoading || locationsLoading || categoriesLoading;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Carregando...</span>
-      </div>
-    );
-  }
+  const generateCode = () => {
+    const code = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    form.setValue("code", code);
+  };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Basic Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Código do Inventário</FormLabel>
+                <div className="flex space-x-2">
+                  <FormControl>
+                    <Input placeholder="INV-2024-001" {...field} />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generateCode}
+                  >
+                    Gerar
+                  </Button>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={form.control}
             name="typeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tipo de Inventário</FormLabel>
+                <FormLabel>Tipo de Inventário *</FormLabel>
                 <Select
-                  onValueChange={(value) => field.onChange(Number(value))}
-                  defaultValue={field.value?.toString()}
+                  onValueChange={(value) => field.onChange(parseInt(value))}
+                  value={field.value?.toString()}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -167,113 +203,30 @@ export default function InventoryForm({ onSuccess, onCancel }: InventoryFormProp
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {inventoryTypes?.map((type: any) => (
-                      <SelectItem key={type.id} value={type.id.toString()}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
+                    {Array.isArray(inventoryTypes) &&
+                      inventoryTypes.map((type: any) => (
+                        <SelectItem key={type.id} value={type.id.toString()}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
-
-          <FormField
-            control={form.control}
-            name="code"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Código (opcional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Será gerado automaticamente se vazio" {...field} />
-                </FormControl>
-                <FormDescription>
-                  Se não informado, será gerado automaticamente
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
 
-        {/* Dates */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
             name="startDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data de Início</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Data de Fim (opcional)</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+              <FormItem>
+                <FormLabel>Data de Início *</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -283,154 +236,163 @@ export default function InventoryForm({ onSuccess, onCancel }: InventoryFormProp
             control={form.control}
             name="predictedEndDate"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Previsão de Término (opcional)</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "dd/MM/yyyy")
-                        ) : (
-                          <span>Selecione a data</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) => date < new Date("1900-01-01")}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+              <FormItem>
+                <FormLabel>Previsão de Término *</FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
 
-        {/* Description */}
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Descrição do inventário..."
-                  className="min-h-[100px]"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Location Selection */}
-        <FormField
-          control={form.control}
-          name="selectedLocationIds"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Locais Selecionados</FormLabel>
-              <FormDescription>
-                Selecione os locais que serão incluídos no inventário
-              </FormDescription>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto border rounded p-3">
-                {locations?.map((location: any) => (
-                  <div key={location.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`location-${location.id}`}
-                      checked={field.value?.includes(location.id) || false}
-                      onCheckedChange={(checked) => {
-                        const currentValues = field.value || [];
-                        if (checked) {
-                          field.onChange([...currentValues, location.id]);
-                        } else {
-                          field.onChange(
-                            currentValues.filter((id) => id !== location.id)
-                          );
-                        }
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={form.control}
+            name="selectedLocationIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Locais de Estoque *</FormLabel>
+                <div className="max-h-48 overflow-y-auto border rounded-lg p-4">
+                  <div className="mb-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allLocationIds = Array.isArray(locations)
+                          ? locations.map((l: any) => l.id)
+                          : [];
+                        field.onChange(
+                          field.value?.length === allLocationIds.length
+                            ? []
+                            : allLocationIds,
+                        );
                       }}
-                    />
-                    <Label
-                      htmlFor={`location-${location.id}`}
-                      className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {location.name}
-                    </Label>
+                      {field.value?.length ===
+                      (Array.isArray(locations) ? locations.length : 0)
+                        ? "Desmarcar Todos"
+                        : "Selecionar Todos"}
+                    </Button>
                   </div>
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  <div className="space-y-2">
+                    {Array.isArray(locations) &&
+                      locations.map((location: any) => (
+                        <div
+                          key={location.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`location-${location.id}`}
+                            checked={field.value?.includes(location.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                field.onChange([...field.value, location.id]);
+                              } else {
+                                field.onChange(
+                                  field.value.filter(
+                                    (id) => id !== location.id,
+                                  ),
+                                );
+                              }
+                            }}
+                          />
+                          <Label
+                            htmlFor={`location-${location.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {location.name}
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* Category Selection */}
-        <FormField
-          control={form.control}
-          name="selectedCategoryIds"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Categorias Selecionadas</FormLabel>
-              <FormDescription>
-                Selecione as categorias que serão incluídas no inventário
-              </FormDescription>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto border rounded p-3">
-                {categories?.map((category: any) => (
-                  <div key={category.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`category-${category.id}`}
-                      checked={field.value?.includes(category.id) || false}
-                      onCheckedChange={(checked) => {
-                        const currentValues = field.value || [];
-                        if (checked) {
-                          field.onChange([...currentValues, category.id]);
-                        } else {
-                          field.onChange(
-                            currentValues.filter((id) => id !== category.id)
-                          );
-                        }
+          <FormField
+            control={form.control}
+            name="selectedCategoryIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Categorias *</FormLabel>
+                <div className="max-h-48 overflow-y-auto border rounded-lg p-4">
+                  <div className="mb-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const allCategoryIds = Array.isArray(categories)
+                          ? categories.map((c: any) => c.id)
+                          : [];
+                        field.onChange(
+                          field.value?.length === allCategoryIds.length
+                            ? []
+                            : allCategoryIds,
+                        );
                       }}
-                    />
-                    <Label
-                      htmlFor={`category-${category.id}`}
-                      className="text-sm font-medium leading-none cursor-pointer"
                     >
-                      {category.name}
-                    </Label>
+                      {field.value?.length ===
+                      (Array.isArray(categories) ? categories.length : 0)
+                        ? "Desmarcar Todos"
+                        : "Selecionar Todos"}
+                    </Button>
                   </div>
-                ))}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  <div className="space-y-2">
+                    {Array.isArray(categories) &&
+                      categories.map((category: any) => (
+                        <div
+                          key={category.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`category-${category.id}`}
+                            checked={field.value?.includes(category.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                field.onChange([...field.value, category.id]);
+                              } else {
+                                field.onChange(
+                                  field.value.filter(
+                                    (id) => id !== category.id,
+                                  ),
+                                );
+                              }
+                            }}
+                          />
+                          <Label
+                            htmlFor={`category-${category.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {category.name}
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-        {/* Block System Option */}
         <FormField
           control={form.control}
           name="isToBlockSystem"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <FormLabel className="text-base">Bloquear Sistema</FormLabel>
+                <FormLabel className="text-base">
+                  Bloquear movimentação de estoque
+                </FormLabel>
                 <FormDescription>
-                  Bloqueia movimentações de estoque durante o inventário
+                  Quando ativado, impede movimentações no estoque durante o
+                  inventário
                 </FormDescription>
               </div>
               <FormControl>
@@ -443,24 +405,30 @@ export default function InventoryForm({ onSuccess, onCancel }: InventoryFormProp
           )}
         />
 
-        {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={createInventoryMutation.isPending}
-          >
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descrição</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Descrição opcional do inventário..."
+                  rows={3}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex items-center justify-end space-x-4">
+          <Button type="button" variant="outline" onClick={onSuccess}>
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            disabled={createInventoryMutation.isPending}
-          >
-            {createInventoryMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Criar Inventário
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Criando..." : "Criar Inventário"}
           </Button>
         </div>
       </form>
