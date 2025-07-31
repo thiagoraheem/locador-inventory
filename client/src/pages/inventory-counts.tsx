@@ -50,153 +50,151 @@ export default function InventoryCounts() {
   // Use appropriate data source based on inventory status
   const currentItems = selectedInventoryData?.status === 'count3_open' ? divergentItems : inventoryItems;
 
+  // Fetch all products
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
+  // Fetch all locations
   const { data: locations } = useQuery<Location[]>({
     queryKey: ["/api/locations"],
   });
 
-  // Update count mutation
+  // Filter active inventories
+  const activeInventories = inventories?.filter(inv => 
+    inv.status !== 'closed' && inv.status !== 'cancelled'
+  ) || [];
+
+  // Filter items based on search term and status
+  const filteredItems = currentItems?.filter(item => {
+    const product = products?.find(p => p.id === item.productId);
+    const location = locations?.find(l => l.id === item.locationId);
+    const searchMatch = 
+      product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false;
+    
+    if (statusFilter === 'all') {
+      return searchMatch;
+    } else if (statusFilter === 'counted') {
+      const status = getItemStatus(item, currentStage);
+      return searchMatch && status === 'counted';
+    }
+    
+    return searchMatch;
+  }) || [];
+
+  // Get current count stage based on inventory status
+  const getCurrentCountStage = (status: string): number => {
+    switch (status) {
+      case 'count1_open': return 1;
+      case 'count1_closed': return 1;
+      case 'count2_open': return 2;
+      case 'count2_closed': return 2;
+      case 'count3_open': return 3;
+      case 'count3_closed': return 3;
+      default: return 1;
+    }
+  };
+
+  // Get item status (counted or pending)
+  const getItemStatus = (item: InventoryItem, stage: number): 'counted' | 'pending' => {
+    switch (stage) {
+      case 1: return item.count1 !== null ? 'counted' : 'pending';
+      case 2: return item.count2 !== null ? 'counted' : 'pending';
+      case 3: return item.count3 !== null ? 'counted' : 'pending';
+      default: return 'pending';
+    }
+  };
+
+  // Get current count value for an item
+  const getCurrentCount = (item: InventoryItem, stage: number): number | null => {
+    switch (stage) {
+      case 1: return item.count1;
+      case 2: return item.count2;
+      case 3: return item.count3;
+      default: return null;
+    }
+  };
+
+  // Get final quantity status
+  const getFinalQuantityStatus = (item: InventoryItem) => {
+    if (item.finalQuantity === null) return null;
+    
+    const isDivergent = item.count1 !== item.count2 || 
+                        (item.count3 !== null && (item.count3 !== item.count1 && item.count3 !== item.count2));
+    
+    return {
+      variant: isDivergent ? 'destructive' : 'secondary',
+      label: isDivergent ? 'Divergente' : 'Concluído'
+    };
+  };
+
+  // Check if counting can be performed based on inventory status
+  const canPerformCounting = (status: string): boolean => {
+    return ['count1_open', 'count2_open', 'count3_open'].includes(status);
+  };
+
+  // Mutation to update count
   const updateCountMutation = useMutation({
-    mutationFn: async ({ itemId, count, countType }: { itemId: number; count: number; countType: string }) => {
-      const response = await fetch(`/api/inventory-items/${itemId}/${countType}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ count }),
+    mutationFn: async ({ itemId, stage, value }: { itemId: number, stage: number, value: number }) => {
+      const response = await fetch(`/api/inventory-items/${itemId}/count`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stage, value }),
       });
-
+      
       if (!response.ok) {
-        throw new Error('Failed to update count');
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update count');
       }
-
+      
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/items`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/items/divergent`] });
       toast({
-        title: "Contagem atualizada",
-        description: "Contagem registrada com sucesso",
+        title: "Contagem registrada",
+        description: "A contagem foi registrada com sucesso.",
       });
-      refetchItems();
-      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/stats`] });
     },
     onError: (error) => {
       toast({
-        title: "Erro ao atualizar contagem",
+        title: "Erro ao registrar contagem",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  // Get active inventories that can be counted
-  const activeInventories = inventories?.filter(inv => 
-    ['open', 'count1_open', 'count2_open', 'count3_open'].includes(inv.status)
-  ) || [];
-
-  // Get current counting stage based on inventory status
-  const getCurrentCountStage = (status: string) => {
-    switch (status) {
-      case 'open':
-      case 'count1_open':
-        return 1;
-      case 'count1_closed':
-      case 'count2_open':
-        return 2;
-      case 'count2_closed':
-      case 'count3_open':
-        return 3;
-      default:
-        return 1;
-    }
-  };
-
-  // Get current count value for an item based on stage
-  const getCurrentCount = (item: InventoryItem, stage: number) => {
-    switch (stage) {
-      case 1: return item.count1;
-      case 2: return item.count2;
-      case 3: return item.count3;
-      default: return undefined;
-    }
-  };
-
-  // Get item status based on count completion
-  const getItemStatus = (item: InventoryItem, stage: number) => {
-    const currentCount = getCurrentCount(item, stage);
-    return currentCount !== undefined && currentCount !== null ? 'counted' : 'pending';
-  };
-
-  // Get final quantity status badge
-  const getFinalQuantityStatus = (item: InventoryItem) => {
-    if (item.finalQuantity !== null && item.finalQuantity !== undefined) {
-      return { label: "Finalizado", variant: "secondary" as const };
-    } else if (selectedInventoryData?.status === 'count3_required' || selectedInventoryData?.status === 'count3_open') {
-      return { label: "Divergente", variant: "destructive" as const };
-    }
-    return null;
-  };
-
-  // Filter items based on search and status - BLIND COUNTING: hide already counted items
-  const filteredItems = currentItems?.filter(item => {
-    const product = products?.find(p => p.id === item.productId);
-    const location = locations?.find(l => l.id === item.locationId);
-
-    const matchesSearch = !searchTerm || 
-      product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product?.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location?.name.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
-    const stage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
-    const status = getItemStatus(item, stage);
-
-    const matchesStatus = statusFilter === 'all' || status === statusFilter;
-
-    // BLIND COUNTING: Show only pending items by default, or counted items if specifically requested
-    if (statusFilter === 'counted') {
-      return matchesSearch && status === 'counted';
-    } else {
-      return matchesSearch && status === 'pending';
-    }
-  }) || [];
-
-  // Função para verificar se o inventário permite contagem
-  const canPerformCounting = (status: string): boolean => {
-    return ['count1_open', 'count2_open', 'count3_open', 'count4_open'].includes(status);
-  };
-
+  // Handle save count
   const handleSaveCount = (itemId: number, stage: number) => {
-    // Verificar se o inventário permite contagem
-    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
-    if (!selectedInv || !canPerformCounting(selectedInv.status)) {
+    const value = countValues[itemId];
+    
+    if (!value || value === "") {
       toast({
-        title: "Contagem não permitida",
-        description: "O inventário deve estar em status de contagem aberta (1ª, 2ª, 3ª ou 4ª contagem).",
+        title: "Erro ao registrar contagem",
+        description: "Informe uma quantidade válida.",
         variant: "destructive",
       });
       return;
     }
-
-    const countValue = countValues[itemId];
-    if (!countValue || countValue === "" || isNaN(Number(countValue)) || Number(countValue) < 0) {
+    
+    if (!canPerformCounting(selectedInv?.status || '')) {
       toast({
-        title: "Valor inválido",
-        description: "Por favor, insira um número válido (0 ou maior)",
+        title: "Erro ao registrar contagem",
+        description: "O inventário não está aberto para contagem.",
         variant: "destructive",
       });
       return;
     }
-
-    const countType = `count${stage}`;
-    updateCountMutation.mutate({ 
-      itemId, 
-      count: Number(countValue), 
-      countType 
-    });
-
+    
+    updateCountMutation.mutate({ itemId, stage, value: Number(value) });
+    
     // Clear the input after successful count
     setCountValues(prev => ({
       ...prev,
@@ -220,234 +218,255 @@ export default function InventoryCounts() {
     <div>
       <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
 
-      <div className="space-y-6 p-4 md:p-6">
-        <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Seleção de Inventário
-          </CardTitle>
-          <CardDescription>
-            Selecione um inventário para realizar a contagem
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Inventário Ativo</label>
-              <Select value={selectedInventoryId?.toString() || ""} onValueChange={(value) => setSelectedInventoryId(Number(value))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um inventário..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeInventories.map((inventory) => (
-                    <SelectItem key={inventory.id} value={inventory.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <span>{inventory.code}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {getStageLabel(getCurrentCountStage(inventory.status))}
+      <div className="p-4 md:p-6 space-y-4">
+        {/* Cabeçalho condensado com seleção de inventário e filtros */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Seleção de Inventário */}
+          <Card className="lg:col-span-1">
+            <CardContent className="p-3 pt-3">
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Inventário Ativo</span>
+                </div>
+                <Select value={selectedInventoryId?.toString() || ""} onValueChange={(value) => setSelectedInventoryId(Number(value))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um inventário..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeInventories.map((inventory) => (
+                      <SelectItem key={inventory.id} value={inventory.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          <span>{inventory.code}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {getStageLabel(getCurrentCountStage(inventory.status))}
+                          </Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedInv && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="secondary">
+                      {getStageLabel(currentStage)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {selectedInv.description}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedInventory && (
+            <>
+              {/* Filtro de Busca */}
+              <Card className="lg:col-span-1">
+                <CardContent className="p-3 pt-3">
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Buscar Item</span>
+                    </div>
+                    <Input
+                      placeholder="Nome do produto, SKU ou local..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Filtro de Visualização */}
+              <Card className="lg:col-span-1">
+                <CardContent className="p-3 pt-3">
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Visualizar</span>
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Apenas Pendentes (Contagem Às Cegas)</SelectItem>
+                        <SelectItem value="counted">Mostrar Já Contados</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+
+        {selectedInventory && (
+          <>
+            {/* Tabela de Contagem - Destacada */}
+            <Card className="shadow-md">
+              <CardHeader className="pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Target className="h-5 w-5 text-primary" />
+                      {getStageLabel(currentStage)}
+                      {selectedInventoryData?.status === 'count3_open' && (
+                        <Badge variant="destructive" className="ml-2">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Apenas itens divergentes
                         </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedInv && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status Atual</label>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {getStageLabel(currentStage)}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {selectedInv.description}
-                  </span>
+                      )}
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      {selectedInventoryData?.status === 'count3_open' ? 
+                        "3ª Contagem - Apenas itens com divergência entre 1ª e 2ª contagem" :
+                        "Contagem às cegas - registre apenas o que você consegue contar fisicamente"
+                      }
+                    </CardDescription>
+                  </div>
+                  {currentItems && (
+                    <Badge variant="outline" className="px-3 py-1.5 text-sm">
+                      <CheckCircle className="h-4 w-4 mr-2 text-primary" />
+                      <span className="font-medium">
+                        {currentItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{currentItems.length} itens {selectedInventoryData?.status === 'count3_open' ? 'divergentes ' : ''}contados
+                      </span>
+                    </Badge>
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {selectedInventory && (
-        <>
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5" />
-                Filtros de Contagem
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Buscar Item</label>
-                  <Input
-                    placeholder="Nome do produto, SKU ou local..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Visualizar</label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Apenas Pendentes (Contagem Às Cegas)</SelectItem>
-                      <SelectItem value="counted">Mostrar Já Contados</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Counting Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {getStageLabel(currentStage)}
-                {selectedInventoryData?.status === 'count3_open' && (
-                  <Badge variant="destructive" className="ml-2">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Apenas itens divergentes
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>
-                {selectedInventoryData?.status === 'count3_open' ? 
-                  "3ª Contagem - Apenas itens com divergência entre 1ª e 2ª contagem" :
-                  "Contagem às cegas - registre apenas o que você consegue contar fisicamente"
-                }
-                {currentItems && (
-                  <span className="ml-2 font-medium">
-                    ({currentItems.filter(item => getItemStatus(item, currentStage) === 'counted').length}/{currentItems.length} itens {selectedInventoryData?.status === 'count3_open' ? 'divergentes ' : ''}contados)
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Qtd. Contada</TableHead>
-                      <TableHead>Status Final</TableHead>
-                      <TableHead>Status Contagem</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredItems.length === 0 ? (
+              </CardHeader>
+              <CardContent className="pt-2">
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
-                          <div className="text-muted-foreground">
-                            {currentItems?.length === 0 ? 
-                              selectedInventoryData?.status === 'count3_open' ?
-                                "Nenhum item divergente encontrado - todas as contagens estão alinhadas!" :
-                                "Nenhum item encontrado para este inventário" :
-                              statusFilter === 'all' ? 
-                                "Todos os itens pendentes já foram contados!" :
-                                "Nenhum item corresponde aos filtros aplicados"
-                            }
-                          </div>
-                        </TableCell>
+                        <TableHead className="font-semibold">Produto</TableHead>
+                        <TableHead className="font-semibold">Local</TableHead>
+                        <TableHead className="font-semibold">Qtd. Contada</TableHead>
+                        <TableHead className="font-semibold">Status Final</TableHead>
+                        <TableHead className="font-semibold">Status Contagem</TableHead>
+                        <TableHead className="font-semibold">Ações</TableHead>
                       </TableRow>
-                    ) : (
-                      filteredItems.map((item) => {
-                        const product = products?.find(p => p.id === item.productId);
-                        const location = locations?.find(l => l.id === item.locationId);
-                        const currentCount = getCurrentCount(item, currentStage);
-                        const status = getItemStatus(item, currentStage);
-                        const countValue = countValues[item.id] ?? (currentCount || "");
-                        const finalStatus = getFinalQuantityStatus(item);
-
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{product?.name || 'N/A'}</div>
-                                <div className="text-sm text-muted-foreground">{product?.sku || 'N/A'}</div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-12">
+                            <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                              <Package className="h-10 w-10 opacity-20" />
+                              <div className="text-lg font-medium">
+                                {currentItems?.length === 0 ? 
+                                  selectedInventoryData?.status === 'count3_open' ?
+                                    "Nenhum item divergente encontrado - todas as contagens estão alinhadas!" :
+                                    "Nenhum item encontrado para este inventário" :
+                                  statusFilter === 'all' ? 
+                                    "Todos os itens pendentes já foram contados!" :
+                                    "Nenhum item corresponde aos filtros aplicados"
+                                }
                               </div>
-                            </TableCell>
-                            <TableCell>{location?.name || 'N/A'}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder={canPerformCounting(selectedInv?.status || '') ? "Quantidade contada..." : "Contagem bloqueada"}
-                                value={countValue}
-                                onChange={(e) => setCountValues(prev => ({
-                                  ...prev,
-                                  [item.id]: e.target.value
-                                }))}
-                                className="w-32"
-                                disabled={!canPerformCounting(selectedInv?.status || '')}
-                                autoFocus
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {finalStatus ? (
-                                <Badge variant={finalStatus.variant}>
-                                  <div className="flex items-center gap-1">
-                                    {finalStatus.variant === 'secondary' ? 
-                                      <CheckCircle className="h-3 w-3" /> : 
-                                      <AlertTriangle className="h-3 w-3" />
-                                    }
-                                    {finalStatus.label}
-                                  </div>
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Em andamento
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {canPerformCounting(selectedInv?.status || '') ? (
-                                <Badge variant="secondary">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Aguardando Contagem
-                                  </div>
-                                </Badge>
-                              ) : (
-                                <Badge variant="destructive">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    Contagem Bloqueada
-                                  </div>
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                size="sm"
-                                onClick={() => handleSaveCount(item.id, currentStage)}
-                                disabled={updateCountMutation.isPending || !countValue || countValue === "" || !canPerformCounting(selectedInv?.status || '')}
-                              >
-                                {updateCountMutation.isPending ? "Salvando..." : "Registrar"}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredItems.map((item, index) => {
+                          const product = products?.find(p => p.id === item.productId);
+                          const location = locations?.find(l => l.id === item.locationId);
+                          const currentCount = getCurrentCount(item, currentStage);
+                          const status = getItemStatus(item, currentStage);
+                          const countValue = countValues[item.id] ?? (currentCount || "");
+                          const finalStatus = getFinalQuantityStatus(item);
+
+                          return (
+                            <TableRow key={item.id} className={index % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{product?.name || 'N/A'}</div>
+                                  <div className="text-xs text-muted-foreground">{product?.sku || 'N/A'}</div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{location?.name || 'N/A'}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder={canPerformCounting(selectedInv?.status || '') ? "Quantidade contada..." : "Contagem bloqueada"}
+                                  value={countValue}
+                                  onChange={(e) => setCountValues(prev => ({
+                                    ...prev,
+                                    [item.id]: e.target.value
+                                  }))}
+                                  className="w-32 border-primary/40 focus:border-primary"
+                                  disabled={!canPerformCounting(selectedInv?.status || '')}
+                                  autoFocus
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {finalStatus ? (
+                                  <Badge variant={finalStatus.variant} className="px-2 py-1">
+                                    <div className="flex items-center gap-1">
+                                      {finalStatus.variant === 'secondary' ? 
+                                        <CheckCircle className="h-3.5 w-3.5" /> : 
+                                        <AlertTriangle className="h-3.5 w-3.5" />
+                                      }
+                                      <span className="font-medium">{finalStatus.label}</span>
+                                    </div>
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="px-2 py-1">
+                                    <Clock className="h-3.5 w-3.5 mr-1" />
+                                    <span className="font-medium">Em andamento</span>
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {canPerformCounting(selectedInv?.status || '') ? (
+                                  <Badge variant="secondary" className="px-2 py-1 bg-secondary/80">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      <span className="font-medium">Aguardando Contagem</span>
+                                    </div>
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="px-2 py-1">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="h-3.5 w-3.5" />
+                                      <span className="font-medium">Contagem Bloqueada</span>
+                                    </div>
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  size="sm"
+                                  variant={canPerformCounting(selectedInv?.status || '') ? "default" : "outline"}
+                                  className={canPerformCounting(selectedInv?.status || '') ? "bg-primary hover:bg-primary/90" : ""}
+                                  onClick={() => handleSaveCount(item.id, currentStage)}
+                                  disabled={updateCountMutation.isPending || !countValue || countValue === "" || !canPerformCounting(selectedInv?.status || '')}
+                                >
+                                  {updateCountMutation.isPending ? (
+                                    <>
+                                      <span className="mr-1">Salvando</span>
+                                      <span className="animate-pulse">...</span>
+                                    </>
+                                  ) : (
+                                    "Registrar"
+                                  )}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );
