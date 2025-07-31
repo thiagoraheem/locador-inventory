@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Header from "@/components/layout/header";
-import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle, RefreshCw } from "lucide-react";
+import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle, RefreshCw, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
@@ -130,7 +131,7 @@ export default function InventoryControlBoard() {
 
   // Check if user has audit mode access (Mesa de Controle access)
   const hasAuditAccess = () => {
-    const userRole = user?.role?.toLowerCase();
+    const userRole = (user as any)?.role?.toLowerCase();
     return ['admin', 'gerente', 'supervisor'].includes(userRole);
   };
 
@@ -163,7 +164,7 @@ export default function InventoryControlBoard() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ userId: 'user1' }),
+        body: JSON.stringify({ userId: (user as any)?.id || 'user1' }),
       });
       
       if (!response.ok) {
@@ -613,12 +614,31 @@ export default function InventoryControlBoard() {
                 icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
                 trend="up"
               />
-              <KPICard
-                title="Tempo Decorrido"
-                value={getElapsedTime()}
-                description="Desde o início da contagem"
-                icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <KPICard
+                        title="Tempo Decorrido"
+                        value={getElapsedTime()}
+                        description="Desde o início da contagem"
+                        icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-sm p-4">
+                    <div className="space-y-2">
+                      <p className="font-semibold">Fórmula de Cálculo:</p>
+                      <p className="text-sm">Tempo Atual - Data de Início da Contagem</p>
+                      <div className="border-t pt-2 mt-2">
+                        <p className="text-xs"><strong>Tempo Atual:</strong> {new Date().toLocaleString('pt-BR')}</p>
+                        <p className="text-xs"><strong>Início da Contagem:</strong> {new Date(getCountingStartTime()).toLocaleString('pt-BR')}</p>
+                        <p className="text-xs"><strong>Diferença:</strong> {Math.floor((Date.now() - getCountingStartTime()) / (1000 * 60))} minutos</p>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             {/* Progress Bar */}

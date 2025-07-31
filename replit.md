@@ -262,6 +262,11 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Interface Bloqueio de Estoque**: Toggle switch intuitivo para controle de movimentação durante inventário
 ✅ **Performance Queries**: Otimização das consultas de patrimônio para maior eficiência
 ✅ **UX Mesa de Controle**: Botão recarregar com feedback visual e invalidação de cache inteligente
+✅ **Tooltip Tempo Decorrido**: Hover na Mesa de Controle mostra fórmula e dados de cálculo do tempo
+✅ **Filtro Local Contagem Móvel**: Adicionado filtro de Local de Estoque na interface móvel
+✅ **Validação Local Série**: Sistema valida se número de série pertence ao local selecionado
+✅ **Interface Responsiva Móvel**: Grid responsivo com seletor de inventário, estágio e local
+✅ **Feedback Visual Locais**: Mensagens claras quando item não pertence ao local filtrado
 
 **Current Login Credentials**: username: `admin`, password: `password`
 

@@ -61,6 +61,7 @@ export default function MobileCounting() {
   const [activeTab, setActiveTab] = useState<'serial' | 'sku'>('serial');
   const [isLoading, setIsLoading] = useState(false);
   const [recentScans, setRecentScans] = useState<string[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
 
   const { toast } = useToast();
 
@@ -72,6 +73,11 @@ export default function MobileCounting() {
   // Fetch products with serial control information
   const { data: products } = useQuery<ProductWithSerialControl[]>({
     queryKey: ["/api/products/with-serial-control"],
+  });
+
+  // Fetch locations
+  const { data: locations } = useQuery<any[]>({
+    queryKey: ["/api/locations"],
   });
 
   // Get active inventories that can be counted
@@ -134,22 +140,33 @@ export default function MobileCounting() {
         credentials: 'include',
         body: JSON.stringify({
           serialNumber: serialInput.trim(),
-          countStage: `count${getCurrentCountStage()}`
+          countStage: `count${getCurrentCountStage()}`,
+          locationFilter: selectedLocationId
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
+        // Verificar se o item está no local selecionado (se houver filtro)
+        if (selectedLocationId && result.locationId !== selectedLocationId) {
+          toast({
+            title: "Local incorreto",
+            description: `Este item pertence a outro local de estoque. Local esperado: ${locations?.find(l => l.id === selectedLocationId)?.name}`,
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Adicionar à lista de produtos contados
-        addSerialToProduct(result.productId, result.productName, result.productSku, serialInput.trim());
+        addSerialToProduct(result.productId, result.productName, result.productSku, serialInput.trim(), result.locationId, result.locationName);
 
         // Atualizar histórico
         setRecentScans(prev => [serialInput.trim(), ...prev.slice(0, 4)]);
 
         toast({
           title: "Série registrada",
-          description: `${result.productName} - ${serialInput}`,
+          description: `${result.productName} - ${serialInput} (${result.locationName})`,
         });
       } else if (result.alreadyRead) {
         toast({
@@ -227,7 +244,7 @@ export default function MobileCounting() {
   };
 
   // Função para adicionar produto por série à lista
-  const addSerialToProduct = (productId: number, productName: string, productSku: string, serialNumber: string) => {
+  const addSerialToProduct = (productId: number, productName: string, productSku: string, serialNumber: string, locationId?: number, locationName?: string) => {
     setCountedProducts(prev => {
       const existingIndex = prev.findIndex(p => p.productId === productId);
 
@@ -246,8 +263,8 @@ export default function MobileCounting() {
           productId,
           productName,
           productSku,
-          locationId: 0,
-          locationName: '',
+          locationId: locationId || 0,
+          locationName: locationName || '',
           hasSerialControl: true,
           serialNumbers: [serialNumber],
           totalSerialCount: 1
@@ -377,7 +394,7 @@ export default function MobileCounting() {
         {/* Inventory Selection */}
         <Card className="bg-blue-500/30 border-blue-400 dark:bg-blue-800/30 dark:border-blue-700 backdrop-blur-sm">
           <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="text-white">
                 <label className="block text-sm font-medium mb-2">Inventário:</label>
                 <Select 
@@ -396,10 +413,33 @@ export default function MobileCounting() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="text-white">
-                <label className="block text-sm font-medium mb-2">Estágio:</label>
-                <div className="bg-blue-700 dark:bg-blue-800 rounded px-3 py-2 text-center font-semibold">
-                  {getStageLabel(currentStage)}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-white">
+                  <label className="block text-sm font-medium mb-2">Estágio:</label>
+                  <div className="bg-blue-700 dark:bg-blue-800 rounded px-3 py-2 text-center font-semibold">
+                    {getStageLabel(currentStage)}
+                  </div>
+                </div>
+                
+                <div className="text-white">
+                  <label className="block text-sm font-medium mb-2">Local de Estoque:</label>
+                  <Select 
+                    value={selectedLocationId?.toString() || ""} 
+                    onValueChange={(value) => setSelectedLocationId(value ? Number(value) : null)}
+                  >
+                    <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
+                      <SelectValue placeholder="Todos os locais" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os locais</SelectItem>
+                      {locations?.map((location) => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
