@@ -381,11 +381,12 @@ export class SimpleStorage {
       .input("description", inventoryData.description || null)
       .input("selectedLocationIds", selectedLocationIds)
       .input("selectedCategoryIds", selectedCategoryIds)
+      .input("isToBlockSystem", inventoryData.isToBlockSystem || false)
       .input("createdBy", inventoryData.createdBy)
       .input("createdAt", new Date())
       .input("updatedAt", new Date()).query(`
-        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, createdBy, createdAt, updatedAt)
-        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @createdBy, @createdAt, @updatedAt)
+        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, isToBlockSystem, createdBy, createdAt, updatedAt)
+        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @isToBlockSystem, @createdBy, @createdAt, @updatedAt)
       `);
 
     const result = await this.pool

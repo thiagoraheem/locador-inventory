@@ -517,6 +517,7 @@ export class MemStorage implements IStorage {
       id: this.nextId.inventory++,
       ...inventoryData,
       code,
+      isToBlockSystem: inventoryData.isToBlockSystem || false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
