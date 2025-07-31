@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Printer, Download, Package, ArrowLeft } from "lucide-react";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +25,7 @@ export default function ProductListingReport() {
     queryKey: [`/api/inventories/${selectedInventoryId}/items`],
     enabled: !!selectedInventoryId,
     staleTime: 0, // Force fresh data fetch
-    cacheTime: 0, // Don't cache to ensure fresh data
+    gcTime: 0, // Don't cache to ensure fresh data (v5 syntax)
   });
 
   const { data: products } = useQuery<Product[]>({
