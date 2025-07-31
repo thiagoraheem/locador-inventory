@@ -4,22 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Header from "@/components/layout/header";
-import { 
-  PlayCircle, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  AlertTriangle,
-  FileText,
-  Users,
-  Shield,
-  Settings
-} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Play, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCcw, Target, TestTube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
+import Header from "@/components/layout/header";
 import type { Inventory } from "@shared/schema";
 
 interface TestScenario {
@@ -127,11 +116,11 @@ export default function InventoryTestSuite() {
         credentials: 'include',
         body: JSON.stringify({ scenarioId })
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to create test inventory');
       }
-      
+
       return response.json();
     },
     onSuccess: (data, scenarioId) => {
@@ -159,11 +148,11 @@ export default function InventoryTestSuite() {
         credentials: 'include',
         body: JSON.stringify({ scenarioId, inventoryId })
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to run test scenario');
       }
-      
+
       return response.json();
     },
     onSuccess: (result) => {
@@ -191,11 +180,11 @@ export default function InventoryTestSuite() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to validate permissions');
       }
-      
+
       return response.json();
     },
     onSuccess: (results) => {
@@ -220,7 +209,7 @@ export default function InventoryTestSuite() {
     }
 
     setRunningTests(prev => new Set(prev.add(scenarioId)));
-    
+
     try {
       await runTestMutation.mutateAsync({ scenarioId, inventoryId: selectedInventoryId });
     } finally {
@@ -291,7 +280,7 @@ export default function InventoryTestSuite() {
         title="Suite de Testes do Inventário" 
         subtitle="Validação completa de fluxos, transições e permissões" 
       />
-      
+
       <div className="space-y-6 p-4 md:p-6">
         {/* Test Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -306,7 +295,7 @@ export default function InventoryTestSuite() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
@@ -318,7 +307,7 @@ export default function InventoryTestSuite() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
@@ -330,7 +319,7 @@ export default function InventoryTestSuite() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
@@ -384,7 +373,7 @@ export default function InventoryTestSuite() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button
                   onClick={() => createTestInventoryMutation.mutate('test_scenario')}
@@ -393,7 +382,7 @@ export default function InventoryTestSuite() {
                 >
                   Criar Inventário de Teste
                 </Button>
-                
+
                 <Button
                   onClick={runAllTests}
                   disabled={!selectedInventoryId || runningTests.size > 0}

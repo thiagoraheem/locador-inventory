@@ -17,7 +17,9 @@ import {
   RefreshCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import Header from "@/components/layout/header";
+import SelectedInventoryInfo from "@/components/selected-inventory-info";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
 
 export default function InventoryCounts() {
@@ -25,7 +27,7 @@ export default function InventoryCounts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedInventory, setSelectedInventory] = useState<number | null>(null);
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [countValues, setCountValues] = useState<{ [itemId: number]: number | string }>({});
 
   const { toast } = useToast();
@@ -37,18 +39,18 @@ export default function InventoryCounts() {
   });
 
   // Get selected inventory details
-  const selectedInventoryData = inventories?.find(inv => inv.id === selectedInventory);
+  const selectedInventoryData = inventories?.find(inv => inv.id === selectedInventoryId);
 
   // Fetch inventory items for selected inventory
   const { data: inventoryItems, refetch: refetchItems } = useQuery<InventoryItem[]>({
-    queryKey: [`/api/inventories/${selectedInventory}/items`],
-    enabled: !!selectedInventory && selectedInventoryData?.status !== 'count3_open',
+    queryKey: [`/api/inventories/${selectedInventoryId}/items`],
+    enabled: !!selectedInventoryId && selectedInventoryData?.status !== 'count3_open',
   });
 
   // Fetch divergent items for 3rd count (only items that need 3rd count)
   const { data: divergentItems } = useQuery<InventoryItem[]>({
-    queryKey: [`/api/inventories/${selectedInventory}/items/divergent`],
-    enabled: !!selectedInventory && selectedInventoryData?.status === 'count3_open',
+    queryKey: [`/api/inventories/${selectedInventoryId}/items/divergent`],
+    enabled: !!selectedInventoryId && selectedInventoryData?.status === 'count3_open',
   });
 
   // Use appropriate data source based on inventory status
@@ -225,6 +227,9 @@ export default function InventoryCounts() {
       <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
       
       <div className="space-y-6 p-4 md:p-6">
+        {/* Selected Inventory Info */}
+        <SelectedInventoryInfo />
+        
         {/* Inventory Selection */}
         <Card>
         <CardHeader>
@@ -240,7 +245,7 @@ export default function InventoryCounts() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Inventário Ativo</label>
-              <Select value={selectedInventory?.toString() || ""} onValueChange={(value) => setSelectedInventory(Number(value))}>
+              <Select value={selectedInventoryId?.toString() || ""} onValueChange={(value) => setSelectedInventoryId(Number(value))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um inventário..." />
                 </SelectTrigger>

@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import Header from "@/components/layout/header";
-import { Search, Filter, Download, Clock, Package, TrendingUp, Target } from "lucide-react";
+import { Search, Package, Barcode, CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Inventory, InventorySerialItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
+import Header from "@/components/layout/header";
+import type { Inventory, InventorySerialItem, Product } from "@shared/schema";
+import { Progress } from "@/components/ui/progress";
+import { TrendingUp, Target, Filter, Download } from "lucide-react";
+import type { Location, Category, ControlPanelStats } from "@shared/schema";
 
 interface KPICardProps {
   title: string;
@@ -48,7 +50,7 @@ interface CountIndicatorProps {
 
 const CountIndicator = ({ found, countBy, countAt, stage }: CountIndicatorProps) => {
   const hasCount = found !== undefined;
-  
+
   return (
     <div className="flex flex-col items-center gap-1">
       <Badge 
@@ -80,7 +82,7 @@ interface FinalResultIndicatorProps {
 
 const FinalResultIndicator = ({ finalStatus, status }: FinalResultIndicatorProps) => {
   if (finalStatus === undefined) return <span className="text-muted-foreground">-</span>;
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'FOUND': return "text-green-600";
@@ -103,9 +105,10 @@ const FinalResultIndicator = ({ finalStatus, status }: FinalResultIndicatorProps
 };
 
 export default function InventoryControlBoardCP() {
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -144,24 +147,24 @@ export default function InventoryControlBoardCP() {
   const filteredItems = serialItems?.filter(item => {
     const productSku = getProductBySku(item.productId);
     const locationName = getLocationName(item.locationId);
-    
+
     const matchesSearch = searchTerm === "" || 
       productSku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       locationName.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   })?.sort((a, b) => {
     // Ordenação: primeiro pela descrição do produto, depois pelo número de série
     const productA = products?.find(p => p.id === a.productId)?.name || '';
     const productB = products?.find(p => p.id === b.productId)?.name || '';
-    
+
     if (productA !== productB) {
       return productA.localeCompare(productB);
     }
-    
+
     return a.serialNumber.localeCompare(b.serialNumber);
   }) || [];
 
@@ -171,12 +174,12 @@ export default function InventoryControlBoardCP() {
 
   const getSerialStatsForInventory = () => {
     if (!serialItems) return { total: 0, found: 0, missing: 0, pending: 0 };
-    
+
     const total = serialItems.length;
     const found = serialItems.filter(item => item.status === 'FOUND').length;
     const missing = serialItems.filter(item => item.status === 'MISSING').length;
     const pending = serialItems.filter(item => item.status === 'PENDING').length;
-    
+
     return { total, found, missing, pending };
   };
 
@@ -189,7 +192,7 @@ export default function InventoryControlBoardCP() {
         title="Mesa de Controle CP" 
         subtitle="Controle centralizado de contagens por número de série (Controle de Patrimônio)" 
       />
-      
+
       <div className="space-y-6">
         {/* Inventory Selection */}
         <Card>

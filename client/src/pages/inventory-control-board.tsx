@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, 
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 
 interface KPICardProps {
   title: string;
@@ -52,7 +52,7 @@ interface CountIndicatorProps {
 
 const CountIndicator = ({ count, countBy, countAt, stage }: CountIndicatorProps) => {
   const hasCount = count !== undefined && count !== null;
-  
+
   return (
     <div className="flex flex-col items-center gap-1">
       <Badge 
@@ -84,7 +84,7 @@ interface AccuracyIndicatorProps {
 
 const AccuracyIndicator = ({ accuracy, difference }: AccuracyIndicatorProps) => {
   if (accuracy === undefined) return <span className="text-muted-foreground">-</span>;
-  
+
   const getAccuracyColor = (acc: number) => {
     if (acc >= 95) return "text-green-600";
     if (acc >= 85) return "text-yellow-600";
@@ -106,7 +106,7 @@ const AccuracyIndicator = ({ accuracy, difference }: AccuracyIndicatorProps) => 
 };
 
 export default function InventoryControlBoard() {
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [startTime, setStartTime] = useState<number>(Date.now());
@@ -166,11 +166,11 @@ export default function InventoryControlBoard() {
         credentials: 'include',
         body: JSON.stringify({ userId: (user as any)?.id || 'user1' }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to start counting');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -198,11 +198,11 @@ export default function InventoryControlBoard() {
         credentials: 'include',
         body: JSON.stringify({ userId: 'user1' }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to finish counting');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -228,11 +228,11 @@ export default function InventoryControlBoard() {
         method: 'DELETE',
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete inventory');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -261,12 +261,12 @@ export default function InventoryControlBoard() {
         credentials: 'include',
         body: JSON.stringify({ quantity }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || 'Failed to update count4');
       }
-      
+
       return response.json();
     },
     onSuccess: (data, variables) => {
@@ -298,11 +298,11 @@ export default function InventoryControlBoard() {
         method: 'POST',
         credentials: 'include',
       });
-      
+
       if (!validateResponse.ok) {
         throw new Error('Failed to validate inventory closure');
       }
-      
+
       const validation = await validateResponse.json();
       if (!validation.canClose) {
         throw new Error(validation.message);
@@ -315,11 +315,11 @@ export default function InventoryControlBoard() {
         credentials: 'include',
         body: JSON.stringify({ userId: user?.id || 'audit_user' }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to finalize audit');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -370,13 +370,13 @@ export default function InventoryControlBoard() {
   const filteredItems = inventoryItems?.filter(item => {
     const productName = getProductName(item.productId);
     const locationName = getLocationName(item.locationId);
-    
+
     const matchesSearch = searchTerm === "" || 
       productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       locationName.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   }) || [];
 
@@ -464,7 +464,7 @@ export default function InventoryControlBoard() {
       refetchInventory(),
       queryClient.invalidateQueries({ queryKey: ["/api/inventories"] })
     ]);
-    
+
     toast({
       title: "Dados atualizados",
       description: "Todas as informações foram recarregadas com sucesso.",
@@ -474,11 +474,11 @@ export default function InventoryControlBoard() {
   // Get counting start time - use the first counting date found
   const getCountingStartTime = () => {
     if (!selectedInventory) return Date.now();
-    
+
     // Check for counting start in the status progression
     const countingStatuses = ['count1_open', 'count1_closed', 'count2_open', 'count2_closed', 'count3_open', 'count3_closed', 'audit_mode', 'closed'];
     const isCountingStarted = countingStatuses.includes(selectedInventory.status);
-    
+
     if (isCountingStarted) {
       // Find first count date from inventory items
       if (inventoryItems && inventoryItems.length > 0) {
@@ -486,11 +486,11 @@ export default function InventoryControlBoard() {
           .map(item => item.count1At)
           .filter(Boolean)
           .sort((a, b) => a! - b!)[0];
-        
+
         if (firstCountTime) return firstCountTime;
       }
     }
-    
+
     return selectedInventory.startDate;
   };
 
@@ -514,7 +514,7 @@ export default function InventoryControlBoard() {
         title="Mesa de Controle" 
         subtitle="Controle centralizado de inventários ativos" 
       />
-      
+
       <div className="space-y-6">
         {/* Inventory Selection */}
         <Card>
@@ -540,7 +540,7 @@ export default function InventoryControlBoard() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {selectedInventoryId && selectedInventory && (
               <div className="flex gap-2">
                 {/* Counting Control Buttons */}
@@ -552,7 +552,7 @@ export default function InventoryControlBoard() {
                 >
                   Iniciar Contagem
                 </Button>
-                
+
                 <Button 
                   variant="secondary" 
                   size="sm"
@@ -561,7 +561,7 @@ export default function InventoryControlBoard() {
                 >
                   Finalizar Contagem
                 </Button>
-                
+
 
 
 
@@ -807,7 +807,7 @@ export default function InventoryControlBoard() {
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Total de Itens: </span>
+                    <span className="font-medium">Total de Itens: </span> 
                     <span>{filteredItems.length}</span>
                   </div>
                   <div>

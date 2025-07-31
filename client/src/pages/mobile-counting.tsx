@@ -1,29 +1,32 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import ProductSearchCombobox from "@/components/product-search-combobox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { 
-  Search, 
-  Package,
-  Barcode,
-  Loader2,
-  ArrowLeft,
-  RefreshCcw,
-  Trash2,
-  Eye,
-  AlertTriangle
+  Scan, 
+  Package, 
+  MapPin, 
+  Calculator,
+  CheckCircle,
+  Search,
+  Smartphone,
+  BarChart3,
+  Target,
+  Clock,
+  AlertTriangle,
+  RefreshCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { 
-  Inventory, 
-  ProductWithSerialControl,
-  SerialReadingRequest,
-  SerialReadingResponse 
-} from "@shared/schema";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
+import Header from "@/components/layout/header";
+import ProductSearchCombobox from "@/components/product-search-combobox";
+import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
 
 // Interface para produtos contados na nova estrutura dual
 interface CountedProduct {
@@ -53,7 +56,7 @@ interface SearchedProduct {
 
 export default function MobileCounting() {
   // Estado principal para interface dual
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [serialInput, setSerialInput] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<SearchedProduct | null>(null);
   const [quantityInput, setQuantityInput] = useState<number>(1);
@@ -433,7 +436,7 @@ export default function MobileCounting() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-white">
                   <label className="block text-sm font-medium mb-2">Estágio:</label>
@@ -441,7 +444,7 @@ export default function MobileCounting() {
                     {getStageLabel(currentStage)}
                   </div>
                 </div>
-                
+
                 <div className="text-white">
                   <label className="block text-sm font-medium mb-2">
                     Local de Estoque: <span className="text-red-300">*</span>
