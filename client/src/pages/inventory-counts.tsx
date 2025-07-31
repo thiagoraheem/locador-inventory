@@ -221,10 +221,6 @@ export default function InventoryCounts() {
       <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
 
       <div className="space-y-6 p-4 md:p-6">
-        {/* Selected Inventory Info */}
-        <SelectedInventoryInfo />
-
-        {/* Inventory Selection */}
         <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

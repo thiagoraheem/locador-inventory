@@ -66,7 +66,7 @@ const navigation: NavigationItem[] = [
         name: "Contagens",
         icon: BarChart3,
         children: [
-          { name: "Listagem", href: "/inventory-counts", icon: FileText },
+          { name: "Contagem em Lista", href: "/inventory-counts", icon: FileText },
           {
             name: "Contagem Individual",
             href: "/inventory-counts-cp",

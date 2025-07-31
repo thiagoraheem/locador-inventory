@@ -68,10 +68,22 @@ export default function MobileCounting() {
     queryKey: ["/api/locations"],
   });
 
+  // Fetch selected inventory details
+  const { data: selectedInventoryDetails } = useQuery<Inventory>({
+    queryKey: ["/api/inventories", selectedInventoryId],
+    enabled: !!selectedInventoryId,
+  });
+
   // Get active inventories that can be counted
   const activeInventories = inventories?.filter(inv => 
     ['open', 'count1_open', 'count2_open', 'count3_open'].includes(inv.status)
   ) || [];
+  
+  // Reset selected location when inventory changes
+  useEffect(() => {
+    // Reset selected location when inventory changes
+    setSelectedLocationId(null);
+  }, [selectedInventoryId]);
 
   // Get current counting stage based on inventory status
   const getCurrentCountStage = () => {
@@ -442,7 +454,14 @@ export default function MobileCounting() {
                       <SelectValue placeholder="Selecione um local..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {locations?.map((location) => (
+                      {locations?.filter(location => {
+                        // Se não há inventário selecionado ou o inventário não tem locais selecionados, mostrar todos
+                        if (!selectedInventoryDetails || !selectedInventoryDetails.selectedLocationIds || selectedInventoryDetails.selectedLocationIds.length === 0) {
+                          return true;
+                        }
+                        // Filtrar apenas os locais selecionados na criação do inventário
+                        return selectedInventoryDetails.selectedLocationIds.includes(location.id);
+                      }).map((location) => (
                         <SelectItem key={location.id} value={location.id.toString()}>
                           {location.name}
                         </SelectItem>
