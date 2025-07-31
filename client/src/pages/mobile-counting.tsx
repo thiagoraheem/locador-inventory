@@ -20,7 +20,8 @@ import {
   Target,
   Clock,
   AlertTriangle,
-  RefreshCcw
+  RefreshCcw,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
