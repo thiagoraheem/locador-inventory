@@ -194,8 +194,7 @@ export default function Inventories() {
     {
       header: "Bloqueio",
       accessorKey: "isToBlockSystem",
-      cell: ({ value }) => <Switch checked={Boolean(value)} disabled />,
-      // Se o DataTable tiver ordenação, inclua:
+      cell: (value: any, row: any) => <Switch checked={Boolean(row.isToBlockSystem)} disabled />,
       sortable: true,
     },
     {
