@@ -783,9 +783,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
-      const products = await storage.getProductsWithSerialControl();
-      console.log(`✅ Fetched ${products.length} products with serial control info`);
-      res.json(products);
+      
+      // Check if the method exists, if not, return all products for now
+      if (typeof storage.getProductsWithSerialControl === 'function') {
+        const products = await storage.getProductsWithSerialControl();
+        console.log(`✅ Fetched ${products.length} products with serial control info`);
+        res.json(products);
+      } else {
+        // Fallback: return all products with a serialControl flag
+        const products = await storage.getProducts();
+        const productsWithSerialInfo = products.map(product => ({
+          ...product,
+          hasSerialControl: false // Default value until proper implementation
+        }));
+        console.log(`✅ Fetched ${productsWithSerialInfo.length} products (fallback)`);
+        res.json(productsWithSerialInfo);
+      }
     } catch (error) {
       console.error('❌ Error fetching products with serial control:', error);
       res.status(500).json({ message: "Failed to fetch products with serial control" });
