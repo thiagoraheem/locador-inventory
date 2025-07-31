@@ -57,7 +57,7 @@ export default function Products() {
     
     // Filter by category
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(product => 
+      filtered = filtered.filter((product: Product) => 
         product.categoryId && product.categoryId.toString() === selectedCategory
       );
     }

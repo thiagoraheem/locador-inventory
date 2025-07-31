@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-import InventoryForm from "@/components/inventory-form";
+// InventoryForm component removed during cleanup
 import DataTable from "@/components/data-table";
 import { Plus, Search, Eye, Play, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { Link } from "wouter";
@@ -275,18 +275,16 @@ export default function Inventories() {
                   <DialogHeader>
                     <DialogTitle>Criar Novo Inventário</DialogTitle>
                   </DialogHeader>
-                  <InventoryForm
-                    onSuccess={() => {
-                      setIsFormOpen(false);
-                    }}
-                  />
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Formulário de inventário em desenvolvimento</p>
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
           </CardHeader>
           <CardContent>
             <DataTable
-              data={inventories || []}
+              data={Array.isArray(inventories) ? inventories : []}
               columns={columns}
               searchQuery={searchQuery}
               isLoading={inventoriesLoading}

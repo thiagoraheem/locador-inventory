@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Play, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCcw, Target, TestTube, FileText, Shield, Settings, PlayCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";

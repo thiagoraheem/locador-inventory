@@ -43,13 +43,13 @@ export default function Stock() {
   });
 
   const filteredStock = useMemo(() => {
-    if (!stock) return [];
+    if (!stock || !Array.isArray(stock)) return [];
     
     let filtered = stock;
     
     // Filter by category - assuming stock items have a category field
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter((item: any) => 
         item.product && item.product.categoryId && 
         item.product.categoryId.toString() === selectedCategory
       );

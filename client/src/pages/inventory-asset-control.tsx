@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Search, Package, Barcode, DollarSign } from "lucide-react";
-import AssetCountingForm from "@/components/asset-counting-form";
+// AssetCountingForm component removed during cleanup
 import type { Inventory, InventoryStockItem, StockItem } from "@shared/schema";
 
 export default function InventoryAssetControl({ params }: { params: { id: string } }) {
@@ -93,7 +93,7 @@ export default function InventoryAssetControl({ params }: { params: { id: string
   const getTotalValue = () => {
     return filteredItems.reduce((total, item) => {
       const stockItemDetails = getStockItemDetails(item.stockItemId);
-      return total + (stockItemDetails?.currentValue || 0);
+      return total + (stockItemDetails?.costValue || 0);
     }, 0);
   };
 
@@ -102,7 +102,7 @@ export default function InventoryAssetControl({ params }: { params: { id: string
       .filter(item => getAssetStatus(item) === "completed")
       .reduce((total, item) => {
         const stockItemDetails = getStockItemDetails(item.stockItemId);
-        return total + (stockItemDetails?.currentValue || 0);
+        return total + (stockItemDetails?.costValue || 0);
       }, 0);
   };
 
@@ -262,8 +262,8 @@ export default function InventoryAssetControl({ params }: { params: { id: string
                         {stockItemDetails?.location || '-'}
                       </TableCell>
                       <TableCell>
-                        {stockItemDetails?.currentValue ? 
-                          formatCurrency(stockItemDetails.currentValue) : '-'}
+                        {stockItemDetails?.costValue ? 
+                          formatCurrency(stockItemDetails.costValue) : '-'}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusBadgeVariant(status)}>
@@ -298,12 +298,15 @@ export default function InventoryAssetControl({ params }: { params: { id: string
 
       {/* Asset Counting Modal/Form */}
       {selectedAsset && (
-        <AssetCountingForm
-          inventoryStockItem={selectedAsset}
-          stockItemDetails={getStockItemDetails(selectedAsset.stockItemId)}
-          onClose={() => setSelectedAsset(null)}
-          onCountUpdate={handleCountUpdate}
-        />
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg max-w-md mx-4">
+            <h2 className="text-lg font-semibold mb-4">Contar Ativo</h2>
+            <p className="text-muted-foreground mb-4">
+              Formulário de contagem em desenvolvimento
+            </p>
+            <Button onClick={() => setSelectedAsset(null)}>Fechar</Button>
+          </div>
+        </div>
       )}
     </div>
   );

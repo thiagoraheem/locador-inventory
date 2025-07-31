@@ -7,7 +7,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SelectedInventoryProvider } from "@/contexts/SelectedInventoryContext";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Products from "@/pages/products";

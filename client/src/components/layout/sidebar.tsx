@@ -148,9 +148,9 @@ export default function Sidebar({
       <div key={item.name} className={`${level > 0 ? "ml-4" : ""}`}>
         {item.href ? (
           <Link href={item.href}>
-            <a
+            <div
               onClick={isMobile ? onClose : undefined}
-              className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive
                   ? "text-primary bg-primary/10 border-r-2 border-primary"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -160,7 +160,7 @@ export default function Sidebar({
                 <Icon className="w-4 h-4" />
                 <span>{item.name}</span>
               </div>
-            </a>
+            </div>
           </Link>
         ) : (
           <button
