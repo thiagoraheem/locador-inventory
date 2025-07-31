@@ -416,22 +416,32 @@ export class SqlServerStorage implements IStorage {
 
   // Inventory operations - simplified for brevity
   async getInventories(): Promise<Inventory[]> {
-    return this.query<Inventory>('SELECT * FROM inventories ORDER BY createdAt DESC');
+    const inventories = await this.query<any>('SELECT * FROM inventories ORDER BY createdAt DESC');
+    // Parse JSON fields back to arrays
+    return inventories.map(inventory => ({
+      ...inventory,
+      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
+      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null
+    }));
   }
 
   async createInventory(inventory: InsertInventory): Promise<Inventory> {
     const now = new Date();
     const result = await this.query<Inventory>(
-      `INSERT INTO inventories (code, typeId, status, startDate, endDate, description, createdBy, createdAt, updatedAt)
+      `INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, isToBlockSystem, createdBy, createdAt, updatedAt)
        OUTPUT INSERTED.*
-       VALUES (@code, @typeId, @status, @startDate, @endDate, @description, @createdBy, @createdAt, @updatedAt)`,
+       VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @isToBlockSystem, @createdBy, @createdAt, @updatedAt)`,
       {
         code: inventory.code,
         typeId: inventory.typeId,
-        status: inventory.status || 'OPEN',
+        status: inventory.status || 'open',
         startDate: inventory.startDate,
         endDate: inventory.endDate,
+        predictedEndDate: inventory.predictedEndDate,
         description: inventory.description,
+        selectedLocationIds: inventory.selectedLocationIds ? JSON.stringify(inventory.selectedLocationIds) : null,
+        selectedCategoryIds: inventory.selectedCategoryIds ? JSON.stringify(inventory.selectedCategoryIds) : null,
+        isToBlockSystem: inventory.isToBlockSystem || false,
         createdBy: inventory.createdBy,
         createdAt: now,
         updatedAt: now
@@ -444,11 +454,18 @@ export class SqlServerStorage implements IStorage {
   // For brevity, adding placeholder implementations
 
   async getInventory(id: number): Promise<Inventory | undefined> {
-    const inventories = await this.query<Inventory>(
+    const inventories = await this.query<any>(
       'SELECT * FROM inventories WHERE id = @id',
       { id }
     );
-    return inventories[0];
+    if (inventories[0]) {
+      return {
+        ...inventories[0],
+        selectedLocationIds: inventories[0].selectedLocationIds ? JSON.parse(inventories[0].selectedLocationIds) : null,
+        selectedCategoryIds: inventories[0].selectedCategoryIds ? JSON.parse(inventories[0].selectedCategoryIds) : null
+      };
+    }
+    return undefined;
   }
 
   async updateInventory(id: number, inventory: Partial<InsertInventory>): Promise<Inventory> {

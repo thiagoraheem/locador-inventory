@@ -403,6 +403,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inventoryData.description = req.body.description;
       }
 
+      // Add selected locations and categories to be saved in the database
+      if (req.body.selectedLocationIds && Array.isArray(req.body.selectedLocationIds)) {
+        inventoryData.selectedLocationIds = req.body.selectedLocationIds;
+      }
+      
+      if (req.body.selectedCategoryIds && Array.isArray(req.body.selectedCategoryIds)) {
+        inventoryData.selectedCategoryIds = req.body.selectedCategoryIds;
+      }
+
       // Use partial validation to allow optional fields
       const validatedData = insertInventorySchema.partial().parse(inventoryData);
 
