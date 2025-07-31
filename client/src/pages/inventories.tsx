@@ -7,14 +7,39 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 // InventoryForm component removed during cleanup
 import DataTable from "@/components/data-table";
-import { Plus, Search, Eye, Play, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Eye,
+  Play,
+  CheckCircle,
+  XCircle,
+  Trash2,
+} from "lucide-react";
 import { Link } from "wouter";
 import type { Inventory } from "@shared/schema";
 
@@ -48,16 +73,16 @@ export default function Inventories() {
   const cancelInventoryMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
       const response = await fetch(`/api/inventories/${id}/cancel`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ reason }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to cancel inventory');
+        throw new Error("Failed to cancel inventory");
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -80,14 +105,14 @@ export default function Inventories() {
   const deleteInventoryMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await fetch(`/api/inventories/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
+        method: "DELETE",
+        credentials: "include",
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to delete inventory');
+        throw new Error("Failed to delete inventory");
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -108,23 +133,23 @@ export default function Inventories() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'open':
+      case "open":
         return <Badge variant="default">Aberto</Badge>;
-      case 'count1_open':
+      case "count1_open":
         return <Badge variant="secondary">1ª Contagem Aberta</Badge>;
-      case 'count1_closed':
+      case "count1_closed":
         return <Badge variant="secondary">1ª Contagem Fechada</Badge>;
-      case 'count2_open':
+      case "count2_open":
         return <Badge variant="secondary">2ª Contagem Aberta</Badge>;
-      case 'count2_closed':
+      case "count2_closed":
         return <Badge variant="secondary">2ª Contagem Fechada</Badge>;
-      case 'count3_open':
+      case "count3_open":
         return <Badge variant="secondary">3ª Contagem Aberta</Badge>;
-      case 'count3_closed':
+      case "count3_closed":
         return <Badge variant="outline">3ª Contagem Fechada</Badge>;
-      case 'count3_required':
+      case "count3_required":
         return <Badge variant="destructive">3ª Contagem Requerida</Badge>;
-      case 'cancelled':
+      case "cancelled":
         return <Badge variant="destructive">Cancelado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -141,7 +166,7 @@ export default function Inventories() {
       header: "Tipo",
       accessorKey: "type.name",
       sortable: true,
-      cell: (value: any, row: any) => row.type?.name || 'N/A',
+      cell: (value: any, row: any) => row.type?.name || "N/A",
     },
     {
       header: "Status",
@@ -152,17 +177,26 @@ export default function Inventories() {
       header: "Data de Início",
       accessorKey: "startDate",
       sortable: true,
-      cell: (value: string) => value ? new Date(value).toLocaleDateString() : 'N/A',
+      cell: (value: string) =>
+        value ? new Date(value).toLocaleDateString() : "N/A",
     },
     {
       header: "Data Previsão Fim",
       accessorKey: "predictedEndDate",
       sortable: true,
-      cell: (value: string) => value ? new Date(value).toLocaleDateString() : 'N/A',
+      cell: (value: string) =>
+        value ? new Date(value).toLocaleDateString() : "N/A",
     },
     {
       header: "Descrição",
-      accessorKey: "description"
+      accessorKey: "description",
+    },
+    {
+      header: "Bloqueio",
+      accessorKey: "isToBlockSystem",
+      cell: ({ value }) => <Switch checked={Boolean(value)} disabled />,
+      // Se o DataTable tiver ordenação, inclua:
+      sortable: true,
     },
     {
       header: "Ações",
@@ -171,14 +205,23 @@ export default function Inventories() {
         <div className="flex items-center space-x-2">
           <Link href={`/inventory-counting/${row.id}`}>
             <Button variant="ghost" size="sm" title="Abrir contagem">
-              {row.status === 'open' ? <Play className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {row.status === "open" ? (
+                <Play className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </Button>
           </Link>
-          
-          {row.status !== 'cancelled' && (
+
+          {row.status !== "cancelled" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" title="Cancelar inventário" className="text-orange-600 hover:text-orange-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Cancelar inventário"
+                  className="text-orange-600 hover:text-orange-700"
+                >
                   <XCircle className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -186,7 +229,8 @@ export default function Inventories() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Cancelar Inventário</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação irá cancelar o inventário "{row.code}". Por favor, informe o motivo do cancelamento.
+                    Esta ação irá cancelar o inventário "{row.code}". Por favor,
+                    informe o motivo do cancelamento.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="py-4">
@@ -197,14 +241,21 @@ export default function Inventories() {
                   />
                 </div>
                 <AlertDialogFooter>
-                  <AlertDialogCancel onClick={() => setCancelReason("")}>Voltar</AlertDialogCancel>
-                  <AlertDialogAction 
+                  <AlertDialogCancel onClick={() => setCancelReason("")}>
+                    Voltar
+                  </AlertDialogCancel>
+                  <AlertDialogAction
                     onClick={() => {
                       if (cancelReason.trim()) {
-                        cancelInventoryMutation.mutate({ id: row.id, reason: cancelReason });
+                        cancelInventoryMutation.mutate({
+                          id: row.id,
+                          reason: cancelReason,
+                        });
                       }
                     }}
-                    disabled={!cancelReason.trim() || cancelInventoryMutation.isPending}
+                    disabled={
+                      !cancelReason.trim() || cancelInventoryMutation.isPending
+                    }
                     className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800"
                   >
                     Cancelar Inventário
@@ -214,23 +265,32 @@ export default function Inventories() {
             </AlertDialog>
           )}
 
-          {row.status === 'cancelled' && (
+          {row.status === "cancelled" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" title="Excluir inventário" className="text-red-600 hover:text-red-700">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Excluir inventário"
+                  className="text-red-600 hover:text-red-700"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir Inventário Cancelado</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Excluir Inventário Cancelado
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta ação irá excluir permanentemente o inventário "{row.code}" e todos os seus dados associados. Esta ação não pode ser desfeita.
+                    Esta ação irá excluir permanentemente o inventário "
+                    {row.code}" e todos os seus dados associados. Esta ação não
+                    pode ser desfeita.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Voltar</AlertDialogCancel>
-                  <AlertDialogAction 
+                  <AlertDialogAction
                     onClick={() => deleteInventoryMutation.mutate(row.id)}
                     disabled={deleteInventoryMutation.isPending}
                     className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
@@ -248,8 +308,11 @@ export default function Inventories() {
 
   return (
     <div>
-      <Header title="Inventários" subtitle="Gerenciamento de inventários de estoque" />
-      
+      <Header
+        title="Inventários"
+        subtitle="Gerenciamento de inventários de estoque"
+      />
+
       <div className="space-y-6 p-4 md:p-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -276,7 +339,9 @@ export default function Inventories() {
                     <DialogTitle>Criar Novo Inventário</DialogTitle>
                   </DialogHeader>
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">Formulário de inventário em desenvolvimento</p>
+                    <p className="text-muted-foreground">
+                      Formulário de inventário em desenvolvimento
+                    </p>
                   </div>
                 </DialogContent>
               </Dialog>
