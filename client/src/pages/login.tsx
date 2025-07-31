@@ -139,7 +139,7 @@ export default function LoginPage() {
                 IP do Replit: {ipLoading ? (
                   <span className="animate-pulse">Carregando...</span>
                 ) : (
-                  <strong className="font-mono">{ipData?.outboundIP || 'Não disponível'}</strong>
+                  <strong className="font-mono">{ipData?.externalIP || (ipData?.localIPs && ipData.localIPs.length > 0 ? ipData.localIPs[0].ip : 'Não disponível')}</strong>
                 )}
               </span>
             </div>

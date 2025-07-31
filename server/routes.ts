@@ -7,6 +7,7 @@ import {
   hashPassword,
   verifyPassword,
 } from "./auth";
+import checkIpRouter from "./check-ip";
 import {
   insertProductSchema,
   insertCategorySchema,
@@ -27,6 +28,9 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Registrar o router de check-ip
+  app.use('/api', checkIpRouter);
 
   // Initialize SQL Server storage
   let storage = await getStorage();
