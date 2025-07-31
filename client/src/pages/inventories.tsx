@@ -334,10 +334,13 @@ export default function Inventories() {
                     Novo Inventário
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="inventory-form-description">
                   <DialogHeader>
                     <DialogTitle>Criar Novo Inventário</DialogTitle>
                   </DialogHeader>
+                  <div id="inventory-form-description" className="sr-only">
+                    Formulário para criar um novo inventário com seleção de tipo, datas, locais e categorias
+                  </div>
                   <InventoryForm 
                     onSuccess={() => setIsFormOpen(false)}
                     onCancel={() => setIsFormOpen(false)}
