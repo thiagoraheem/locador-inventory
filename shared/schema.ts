@@ -91,6 +91,7 @@ export interface Inventory {
   createdBy: number;
   createdAt: number;
   updatedAt: number;
+  isToBlockSystem?: boolean;  // Field to block stock movement
 }
 
 export interface InventoryItem {

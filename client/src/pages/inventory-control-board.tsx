@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import Header from "@/components/layout/header";
-import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle } from "lucide-react";
+import { Search, Filter, Download, Clock, Package, TrendingUp, Target, XCircle, Trash2, CheckCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Inventory, InventoryItem, Product, Location, Category, ControlPanelStats } from "@shared/schema";
@@ -119,7 +119,7 @@ export default function InventoryControlBoard() {
     queryKey: ["/api/inventories"],
   });
 
-  const { data: selectedInventory } = useQuery<Inventory>({
+  const { data: selectedInventory, refetch: refetchInventory } = useQuery<Inventory>({
     queryKey: [`/api/inventories/${selectedInventoryId}`],
     enabled: !!selectedInventoryId,
   });
@@ -134,13 +134,13 @@ export default function InventoryControlBoard() {
     return ['admin', 'gerente', 'supervisor'].includes(userRole);
   };
 
-  const { data: stats } = useQuery<ControlPanelStats>({
+  const { data: stats, refetch: refetchStats } = useQuery<ControlPanelStats>({
     queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
     enabled: !!selectedInventoryId,
     refetchInterval: 30000,
   });
 
-  const { data: inventoryItems } = useQuery<InventoryItem[]>({
+  const { data: inventoryItems, refetch: refetchItems } = useQuery<InventoryItem[]>({
     queryKey: [`/api/inventories/${selectedInventoryId}/items`],
     enabled: !!selectedInventoryId,
   });
@@ -345,7 +345,8 @@ export default function InventoryControlBoard() {
   }, [selectedInventory]);
 
   const getElapsedTime = () => {
-    const elapsed = Date.now() - startTime;
+    const countingStartTime = getCountingStartTime();
+    const elapsed = Date.now() - countingStartTime;
     const hours = Math.floor(elapsed / (1000 * 60 * 60));
     const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
@@ -454,6 +455,44 @@ export default function InventoryControlBoard() {
     }
   };
 
+  // Function to refresh all data
+  const handleRefreshData = async () => {
+    await Promise.all([
+      refetchStats(),
+      refetchItems(),
+      refetchInventory(),
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] })
+    ]);
+    
+    toast({
+      title: "Dados atualizados",
+      description: "Todas as informações foram recarregadas com sucesso.",
+    });
+  };
+
+  // Get counting start time - use the first counting date found
+  const getCountingStartTime = () => {
+    if (!selectedInventory) return Date.now();
+    
+    // Check for counting start in the status progression
+    const countingStatuses = ['count1_open', 'count1_closed', 'count2_open', 'count2_closed', 'count3_open', 'count3_closed', 'audit_mode', 'closed'];
+    const isCountingStarted = countingStatuses.includes(selectedInventory.status);
+    
+    if (isCountingStarted) {
+      // Find first count date from inventory items
+      if (inventoryItems && inventoryItems.length > 0) {
+        const firstCountTime = inventoryItems
+          .map(item => item.count1At)
+          .filter(Boolean)
+          .sort((a, b) => a! - b!)[0];
+        
+        if (firstCountTime) return firstCountTime;
+      }
+    }
+    
+    return selectedInventory.startDate;
+  };
+
   // Check if inventory is in audit mode
   const isAuditMode = selectedInventory?.status === 'audit_mode';
 
@@ -542,10 +581,16 @@ export default function InventoryControlBoard() {
                   Status: <Badge variant="outline">{getCountingStageText(selectedInventory.status)}</Badge>
                 </p>
               </div>
-              <Button onClick={handleExport} className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Exportar Relatório
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleRefreshData} variant="outline" className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Recarregar
+                </Button>
+                <Button onClick={handleExport} className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Exportar Relatório
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -571,7 +616,7 @@ export default function InventoryControlBoard() {
               <KPICard
                 title="Tempo Decorrido"
                 value={getElapsedTime()}
-                description="Desde o início"
+                description="Desde o início da contagem"
                 icon={<Clock className="h-4 w-4 text-muted-foreground" />}
               />
             </div>

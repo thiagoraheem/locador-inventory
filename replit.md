@@ -253,6 +253,16 @@ This is a full-stack inventory management system built with React/TypeScript fro
 ✅ **Database Integration**: Funcionalidade testada com SQL Server
 ✅ **Reconciliation System**: Sistema de reconciliação entre quantidades e números de série
 
+**Melhorias de Sistema e Interface (January 31, 2025)**:
+✅ **Campo Bloqueio de Sistema**: Adicionado campo `isToBlockSystem` à tabela inventories com interface toggle
+✅ **Filtragem Patrimonial Otimizada**: createInventorySerialItems agora filtra por locais selecionados no inventário
+✅ **Tela Asset Control Corrigida**: Query SQL otimizada para buscar serialNumber corretamente da view stock_items
+✅ **Botão Recarregar Mesa de Controle**: Implementado botão refresh para atualizar dados em tempo real
+✅ **Cálculo de Tempo Otimizado**: Tempo decorrido agora baseado no início da contagem, não na criação do inventário
+✅ **Interface Bloqueio de Estoque**: Toggle switch intuitivo para controle de movimentação durante inventário
+✅ **Performance Queries**: Otimização das consultas de patrimônio para maior eficiência
+✅ **UX Mesa de Controle**: Botão recarregar com feedback visual e invalidação de cache inteligente
+
 **Current Login Credentials**: username: `admin`, password: `password`
 
 ## User Request (July 27, 2025)

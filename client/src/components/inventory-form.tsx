@@ -16,7 +16,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -323,6 +325,29 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="isToBlockSystem"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">
+                  Bloquear movimentação de estoque
+                </FormLabel>
+                <FormDescription>
+                  Quando ativado, impede movimentações no estoque durante o inventário
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

@@ -778,13 +778,14 @@ export class SimpleStorage {
       .input("description", newInventory.description || null)
       .input("selectedLocationIds", inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null)
       .input("selectedCategoryIds", inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null)
+      .input("isToBlockSystem", inventoryData.isToBlockSystem || false)
       .input("createdBy", newInventory.createdBy)
       .input("createdAt", new Date(newInventory.createdAt))
       .input("updatedAt", new Date(newInventory.updatedAt))
       .query(`
-        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, createdBy, createdAt, updatedAt)
+        INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, isToBlockSystem, createdBy, createdAt, updatedAt)
         OUTPUT INSERTED.*
-        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @createdBy, @createdAt, @updatedAt)
+        VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @isToBlockSystem, @createdBy, @createdAt, @updatedAt)
       `);
 
     const inventory = result.recordset[0];
@@ -1680,14 +1681,55 @@ export class SimpleStorage {
     console.log(`📋 Creating serial items for inventory ${inventoryId}...`);
 
     try {
-      // First ensure the stored procedure exists
-      await this.ensureSerialItemsProcedure();
-
-      const result = await this.pool.request()
+      // Get inventory details to filter by selected locations
+      const inventoryResult = await this.pool.request()
         .input('inventoryId', sql.Int, inventoryId)
-        .execute('sp_CreateInventorySerialItems');
+        .query('SELECT selectedLocationIds FROM inventories WHERE id = @inventoryId');
 
-      console.log(`✅ Created serial items for inventory ${inventoryId}`);
+      const inventory = inventoryResult.recordset[0];
+      let locationFilter = '';
+      
+      if (inventory && inventory.selectedLocationIds) {
+        const selectedLocationIds = JSON.parse(inventory.selectedLocationIds);
+        if (selectedLocationIds && selectedLocationIds.length > 0) {
+          locationFilter = `AND si.locationId IN (${selectedLocationIds.join(',')})`;
+        }
+      }
+
+      // Create serial items with location filtering
+      await this.pool.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .query(`
+          INSERT INTO inventory_serial_items (
+            inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus
+          )
+          SELECT 
+            @inventoryId,
+            si.id,
+            si.serialNumber,
+            si.productId,
+            si.locationId,
+            1
+          FROM stock_items si
+          JOIN products p ON si.productId = p.id
+          WHERE p.hasSerialControl = 1 
+          AND si.isActive = 1
+          ${locationFilter};
+          
+          -- Update counters in inventory_items
+          UPDATE ii
+          SET serialItemsCount = (
+            SELECT COUNT(*)
+            FROM inventory_serial_items isi
+            WHERE isi.inventoryId = ii.inventoryId
+            AND isi.productId = ii.productId
+            AND isi.locationId = ii.locationId
+          )
+          FROM inventory_items ii
+          WHERE ii.inventoryId = @inventoryId;
+        `);
+
+      console.log(`✅ Created serial items for inventory ${inventoryId} with location filtering`);
     } catch (error) {
       console.error('❌ Error creating inventory serial items:', error);
       throw error;
