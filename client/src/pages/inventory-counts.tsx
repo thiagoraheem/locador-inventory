@@ -79,7 +79,7 @@ export default function InventoryCounts() {
         description: "Contagem registrada com sucesso",
       });
       refetchItems();
-      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventory}/stats`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/stats`] });
     },
     onError: (error) => {
       toast({
@@ -148,7 +148,7 @@ export default function InventoryCounts() {
       product?.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
       location?.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const selectedInv = inventories?.find(inv => inv.id === selectedInventory);
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     const stage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
     const status = getItemStatus(item, stage);
 
@@ -169,7 +169,7 @@ export default function InventoryCounts() {
 
   const handleSaveCount = (itemId: number, stage: number) => {
     // Verificar se o inventário permite contagem
-    const selectedInv = inventories?.find(inv => inv.id === selectedInventory);
+    const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     if (!selectedInv || !canPerformCounting(selectedInv.status)) {
       toast({
         title: "Contagem não permitida",
@@ -212,7 +212,7 @@ export default function InventoryCounts() {
     }
   };
 
-  const selectedInv = inventories?.find(inv => inv.id === selectedInventory);
+  const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
   const currentStage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
 
   return (

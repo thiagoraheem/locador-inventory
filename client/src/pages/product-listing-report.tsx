@@ -1,15 +1,15 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Printer, Download, Package } from "lucide-react";
+import { Printer, Download, Package, ArrowLeft } from "lucide-react";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
+import { useToast } from "@/hooks/use-toast";
+import type { Inventory, InventoryItem, Product, Category } from "@shared/schema";
 import Header from "@/components/layout/header";
-import type { Inventory, InventoryItem, Product, Location, Category } from "@shared/schema";
+import DataTable from "@/components/data-table";
 
 export default function ProductListingReport() {
   const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
