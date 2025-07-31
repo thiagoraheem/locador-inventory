@@ -1,29 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Search, 
-  Plus, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle,
-  Filter,
-  RefreshCcw
-} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Filter, Download, Trash2, Edit, Eye, Package, AlertCircle, CheckCircle, Clock, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
-import Header from "@/components/layout/header";
-import SelectedInventoryInfo from "@/components/selected-inventory-info";
 import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
+import Header from "@/components/layout/header";
 
 export default function InventoryCounts() {
-  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -37,6 +28,8 @@ export default function InventoryCounts() {
   const { data: inventories } = useQuery<Inventory[]>({
     queryKey: ["/api/inventories"],
   });
+
+  const selectedInventory = inventories?.find(inv => inv.id === selectedInventoryId);
 
   // Get selected inventory details
   const selectedInventoryData = inventories?.find(inv => inv.id === selectedInventoryId);
@@ -73,11 +66,11 @@ export default function InventoryCounts() {
         credentials: 'include',
         body: JSON.stringify({ count }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update count');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -149,7 +142,7 @@ export default function InventoryCounts() {
   const filteredItems = currentItems?.filter(item => {
     const product = products?.find(p => p.id === item.productId);
     const location = locations?.find(l => l.id === item.locationId);
-    
+
     const matchesSearch = !searchTerm || 
       product?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product?.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -158,7 +151,7 @@ export default function InventoryCounts() {
     const selectedInv = inventories?.find(inv => inv.id === selectedInventory);
     const stage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
     const status = getItemStatus(item, stage);
-    
+
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
 
     // BLIND COUNTING: Show only pending items by default, or counted items if specifically requested
@@ -202,7 +195,7 @@ export default function InventoryCounts() {
       count: Number(countValue), 
       countType 
     });
-    
+
     // Clear the input after successful count
     setCountValues(prev => ({
       ...prev,
@@ -225,11 +218,11 @@ export default function InventoryCounts() {
   return (
     <div>
       <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
-      
+
       <div className="space-y-6 p-4 md:p-6">
         {/* Selected Inventory Info */}
         <SelectedInventoryInfo />
-        
+
         {/* Inventory Selection */}
         <Card>
         <CardHeader>
