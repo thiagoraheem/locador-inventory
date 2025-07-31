@@ -359,6 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeId: req.body.typeId,
         startDate: typeof req.body.startDate === 'string' ? new Date(req.body.startDate).getTime() : req.body.startDate,
         status: req.body.status || 'open',
+        isToBlockSystem: req.body.isToBlockSystem === true || req.body.isToBlockSystem === 'true',
         createdBy: req.user.id,
       };
 

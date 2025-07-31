@@ -356,7 +356,7 @@ export const insertInventorySchema = z.object({
   endDate: z.number().nullable().optional(),
   predictedEndDate: z.number().nullable().optional(),
   description: z.string().nullable().optional(),
-  isToBlockSystem: z.boolean().nullable().optional(),
+  isToBlockSystem: z.boolean().optional().default(false),
   selectedLocationIds: z.array(z.number()).optional(),
   selectedCategoryIds: z.array(z.number()).optional(),
   createdBy: z.number(),

@@ -368,6 +368,9 @@ export class SimpleStorage {
     const predictedEndDate = inventoryData.predictedEndDate ? 
       (typeof inventoryData.predictedEndDate === 'number' ? new Date(inventoryData.predictedEndDate) : new Date(inventoryData.predictedEndDate)) : null;
 
+    // Debug log para verificar o valor de isToBlockSystem
+    console.log("📝 Creating inventory with isToBlockSystem:", inventoryData.isToBlockSystem);
+    
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
@@ -381,7 +384,7 @@ export class SimpleStorage {
       .input("description", inventoryData.description || null)
       .input("selectedLocationIds", selectedLocationIds)
       .input("selectedCategoryIds", selectedCategoryIds)
-      .input("isToBlockSystem", inventoryData.isToBlockSystem || false)
+      .input("isToBlockSystem", inventoryData.isToBlockSystem === true)
       .input("createdBy", inventoryData.createdBy)
       .input("createdAt", new Date())
       .input("updatedAt", new Date()).query(`

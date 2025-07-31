@@ -99,7 +99,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         predictedEndDate: data.predictedEndDate ? new Date(data.predictedEndDate).getTime() : null,
         description: data.description,
         status: 'open',
-        isToBlockSystem: data.isToBlockSystem,
+        isToBlockSystem: data.isToBlockSystem || false,
         selectedLocationIds: data.selectedLocationIds,
         selectedCategoryIds: data.selectedCategoryIds,
       };
