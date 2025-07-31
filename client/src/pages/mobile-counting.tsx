@@ -425,14 +425,14 @@ export default function MobileCounting() {
                 <div className="text-white">
                   <label className="block text-sm font-medium mb-2">Local de Estoque:</label>
                   <Select 
-                    value={selectedLocationId?.toString() || ""} 
-                    onValueChange={(value) => setSelectedLocationId(value ? Number(value) : null)}
+                    value={selectedLocationId?.toString() || "all"} 
+                    onValueChange={(value) => setSelectedLocationId(value === "all" ? null : Number(value))}
                   >
                     <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
                       <SelectValue placeholder="Todos os locais" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos os locais</SelectItem>
+                      <SelectItem value="all">Todos os locais</SelectItem>
                       {locations?.map((location) => (
                         <SelectItem key={location.id} value={location.id.toString()}>
                           {location.name}
