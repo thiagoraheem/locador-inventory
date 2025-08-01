@@ -153,9 +153,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       /*const hashedPassword = await hashPassword(password);
-      console.log(password);
-      console.log(user.password);
-      console.log(hashedPassword);*/
+      console.log(`password: ${password}`);
+      console.log(`user.password: ${user.password}`);
+      console.log(`hashedPassword: ${hashedPassword}`);*/
 
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
@@ -193,13 +193,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email já cadastrado" });
       }
 
-      // Hash password and create user
-      const hashedPassword = await hashPassword(userData.password);
+      // Create user (password will be hashed in storage layer)
       const { confirmPassword, ...userDataWithoutConfirm } = userData;
 
       const newUser = await storage.createUser({
         ...userDataWithoutConfirm,
-        password: hashedPassword,
         role: "user",
         isActive: true,
       });
@@ -487,9 +485,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "UPDATE",
         entityType: "INVENTORY",
         entityId: id.toString(),
-        oldValues: oldInventory,
-        newValues: inventoryData,
-        metadata: null,
+        oldValues: JSON.stringify(oldInventory),
+        newValues: JSON.stringify(inventoryData),
+        metadata: "",
       });
 
       res.json(inventory);
@@ -518,8 +516,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entityType: "INVENTORY",
           entityId: id.toString(),
           oldValues: oldInventory,
-          newValues: { status: "CLOSED" },
-          metadata: null,
+          newValues: JSON.stringify({ status: "CLOSED" }),
+          metadata: "",
         });
 
         res.json({ message: "Inventory closed successfully" });
@@ -576,9 +574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "CREATE",
         entityType: "COUNT",
         entityId: "sistema",
-        oldValues: null,
-        newValues: countData,
-        metadata: null,
+        oldValues: "",
+        newValues: JSON.stringify(countData),
+        metadata: "",
       });
 
       res.status(201).json(count);
@@ -616,11 +614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       storage = await getStorage();
 
-      // Hash password if provided
+      // Prepare user data
       const userData = { ...req.body };
-      if (userData.password) {
-        userData.password = await hashPassword(userData.password);
-      }
+      // Password will be hashed in storage layer if provided
 
       // Validate the user data (excluding password confirmation if present)
       const { confirmPassword, ...userDataToValidate } = userData;
@@ -632,10 +628,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user.id,
         action: "CREATE",
         entityType: "USER",
-        entityId: user.id,
-        oldValues: null,
-        newValues: { ...validatedData, password: "[REDACTED]" },
-        metadata: null,
+        entityId: user.id.toString(),
+        oldValues: "",
+        newValues: JSON.stringify({ ...validatedData, password: "[REDACTED]" }),
+        metadata: "",
       });
 
       // Return user without password
@@ -659,14 +655,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Hash password if provided
+      // Prepare update data
       const userData = { ...req.body };
-      if (userData.password && userData.password.trim() !== "") {
-        userData.password = await hashPassword(userData.password);
-      } else {
+      if (!userData.password || userData.password.trim() === "") {
         // Remove password field if empty
         delete userData.password;
       }
+      // Password will be hashed in storage layer if provided
 
       // Remove confirmPassword if present
       const { confirmPassword, ...userDataToValidate } = userData;
@@ -681,12 +676,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "UPDATE",
         entityType: "USER",
         entityId: id,
-        oldValues: { ...oldUser, password: "[REDACTED]" },
-        newValues: {
+        oldValues: JSON.stringify({ ...oldUser, password: "[REDACTED]" }),
+        newValues: JSON.stringify({
           ...validatedData,
           password: validatedData.password ? "[REDACTED]" : undefined,
-        },
-        metadata: null,
+        }),
       });
 
       // Return user without password
@@ -717,9 +711,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: "DELETE",
         entityType: "USER",
         entityId: id,
-        oldValues: oldUser,
-        newValues: null,
-        metadata: null,
+        oldValues: JSON.stringify(oldUser),
+        newValues: "",
+        metadata: "",
       });
 
       res.status(204).send();

@@ -40,6 +40,8 @@ interface NavigationItem {
   href?: string;
   icon: any;
   children?: NavigationItem[];
+  /** If true, only users with role Administrator can see this item */
+  adminOnly?: boolean;
 }
 
 const navigation: NavigationItem[] = [
@@ -81,11 +83,13 @@ const navigation: NavigationItem[] = [
             name: "Suite de Testes",
             href: "/inventory-test-suite",
             icon: FileText,
+            adminOnly: true,
           },
           {
             name: "Validação de Fluxos",
             href: "/inventory-test-validation",
             icon: TestTube,
+            adminOnly: true,
           },
         ],
       },
@@ -139,6 +143,12 @@ export default function Sidebar({
   };
 
   const renderNavigationItem = (item: NavigationItem, level: number = 0) => {
+     // Hide admin-only items for non-admin users
+     if (item.adminOnly) {
+       const role = (user as any)?.role?.toString()?.toLowerCase();
+       const isAdmin = role === "administrador" || role === "admin" || role === "administrator";
+       if (!isAdmin) return null;
+     }
     const isExpanded = expandedItems.includes(item.name);
     const hasChildren = item.children && item.children.length > 0;
     const isActive = item.href && location === item.href;

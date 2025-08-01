@@ -345,10 +345,20 @@ export default function InventoryControlBoard() {
   }, [selectedInventory]);
 
   const getElapsedTime = () => {
-    const countingStartTime = getCountingStartTime();
-    const elapsed = Date.now() - countingStartTime;
-    const hours = Math.floor(elapsed / (1000 * 60 * 60));
+    const countingStartTime = getCountingStartTime();          // ← string ISO
+    const startMs = new Date(countingStartTime).getTime();      // ← número
+  
+    const elapsed = Date.now() - startMs;
+    const hours   = Math.floor(elapsed / (1000 * 60 * 60));
     const minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+  
+    /*console.log(
+      `Tempo decorrido: ${hours}h ${minutes}m\n` +
+      `Contagem aberta em: ${countingStartTime}\n` +
+      `Contagem finalizada em: ${new Date().toISOString()}\n` +
+      `Elapsed: ${elapsed}`
+    );*/
+  
     return `${hours}h ${minutes}m`;
   };
 
