@@ -63,7 +63,7 @@ const CountIndicator = ({ count, countBy, countAt, stage }: CountIndicatorProps)
       {hasCount ? (
         <div className="text-center">
           <div className="font-bold text-sm">{count}</div>
-          {countBy && (
+          {countBy && false && (
             <div className="text-xs text-muted-foreground">
               {countBy}
             </div>
