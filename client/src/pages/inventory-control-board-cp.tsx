@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Package, Barcode, CheckCircle, XCircle, AlertTriangle, Clock } from "lucide-react";
+import { Search, Package, Barcode, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import Header from "@/components/layout/header";
@@ -117,21 +117,21 @@ export default function InventoryControlBoardCP() {
     queryKey: ["/api/inventories"],
   });
 
-  const { data: selectedInventory } = useQuery<Inventory>({
+  const { data: selectedInventory, refetch: refetchInventory } = useQuery<Inventory>({
     queryKey: [`/api/inventories/${selectedInventoryId}`],
     enabled: !!selectedInventoryId,
   });
 
-  const { data: serialItems } = useQuery<InventorySerialItem[]>({
+  const { data: serialItems, refetch: refetchSerialItems } = useQuery<InventorySerialItem[]>({
     queryKey: [`/api/inventories/${selectedInventoryId}/serial-items`],
     enabled: !!selectedInventoryId,
   });
 
-  const { data: products } = useQuery<Product[]>({
+  const { data: products, refetch: refetchProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
-  const { data: locations } = useQuery<Location[]>({
+  const { data: locations, refetch: refetchLocations } = useQuery<Location[]>({
     queryKey: ["/api/locations"],
   });
 
@@ -170,6 +170,22 @@ export default function InventoryControlBoardCP() {
 
   const handleExport = () => {
     console.log("Export functionality to be implemented");
+  };
+
+  // Function to refresh all data
+  const handleRefreshData = async () => {
+    await Promise.all([
+      refetchInventory(),
+      refetchSerialItems(),
+      refetchProducts(),
+      refetchLocations(),
+      queryClient.invalidateQueries({ queryKey: ["/api/inventories"] })
+    ]);
+
+    toast({
+      title: "Dados atualizados",
+      description: "Todas as informações foram recarregadas com sucesso.",
+    });
   };
 
   const getSerialStatsForInventory = () => {
@@ -233,10 +249,16 @@ export default function InventoryControlBoardCP() {
                     Status: <Badge variant="outline">{selectedInventory.status}</Badge>
                   </p>
                 </div>
-                <Button onClick={handleExport} className="flex items-center gap-2">
-                  <Download className="h-4 w-4" />
-                  Exportar Relatório
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleRefreshData} variant="outline" className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Recarregar
+                  </Button>
+                  <Button onClick={handleExport} className="flex items-center gap-2">
+                    <Download className="h-4 w-4" />
+                    Exportar Relatório
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

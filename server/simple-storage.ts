@@ -1630,7 +1630,7 @@ export class SimpleStorage {
       .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
 
     // Incrementar contagem na tabela inventory_items
-    await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage);
+    await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage, Number(userId));
 
     return { 
       success: true, 
@@ -1648,28 +1648,31 @@ export class SimpleStorage {
     inventoryId: number,
     productId: number,
     locationId: number | null,
-    countStage: string
+    countStage: string,
+    userId?: number
   ): Promise<void> {
     try {
       const countColumn = countStage; // count1, count2, count3, count4
       const countByColumn = `${countStage}By`;
       const countAtColumn = `${countStage}At`;
 
+      // Check if item exists before updating, and handle NULL locationId
+      const locationCondition = locationId ? 'AND locationId = @locationId' : 'AND locationId IS NULL';
+      
       await this.pool.request()
         .input('inventoryId', sql.Int, inventoryId)
         .input('productId', sql.Int, productId)
-        .input('locationId', sql.Int, locationId)
-        .input('userId', sql.Int, 1)
+        .input('locationId', locationId ? sql.Int : sql.VarChar, locationId || null)
         .query(`
           UPDATE inventory_items 
           SET 
             ${countColumn} = ISNULL(${countColumn}, 0) + 1,
-            ${countByColumn} = @userId,
+            ${countByColumn} = NULL,
             ${countAtColumn} = GETDATE(),
             updatedAt = GETDATE()
           WHERE inventoryId = @inventoryId 
           AND productId = @productId 
-          AND locationId = @locationId
+          ${locationCondition}
         `);
     } catch (error) {
       console.error('Error incrementing inventory item count:', error);
