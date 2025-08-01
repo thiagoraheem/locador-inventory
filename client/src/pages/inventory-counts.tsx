@@ -140,16 +140,23 @@ export default function InventoryCounts() {
   const updateCountMutation = useMutation({
     mutationFn: async ({ itemId, stage, value }: { itemId: number, stage: number, value: number }) => {
       const response = await fetch(`/api/inventory-items/${itemId}/count${stage}`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ stage, value }),
+        body: JSON.stringify({ count: value }),
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update count');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update count';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.message || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();
