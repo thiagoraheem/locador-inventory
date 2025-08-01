@@ -18,7 +18,7 @@ import SelectedInventoryInfo from "@/components/selected-inventory-info";
 export default function InventoryCounts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [countValues, setCountValues] = useState<{ [itemId: number]: number | string }>({});
 
@@ -60,31 +60,6 @@ export default function InventoryCounts() {
     queryKey: ["/api/locations"],
   });
 
-  // Filter active inventories
-  const activeInventories = inventories?.filter(inv => 
-    inv.status !== 'closed' && inv.status !== 'cancelled'
-  ) || [];
-
-  // Filter items based on search term and status
-  const filteredItems = currentItems?.filter(item => {
-    const product = products?.find(p => p.id === item.productId);
-    const location = locations?.find(l => l.id === item.locationId);
-    const searchMatch = 
-      product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      location?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      false;
-    
-    if (statusFilter === 'all') {
-      return searchMatch;
-    } else if (statusFilter === 'counted') {
-      const status = getItemStatus(item, currentStage);
-      return searchMatch && status === 'counted';
-    }
-    
-    return searchMatch;
-  }) || [];
-
   // Get current count stage based on inventory status
   const getCurrentCountStage = (status: string): number => {
     switch (status) {
@@ -101,9 +76,9 @@ export default function InventoryCounts() {
   // Get item status (counted or pending)
   const getItemStatus = (item: InventoryItem, stage: number): 'counted' | 'pending' => {
     switch (stage) {
-      case 1: return item.count1 !== null ? 'counted' : 'pending';
-      case 2: return item.count2 !== null ? 'counted' : 'pending';
-      case 3: return item.count3 !== null ? 'counted' : 'pending';
+      case 1: return (item.count1 !== null && item.count1 !== undefined) ? 'counted' : 'pending';
+      case 2: return (item.count2 !== null && item.count2 !== undefined) ? 'counted' : 'pending';
+      case 3: return (item.count3 !== null && item.count3 !== undefined) ? 'counted' : 'pending';
       default: return 'pending';
     }
   };
@@ -111,12 +86,44 @@ export default function InventoryCounts() {
   // Get current count value for an item
   const getCurrentCount = (item: InventoryItem, stage: number): number | null => {
     switch (stage) {
-      case 1: return item.count1;
-      case 2: return item.count2;
-      case 3: return item.count3;
+      case 1: return item.count1 ?? null;
+      case 2: return item.count2 ?? null;
+      case 3: return item.count3 ?? null;
       default: return null;
     }
   };
+
+  // Filter active inventories
+  const activeInventories = inventories?.filter(inv => 
+    inv.status !== 'closed' && inv.status !== 'cancelled'
+  ) || [];
+
+  // Get current stage for the selected inventory
+  const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
+  const currentStage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
+
+  // Filter items based on search term and status
+  const filteredItems = currentItems?.filter(item => {
+    const product = products?.find(p => p.id === item.productId);
+    const location = locations?.find(l => l.id === item.locationId);
+    const searchMatch = 
+      product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      location?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false;
+    
+    if (statusFilter === 'all') {
+      return searchMatch;
+    } else if (statusFilter === 'counted') {
+      const status = getItemStatus(item, currentStage);
+      return searchMatch && status === 'counted';
+    } else if (statusFilter === 'pending') {
+      const status = getItemStatus(item, currentStage);
+      return searchMatch && status === 'pending';
+    }
+    
+    return searchMatch;
+  }) || [];
 
   // Get final quantity status
   const getFinalQuantityStatus = (item: InventoryItem) => {
@@ -126,7 +133,7 @@ export default function InventoryCounts() {
                         (item.count3 !== null && (item.count3 !== item.count1 && item.count3 !== item.count2));
     
     return {
-      variant: isDivergent ? 'destructive' : 'secondary',
+      variant: (isDivergent ? 'destructive' : 'secondary') as "destructive" | "secondary",
       label: isDivergent ? 'Divergente' : 'Concluído'
     };
   };
@@ -218,9 +225,6 @@ export default function InventoryCounts() {
     }
   };
 
-  const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
-  const currentStage = selectedInv ? getCurrentCountStage(selectedInv.status) : 1;
-
   return (
     <div>
       <Header title="Contagens de Inventário" subtitle="Registre as contagens dos itens de inventário" />
@@ -299,8 +303,9 @@ export default function InventoryCounts() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Apenas Pendentes (Contagem Às Cegas)</SelectItem>
+                        <SelectItem value="pending">Apenas Pendentes (Contagem Às Cegas)</SelectItem>
                         <SelectItem value="counted">Mostrar Já Contados</SelectItem>
+                        <SelectItem value="all">Mostrar Todos</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -368,8 +373,10 @@ export default function InventoryCounts() {
                                   selectedInventoryData?.status === 'count3_open' ?
                                     "Nenhum item divergente encontrado - todas as contagens estão alinhadas!" :
                                     "Nenhum item encontrado para este inventário" :
-                                  statusFilter === 'all' ? 
+                                  statusFilter === 'pending' ? 
                                     "Todos os itens pendentes já foram contados!" :
+                                  statusFilter === 'counted' ?
+                                    "Nenhum item contado encontrado para este inventário" :
                                     "Nenhum item corresponde aos filtros aplicados"
                                 }
                               </div>
