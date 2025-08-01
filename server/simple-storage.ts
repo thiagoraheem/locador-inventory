@@ -1629,8 +1629,9 @@ export class SimpleStorage {
       .input('userId', sql.Int, userId)
       .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
 
-    // Incrementar contagem na tabela inventory_items
-    await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage, Number(userId));
+    // Note: Count increment should now be handled by the updated stored procedure
+    // If still needed, we keep this as fallback
+    // await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage, Number(userId));
 
     return { 
       success: true, 
@@ -1641,6 +1642,126 @@ export class SimpleStorage {
       locationName: locationName,
       message: "Leitura registrada com sucesso"
     };
+  }
+
+  // Update stored procedure to include inventory_items count increment
+  async updateStoredProcedure(): Promise<{ success: boolean; message: string }> {
+    try {
+      const sqlContent = `
+        -- Drop existing procedure
+        IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_RegisterSerialReading')
+        BEGIN
+            DROP PROCEDURE sp_RegisterSerialReading;
+        END;
+        
+        -- Create updated procedure with inventory_items count increment
+        EXEC('
+        CREATE PROCEDURE sp_RegisterSerialReading
+            @InventoryId INT,
+            @SerialNumber NVARCHAR(255),
+            @CountStage NVARCHAR(10),
+            @UserId INT
+        AS
+        BEGIN
+            SET NOCOUNT ON;
+            DECLARE @ProductId INT;
+            DECLARE @LocationId INT;
+            DECLARE @RowsUpdated INT;
+            
+            -- Verificar se série existe no inventário
+            SELECT @ProductId = productId, @LocationId = locationId
+            FROM inventory_serial_items 
+            WHERE inventoryId = @InventoryId 
+            AND serialNumber = @SerialNumber;
+            
+            IF @ProductId IS NULL
+            BEGIN
+                -- Série não encontrada no inventário esperado
+                SELECT @ProductId = si.productId, @LocationId = si.locationId
+                FROM stock_items si
+                JOIN products p ON si.productId = p.id
+                WHERE si.serialNumber = @SerialNumber
+                AND p.hasSerialControl = 1
+                AND si.isActive = 1;
+                
+                IF @ProductId IS NOT NULL
+                BEGIN
+                    -- Série existe mas não estava no inventário - adicionar como EXTRA
+                    INSERT INTO inventory_serial_items (
+                        inventoryId, stockItemId, serialNumber, productId, locationId, 
+                        expectedStatus, status, createdAt, updatedAt
+                    )
+                    SELECT 
+                        @InventoryId, si.id, @SerialNumber, @ProductId, @LocationId,
+                        0, ''EXTRA'', GETDATE(), GETDATE()
+                    FROM stock_items si
+                    WHERE si.serialNumber = @SerialNumber
+                    AND si.productId = @ProductId;
+                END
+                ELSE
+                BEGIN
+                    RAISERROR(''Número de série não encontrado no sistema'', 16, 1);
+                    RETURN;
+                END;
+            END;
+            
+            -- Atualizar inventory_serial_items
+            UPDATE inventory_serial_items 
+            SET 
+                count1_found = CASE WHEN @CountStage = ''count1'' THEN 1 ELSE count1_found END,
+                count2_found = CASE WHEN @CountStage = ''count2'' THEN 1 ELSE count2_found END,
+                count3_found = CASE WHEN @CountStage = ''count3'' THEN 1 ELSE count3_found END,
+                count4_found = CASE WHEN @CountStage = ''count4'' THEN 1 ELSE count4_found END,
+                count1_by = CASE WHEN @CountStage = ''count1'' THEN @UserId ELSE count1_by END,
+                count2_by = CASE WHEN @CountStage = ''count2'' THEN @UserId ELSE count2_by END,
+                count3_by = CASE WHEN @CountStage = ''count3'' THEN @UserId ELSE count3_by END,
+                count4_by = CASE WHEN @CountStage = ''count4'' THEN @UserId ELSE count4_by END,
+                count1_at = CASE WHEN @CountStage = ''count1'' THEN GETDATE() ELSE count1_at END,
+                count2_at = CASE WHEN @CountStage = ''count2'' THEN GETDATE() ELSE count2_at END,
+                count3_at = CASE WHEN @CountStage = ''count3'' THEN GETDATE() ELSE count3_at END,
+                count4_at = CASE WHEN @CountStage = ''count4'' THEN GETDATE() ELSE count4_at END,
+                status = ''FOUND'',
+                updatedAt = GETDATE()
+            WHERE inventoryId = @InventoryId 
+            AND serialNumber = @SerialNumber;
+
+            SET @RowsUpdated = @@ROWCOUNT;
+            
+            IF @RowsUpdated = 0
+            BEGIN
+                RAISERROR(''Número de série não encontrado'', 16, 1);
+                RETURN;
+            END;
+            
+            -- INCREMENTAR CONTAGEM NA TABELA INVENTORY_ITEMS
+            DECLARE @SQL NVARCHAR(MAX);
+            SET @SQL = N''UPDATE inventory_items 
+                SET '' + @CountStage + '' = ISNULL('' + @CountStage + '', 0) + 1,
+                    '' + @CountStage + ''By = NULL,
+                    '' + @CountStage + ''At = GETDATE(),
+                    updatedAt = GETDATE()
+                WHERE inventoryId = @InventoryId 
+                AND productId = @ProductId 
+                AND (locationId = @LocationId OR (locationId IS NULL AND @LocationId IS NULL))'';
+            
+            EXEC sp_executesql @SQL, N''@InventoryId INT, @ProductId INT, @LocationId INT'', @InventoryId, @ProductId, @LocationId;
+        END
+        ')
+      `;
+
+      await this.pool.request().query(sqlContent);
+      
+      return {
+        success: true,
+        message: "Stored procedure atualizada com sucesso! Agora os números de série incrementam a contagem na tabela inventory_items."
+      };
+    } catch (error: any) {
+      console.error('Error updating stored procedure:', error);
+      return {
+        success: false,
+        message: `Erro ao atualizar stored procedure: ${error.message}`
+      };
+    }
   }
 
   // Incrementar contagem do produto na tabela inventory_items

@@ -24,6 +24,9 @@ Preferred communication style: Simple, everyday language.
 - **Count Integration**: Implemented automatic count increment in `inventory_items` table when serial numbers are read
 - **Status Filter**: Fixed status filter functionality in inventory counts page with proper filter logic
 - **Error Handling**: Improved error handling for serial reading with detailed location information
+- **Mesa de Controle CP**: Added refresh button with same functionality as main control board
+- **Stored Procedure**: Identified and created fix for `sp_RegisterSerialReading` to increment `inventory_items` counts
+- **API Endpoint**: Created `/api/admin/update-stored-procedure` endpoint to apply stored procedure fix
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework

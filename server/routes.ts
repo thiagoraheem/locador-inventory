@@ -1338,6 +1338,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update stored procedure to fix serial reading count increment
+  app.post("/api/admin/update-stored-procedure", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const result = await storage.updateStoredProcedure();
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating stored procedure:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to update stored procedure" 
+      });
+    }
+  });
+
   // Buscar produto por número de série
   app.get("/api/products/by-serial/:serial", isAuthenticated, async (req: any, res) => {
     try {
