@@ -359,7 +359,8 @@ export default function InventoryControlBoard() {
   };
 
   const getProductName = (productId: number) => {
-    return products?.find(p => p.id === productId)?.name || `Product ${productId}`;
+    const product = products?.find(p => p.id === productId);
+    return product ? `${product.sku} - ${product.name}` : `Product ${productId}`;
   };
 
   const getLocationName = (locationId: number) => {

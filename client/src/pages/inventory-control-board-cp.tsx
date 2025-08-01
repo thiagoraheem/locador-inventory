@@ -62,7 +62,7 @@ const CountIndicator = ({ found, countBy, countAt, stage }: CountIndicatorProps)
       {hasCount ? (
         <div className="text-center">
           <div className="font-bold text-sm">{found ? 'Encontrado' : 'Não Encontrado'}</div>
-          {countBy && (
+          {countBy && false && (
             <div className="text-xs text-muted-foreground">
               {countBy}
             </div>
@@ -226,7 +226,7 @@ export default function InventoryControlBoardCP() {
           <>
             {/* Header with KPIs */}
             <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pl-4 pr-4">
                 <div>
                   <h2 className="text-xl font-bold">Inventário: {selectedInventory.code}</h2>
                   <p className="text-muted-foreground">
