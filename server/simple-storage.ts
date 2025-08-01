@@ -1601,7 +1601,26 @@ export class SimpleStorage {
         message: "Número de série já foi lido neste estágio" 
       };
     }
-    console.log("Usuário: " + userId.toString())
+
+    // Obter informações do produto para identificar o local
+    const serialItemInfo = await this.pool.request()
+      .input('inventoryId', sql.Int, inventoryId)
+      .input('serialNumber', sql.NVarChar, request.serialNumber)
+      .query(`
+        SELECT isi.productId, isi.locationId, l.name as locationName
+        FROM inventory_serial_items isi
+        LEFT JOIN locations l ON isi.locationId = l.id
+        WHERE isi.inventoryId = @inventoryId 
+        AND isi.serialNumber = @serialNumber
+      `);
+
+    let locationId = null;
+    let locationName = null;
+    if (serialItemInfo.recordset.length > 0) {
+      locationId = serialItemInfo.recordset[0].locationId;
+      locationName = serialItemInfo.recordset[0].locationName;
+    }
+
     // Registrar leitura usando stored procedure
     await this.pool.request()
       .input('inventoryId', sql.Int, inventoryId)
@@ -1610,12 +1629,52 @@ export class SimpleStorage {
       .input('userId', sql.Int, userId)
       .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
 
+    // Incrementar contagem na tabela inventory_items
+    await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage);
+
     return { 
       success: true, 
       productId: product.id, 
       productName: product.name,
+      productSku: product.sku,
+      locationId: locationId,
+      locationName: locationName,
       message: "Leitura registrada com sucesso"
     };
+  }
+
+  // Incrementar contagem do produto na tabela inventory_items
+  private async incrementInventoryItemCount(
+    inventoryId: number,
+    productId: number,
+    locationId: number | null,
+    countStage: string
+  ): Promise<void> {
+    try {
+      const countColumn = countStage; // count1, count2, count3, count4
+      const countByColumn = `${countStage}By`;
+      const countAtColumn = `${countStage}At`;
+
+      await this.pool.request()
+        .input('inventoryId', sql.Int, inventoryId)
+        .input('productId', sql.Int, productId)
+        .input('locationId', sql.Int, locationId)
+        .input('userId', sql.Int, 1)
+        .query(`
+          UPDATE inventory_items 
+          SET 
+            ${countColumn} = ISNULL(${countColumn}, 0) + 1,
+            ${countByColumn} = @userId,
+            ${countAtColumn} = GETDATE(),
+            updatedAt = GETDATE()
+          WHERE inventoryId = @inventoryId 
+          AND productId = @productId 
+          AND locationId = @locationId
+        `);
+    } catch (error) {
+      console.error('Error incrementing inventory item count:', error);
+      // Don't throw error to avoid breaking the serial reading process
+    }
   }
 
   // Buscar produto por número de série

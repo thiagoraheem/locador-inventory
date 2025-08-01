@@ -190,6 +190,13 @@ export default function MobileCounting() {
           description: "Número de série não existe no sistema",
           variant: "destructive",
         });
+      } else {
+        // Erro genérico não identificado
+        toast({
+          title: "Erro na leitura",
+          description: result.message || "Falha ao registrar número de série",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       toast({

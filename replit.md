@@ -19,6 +19,12 @@ Preferred communication style: Simple, everyday language.
 - **Forms**: React Hook Form with Zod validation
 - **Design Decisions**: Responsive design with mobile-optimized interfaces and touch-friendly controls. Mobile-first approach for counting screens.
 
+### Recent Fixes (Jan 2025)
+- **Individual Counting**: Fixed error message display in mobile counting page - added proper else condition for generic errors
+- **Count Integration**: Implemented automatic count increment in `inventory_items` table when serial numbers are read
+- **Status Filter**: Fixed status filter functionality in inventory counts page with proper filter logic
+- **Error Handling**: Improved error handling for serial reading with detailed location information
+
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework
 - **Language**: TypeScript
