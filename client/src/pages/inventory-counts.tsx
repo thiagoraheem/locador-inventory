@@ -139,7 +139,7 @@ export default function InventoryCounts() {
   // Mutation to update count
   const updateCountMutation = useMutation({
     mutationFn: async ({ itemId, stage, value }: { itemId: number, stage: number, value: number }) => {
-      const response = await fetch(`/api/inventory-items/${itemId}/count`, {
+      const response = await fetch(`/api/inventory-items/${itemId}/count${stage}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

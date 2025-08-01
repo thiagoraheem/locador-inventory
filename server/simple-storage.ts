@@ -1450,265 +1450,6 @@ export class SimpleStorage {
       .query('DELETE FROM inventories WHERE id = @inventoryId3');
   }
 
-  // Inventory snapshot management methods
-  async createInventorySnapshotTables(): Promise<void> {
-    const queries = [
-      // Categories snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_categories_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_categories_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           categoryId INT NOT NULL,
-           idcompany INT,
-           name NVARCHAR(255),
-           description NVARCHAR(500),
-           isActive BIT DEFAULT 1,
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Companies snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_companies_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_companies_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           companyId INT NOT NULL,
-           name NVARCHAR(255),
-           description NVARCHAR(500),
-           isActive BIT DEFAULT 1,
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Locations snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_locations_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_locations_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           locationId INT NOT NULL,
-           code NVARCHAR(50),
-           name NVARCHAR(255),
-           description NVARCHAR(500),
-           isActive BIT DEFAULT 1,
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Products snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_products_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_products_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           productId INT NOT NULL,
-           sku NVARCHAR(100),
-           name NVARCHAR(255),
-           description NVARCHAR(500),
-           categoryId INT,
-           costValue DECIMAL(18,2),
-           serialNumber NVARCHAR(100),
-           isActive BIT DEFAULT 1,
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Stock snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_stock_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           stockId INT NOT NULL,
-           productId INT NOT NULL,
-           locationId INT NOT NULL,
-           quantity INT DEFAULT 0,
-           frozenAt DATETIME2 DEFAULT GETDATE(),
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Stock items snapshot table
-      `IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[inventory_stock_items_snapshot]') AND type in (N'U'))
-       BEGIN
-         CREATE TABLE inventory_stock_items_snapshot (
-           id INT IDENTITY(1,1) PRIMARY KEY,
-           inventoryId INT NOT NULL,
-           stockItemId INT NOT NULL,
-           productId INT NOT NULL,
-           locationId INT NOT NULL,
-           assetTag NVARCHAR(100),
-           description NVARCHAR(255),
-           category NVARCHAR(100),
-           location NVARCHAR(100),
-           locationCode NVARCHAR(50),
-           costValue DECIMAL(18,2),
-           currentValue DECIMAL(18,2),
-           condition NVARCHAR(50),
-           serialNumber NVARCHAR(100),
-           brand NVARCHAR(100),
-           model NVARCHAR(100),
-           companyId INT,
-           acquisitionDate DATETIME2,
-           quantity INT DEFAULT 1,
-           isActive BIT DEFAULT 1,
-           frozenAt DATETIME2 DEFAULT GETDATE(),
-           createdAt DATETIME2 DEFAULT GETDATE(),
-           FOREIGN KEY (inventoryId) REFERENCES inventories(id) ON DELETE CASCADE
-         );
-       END`,
-
-      // Add inventory freeze fields
-      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'isFrozen')
-       BEGIN
-         ALTER TABLE inventories ADD isFrozen BIT DEFAULT 0;
-       END`,
-
-      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenAt')
-       BEGIN
-         ALTER TABLE inventories ADD frozenAt DATETIME2 NULL;
-       END`,
-
-      `IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[inventories]') AND name = 'frozenBy')
-       BEGIN
-         ALTER TABLE inventories ADD frozenBy NVARCHAR(50) NULL;
-       END`
-    ];
-
-    for (const query of queries) {
-      await this.pool.request().query(query);
-    }
-  }
-
-  async freezeInventoryData(inventoryId: number, userId: number): Promise<void> {
-    const transaction = this.pool.transaction();
-
-    try {
-      await transaction.begin();
-
-      // Mark inventory as frozen
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .input('userId', sql.Int, userId)
-        .query(`
-          UPDATE inventories 
-          SET isFrozen = 1, frozenAt = GETDATE(), frozenBy = @userId
-          WHERE id = @inventoryId
-        `);
-
-      // Note: Categories, companies, locations, and products are now treated as views
-      // Only stock and stock_items are frozen for inventory control
-
-      // Freeze stock
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_stock_snapshot (inventoryId, stockId, productId, locationId, quantity)
-          SELECT @inventoryId, id, productId, locationId, quantity
-          FROM stock
-        `);
-
-      // Freeze stock items (patrimônio)
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          INSERT INTO inventory_stock_items_snapshot (
-            inventoryId, stockItemId, productId, locationId, assetTag, description, 
-            category, location, locationCode, costValue, currentValue, condition,
-            serialNumber, brand, model, companyId, acquisitionDate, quantity, isActive
-          )
-          SELECT 
-            @inventoryId, s.id, s.productId, s.locationId, p.sku, p.name,
-            c.name, l.name, l.code, p.costValue, p.costValue, 
-            CASE WHEN s.quantity > 0 THEN 'Bom' ELSE 'Indisponível' END,
-            p.sku, '', '', 3, s.createdAt, s.quantity, CASE WHEN s.quantity > 0 THEN 1 ELSE 0 END
-          FROM stock s
-          LEFT JOIN products p ON s.productId = p.id
-          LEFT JOIN categories c ON p.categoryId = c.id  
-          LEFT JOIN locations l ON s.locationId = l.id
-        `);
-
-      await transaction.commit();
-
-      // Create audit log
-      await this.createAuditLog({
-        userId: userId,
-        entityType: "Inventory",
-        entityId: inventoryId.toString(),
-        action: "FREEZE",
-        oldValues: "",
-        newValues: "Inventory data frozen (stock and stock_items only)",
-      });
-
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
-  }
-
-  async unfreezeInventoryData(inventoryId: number, userId: number): Promise<void> {
-    const transaction = this.pool.transaction();
-
-    try {
-      await transaction.begin();
-
-      // Check if inventory can be unfrozen (no counts should exist)
-      const countsCheck = await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          SELECT COUNT(*) as countTotal
-          FROM inventory_items 
-          WHERE inventoryId = @inventoryId 
-          AND (count1 IS NOT NULL OR count2 IS NOT NULL OR count3 IS NOT NULL)
-        `);
-
-      if (countsCheck.recordset[0].countTotal > 0) {
-        throw new Error("Cannot unfreeze inventory with existing counts");
-      }
-
-      // Clear snapshot data (only for stock and stock_items)
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`DELETE FROM inventory_stock_snapshot WHERE inventoryId = @inventoryId`);
-
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`DELETE FROM inventory_stock_items_snapshot WHERE inventoryId = @inventoryId`);
-
-      // Mark inventory as not frozen
-      await transaction.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query(`
-          UPDATE inventories 
-          SET isFrozen = 0, frozenAt = NULL, frozenBy = NULL
-          WHERE id = @inventoryId
-        `);
-
-      await transaction.commit();
-
-      // Create audit log
-      await this.createAuditLog({
-        userId: userId,
-        entityType: "Inventory",
-        entityId: inventoryId.toString(),
-        action: "UNFREEZE",
-        oldValues: "Inventory data frozen",
-        newValues: "Inventory data unfrozen (stock and stock_items only)",
-      });
-
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
-  }
-
   // ===== CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
 
   // Criar itens de série para inventário
@@ -1717,7 +1458,7 @@ export class SimpleStorage {
 
     try {
       // Get inventory details to filter by selected locations
-      const inventoryResult = await this.pool.request()
+      /*const inventoryResult = await this.pool.request()
         .input('inventoryId', sql.Int, inventoryId)
         .query('SELECT selectedLocationIds FROM inventories WHERE id = @inventoryId');
 
@@ -1729,7 +1470,7 @@ export class SimpleStorage {
         if (selectedLocationIds && selectedLocationIds.length > 0) {
           locationFilter = `AND si.locationId IN (${selectedLocationIds.join(',')})`;
         }
-      }
+      }*/
 
       // Create serial items with location filtering
       await this.pool.request()
@@ -1746,10 +1487,8 @@ export class SimpleStorage {
             si.locationId,
             1
           FROM stock_items si
-          JOIN products p ON si.productId = p.id
-          WHERE p.hasSerialControl = 1 
-          AND si.isActive = 1
-          ${locationFilter};
+          INNER JOIN inventory_items ii ON si.productId = ii.productId --AND si.locationId = ii.locationId
+          WHERE ii.inventoryId = @inventoryId;
           
           -- Update counters in inventory_items
           UPDATE ii
@@ -1768,47 +1507,6 @@ export class SimpleStorage {
     } catch (error) {
       console.error('❌ Error creating inventory serial items:', error);
       throw error;
-    }
-  }
-
-  private async ensureSerialItemsProcedure(): Promise<void> {
-    try {
-      await this.pool.request().query(`
-        IF NOT EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_CreateInventorySerialItems')
-        BEGIN
-          EXEC('
-            CREATE PROCEDURE sp_CreateInventorySerialItems
-                @InventoryId INT
-            AS
-            BEGIN
-                INSERT INTO inventory_serial_items (
-                    inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus
-                )
-                SELECT 
-                    @InventoryId,
-                    si.id,
-                    si.serialNumber,
-                    si.productId,
-                    si.locationId,
-                    1
-                FROM stock_items si
-                JOIN products p ON si.productId = p.id
-                WHERE p.hasSerialControl = 1 
-                  AND si.serialNumber IS NOT NULL
-                  AND si.serialNumber != ''''
-                  AND NOT EXISTS (
-                      SELECT 1 FROM inventory_serial_items isi
-                      WHERE isi.inventoryId = @InventoryId
-                      AND isi.serialNumber = si.serialNumber
-                  );
-
-                SELECT @@ROWCOUNT as itemsCreated;
-            END
-          ')
-        END
-      `);
-    } catch (error) {
-      console.warn('⚠️ Could not ensure stored procedure exists:', error);
     }
   }
 

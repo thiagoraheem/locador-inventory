@@ -519,9 +519,6 @@ export default function InventoryControlBoard() {
         <Card>
         <CardHeader>
           <CardTitle>Selecionar Inventário</CardTitle>
-          <CardDescription>
-            Escolha um inventário para visualizar na Mesa de Controle
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 items-end">
@@ -574,7 +571,7 @@ export default function InventoryControlBoard() {
         <>
           {/* Header with KPIs */}
           <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center pl-4 pr-4">
               <div>
                 <h2 className="text-xl font-bold">Inventário: {selectedInventory.code}</h2>
                 <p className="text-muted-foreground">

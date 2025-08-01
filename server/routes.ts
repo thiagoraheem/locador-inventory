@@ -453,8 +453,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Temporarily disable audit log to test inventory creation
-      /*
       await storage.createAuditLog({
         userId: req.user.id,
         action: "CREATE",
@@ -464,7 +462,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newValues: JSON.stringify(validatedData),
         metadata: undefined,
       });
-      */
 
       res.status(201).json(inventory);
     } catch (error) {
@@ -959,29 +956,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Update count 4 (audit) for inventory item
   app.put("/api/inventory-items/:id/count4", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
+        try {
       const itemId = parseInt(req.params.id);
-      const { count } = req.body;
-
-      await storage.updateCount4(itemId, count, String(req.user.id));
+      const { quantity } = req.body;
       
+      if (typeof quantity !== 'number') {
+        return res.status(400).json({ message: "Quantity must be a number" });
+      }
+
+      storage = await getStorage();
+      
+      // Update count4 and automatically update finalQuantity
+      await storage.updateCount4(itemId, quantity, req.user.id);
+      
+      // Create audit log for count4 change
       await storage.createAuditLog({
         userId: req.user.id,
-        action: "UPDATE_COUNT4_AUDIT",
+        action: "UPDATE_COUNT4",
         entityType: "inventory_item",
         entityId: itemId.toString(),
-        newValues: JSON.stringify({ count4: count }),
-        metadata: JSON.stringify({ countedAt: Date.now() }),
+        newValues: JSON.stringify({ count4: quantity, finalQuantity: quantity }),
+        metadata: JSON.stringify({ timestamp: Date.now() }),
       });
 
-      res.json({ message: "Audit count updated successfully" });
-    } catch (error) {
-      console.error("Error updating audit count:", error as Error);
-      res.status(500).json({
-        message: "Failed to update audit count",
-        details: (error as Error).message,
+      res.json({ 
+        message: "Count4 updated successfully and finalQuantity automatically updated",
+        count4: quantity,
+        finalQuantity: quantity
       });
+    } catch (error) {
+      console.error("Error updating count4:", error);
+      res.status(500).json({ message: "Failed to update count4" });
     }
   });
 
@@ -1202,61 +1207,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting inventory:", error);
       res.status(500).json({ message: "Failed to delete inventory" });
-    }
-  });
-
-  
-
-  
-
-  // Create inventory snapshot tables
-  app.post("/api/create-inventory-snapshot-tables", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      await storage.createInventorySnapshotTables();
-      res.json({ message: "Inventory snapshot tables created successfully" });
-    } catch (error) {
-      console.error("Error creating inventory snapshot tables:", error as Error);
-      res.status(500).json({ 
-        message: "Failed to create inventory snapshot tables", 
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Freeze inventory data
-  app.post("/api/inventories/:id/freeze", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      const userId = (req.session as any).user?.id || 0;
-      
-      storage = await getStorage();
-      await storage.freezeInventoryData(inventoryId, userId);
-      res.json({ message: "Inventory data frozen successfully" });
-    } catch (error) {
-      console.error("Error freezing inventory data:", error as Error);
-      res.status(500).json({ 
-        message: "Failed to freeze inventory data", 
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  });
-
-  // Unfreeze inventory data
-  app.post("/api/inventories/:id/unfreeze", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      const userId = (req.session as any).user?.id || "system";
-      
-      storage = await getStorage();
-      await storage.unfreezeInventoryData(inventoryId, userId);
-      res.json({ message: "Inventory data unfrozen successfully" });
-    } catch (error) {
-      console.error("Error unfreezing inventory data:", error as Error);
-      res.status(500).json({ 
-        message: "Failed to unfreeze inventory data", 
-        details: error instanceof Error ? error.message : String(error)
-      });
     }
   });
 
@@ -1521,42 +1471,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching divergent inventory items:", error);
       res.status(500).json({ message: "Failed to fetch divergent inventory items" });
-    }
-  });
-
-  // Update count4 for audit mode (Mesa de Controle only)
-  app.put("/api/inventory-items/:id/count4", hasAuditModeAccess, async (req: any, res) => {
-    try {
-      const itemId = parseInt(req.params.id);
-      const { quantity } = req.body;
-      
-      if (typeof quantity !== 'number') {
-        return res.status(400).json({ message: "Quantity must be a number" });
-      }
-
-      storage = await getStorage();
-      
-      // Update count4 and automatically update finalQuantity
-      await storage.updateCount4(itemId, quantity, req.user.id);
-      
-      // Create audit log for count4 change
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE_COUNT4",
-        entityType: "inventory_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ count4: quantity, finalQuantity: quantity }),
-        metadata: JSON.stringify({ timestamp: Date.now() }),
-      });
-
-      res.json({ 
-        message: "Count4 updated successfully and finalQuantity automatically updated",
-        count4: quantity,
-        finalQuantity: quantity
-      });
-    } catch (error) {
-      console.error("Error updating count4:", error);
-      res.status(500).json({ message: "Failed to update count4" });
     }
   });
 
