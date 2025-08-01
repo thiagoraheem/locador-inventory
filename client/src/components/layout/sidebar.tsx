@@ -73,7 +73,7 @@ const navigation: NavigationItem[] = [
             name: "Contagem Individual",
             href: "/inventory-counts-cp",
             icon: FileText,
-          },
+          }/*,
           {
             name: "Contagem de Itens",
             href: "/inventory-counting",
@@ -90,7 +90,7 @@ const navigation: NavigationItem[] = [
             href: "/inventory-test-validation",
             icon: TestTube,
             adminOnly: true,
-          },
+          },*/
         ],
       },
       {
