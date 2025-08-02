@@ -58,45 +58,70 @@ import {
   CheckCircle,
   RefreshCw,
   Info,
+  Settings,
+  BarChart3,
+  AlertTriangle,
+  Calendar,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type {
-  Inventory,
-  InventoryItem,
-  Product,
-  Location,
-  Category,
-  ControlPanelStats,
-} from "@shared/schema";
-import { useSelectedInventory } from "@/hooks/useSelectedInventory";
-
-interface KPICardProps {
-  title: string;
-  value: string | number;
-  description: string;
-  icon: React.ReactNode;
-  trend?: "up" | "down" | "stable";
+// Temporary type definitions - replace with actual shared schema
+interface Inventory {
+  id: number;
+  code: string;
+  description?: string;
+  status: string;
+  startDate: number;
 }
 
-const KPICard = ({ title, value, description, icon, trend }: KPICardProps) => (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-      <p className="text-xs text-muted-foreground flex items-center gap-1">
-        {trend && (
-          <TrendingUp
-            className={`h-3 w-3 ${trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-gray-500"}`}
-          />
-        )}
-        {description}
-      </p>
-    </CardContent>
-  </Card>
-);
+interface InventoryItem {
+  id: number;
+  productId: number;
+  locationId: number;
+  expectedQuantity: number;
+  count1?: number;
+  count2?: number;
+  count3?: number;
+  count4?: number;
+  count1At?: number;
+  count2At?: number;
+  count3At?: number;
+  count4At?: number;
+  count1By?: number;
+  count2By?: number;
+  count3By?: number;
+  count4By?: number;
+  finalQuantity?: number;
+  status: string;
+}
+
+interface Product {
+  id: number;
+  sku: string;
+  name: string;
+}
+
+interface Location {
+  id: number;
+  name: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface ControlPanelStats {
+  itemsInProgress: number;
+  itemsCompleted: number;
+  accuracyRate: number;
+  divergenceCount: number;
+}
+
+// Temporary hook - replace with actual implementation
+const useSelectedInventory = () => {
+  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  return { selectedInventoryId, setSelectedInventoryId };
+};
 
 interface CountIndicatorProps {
   count?: number;
@@ -674,232 +699,192 @@ export default function InventoryControlBoard() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen bg-background">
+      {/* Header Compacto */}
       <Header
         title="Mesa de Controle"
         subtitle="Controle centralizado de inventários ativos"
       />
 
-      <div className="space-y-6">
-        {/* Inventory Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Selecionar Inventário</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <Select
-                  value={selectedInventoryId?.toString() || ""}
-                  onValueChange={(value) =>
-                    setSelectedInventoryId(parseInt(value))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um inventário..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {inventories?.map((inventory) => (
-                      <SelectItem
-                        key={inventory.id}
-                        value={inventory.id.toString()}
-                      >
-                        {inventory.code} -{" "}
-                        {inventory.description || "Sem descrição"} (
-                        {inventory.status})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedInventoryId && selectedInventory && (
-                <div className="flex gap-2">
-                  {/* Counting Control Buttons */}
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled={
-                      !canStartCounting(selectedInventory.status) ||
-                      startCountingMutation.isPending
-                    }
-                    onClick={() =>
-                      selectedInventoryId &&
-                      startCountingMutation.mutate(selectedInventoryId)
-                    }
+      <div className="flex-1 container mx-auto p-4 space-y-4">
+        {/* Seleção de Inventário e Controles */}
+        <div className="flex flex-col lg:flex-row gap-4 items-end">
+          <div className="flex-1">
+            <Select
+              value={selectedInventoryId?.toString() || ""}
+              onValueChange={(value) => setSelectedInventoryId(parseInt(value))}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione um inventário..." />
+              </SelectTrigger>
+              <SelectContent>
+                {inventories?.map((inventory) => (
+                  <SelectItem
+                    key={inventory.id}
+                    value={inventory.id.toString()}
                   >
-                    Iniciar Contagem
-                  </Button>
+                    {inventory.code} - {inventory.description || "Sem descrição"} ({inventory.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={
-                      !canFinishCounting(selectedInventory.status) ||
-                      finishCountingMutation.isPending
-                    }
-                    onClick={() =>
-                      selectedInventoryId &&
-                      finishCountingMutation.mutate(selectedInventoryId)
-                    }
-                  >
-                    Finalizar Contagem
-                  </Button>
-                </div>
-              )}
+          {selectedInventoryId && selectedInventory && (
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                disabled={
+                  !canStartCounting(selectedInventory.status) ||
+                  startCountingMutation.isPending
+                }
+                onClick={() =>
+                  selectedInventoryId &&
+                  startCountingMutation.mutate(selectedInventoryId)
+                }
+              >
+                Iniciar
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={
+                  !canFinishCounting(selectedInventory.status) ||
+                  finishCountingMutation.isPending
+                }
+                onClick={() =>
+                  selectedInventoryId &&
+                  finishCountingMutation.mutate(selectedInventoryId)
+                }
+              >
+                Finalizar
+              </Button>
+
+              <Button
+                onClick={handleRefreshData}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Recarregar
+              </Button>
+
+              <Button
+                onClick={handleExport}
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Download className="h-3 w-3" />
+                Exportar
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
         {selectedInventoryId && selectedInventory ? (
           <>
-            {/* Header with KPIs */}
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center pl-4 pr-4">
-                <div>
-                  <h2 className="text-xl font-bold">
-                    Inventário: {selectedInventory.code}
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Status:{" "}
-                    <Badge variant="outline">
-                      {getCountingStageText(selectedInventory.status)}
-                    </Badge>
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleRefreshData}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    Recarregar
-                  </Button>
-                  <Button
-                    onClick={handleExport}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar Relatório
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KPICard
-                  title="Produtos"
-                  value={
-                    (stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)
-                  }
-                  description="Itens distintos sendo inventariados"
-                  icon={<Package className="h-4 w-4 text-muted-foreground" />}
-                />
-                <KPICard
-                  title="Categorias"
-                  value={categories?.length || 0}
-                  description="Categorias ativas"
-                  icon={<Target className="h-4 w-4 text-muted-foreground" />}
-                />
-                <KPICard
-                  title="Inventariado"
-                  value={`${getInventoriedPercentage().toFixed(1)}%`}
-                  description={`${stats?.itemsCompleted || 0} de ${(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)} itens`}
-                  icon={
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  }
-                  trend="up"
-                />
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <KPICard
-                          title="Tempo Decorrido"
-                          value={getElapsedTime()}
-                          description="Desde o início da contagem"
-                          icon={
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                          }
-                        />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-sm p-4">
-                      <div className="space-y-2">
-                        <p className="font-semibold">Fórmula de Cálculo:</p>
-                        <p className="text-sm">
-                          Tempo Atual - Data de Início da Contagem
-                        </p>
-                        <div className="border-t pt-2 mt-2">
-                          <p className="text-xs">
-                            <strong>Tempo Atual:</strong>{" "}
-                            {new Date().toLocaleString("pt-BR")}
-                          </p>
-                          <p className="text-xs">
-                            <strong>Início da Contagem:</strong>{" "}
-                            {new Date(getCountingStartTime()).toLocaleString(
-                              "pt-BR",
-                            )}
-                          </p>
-                          <p className="text-xs">
-                            <strong>Diferença:</strong>{" "}
-                            {Math.floor(
-                              (Date.now() - getCountingStartTime()) /
-                                (1000 * 60),
-                            )}{" "}
-                            minutos
-                          </p>
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              {/* Progress Bar */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Progresso Geral</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Progress
-                    value={getInventoriedPercentage()}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                    <span>
-                      Acuracidade Média: {stats?.accuracyRate?.toFixed(1) || 0}%
-                    </span>
-                    <span>Divergências: {stats?.divergenceCount || 0}</span>
+            {/* Estatísticas Compactas */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Produtos</p>
+                    <p className="text-lg font-bold">
+                      {(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)}
+                    </p>
                   </div>
-                </CardContent>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Categorias</p>
+                    <p className="text-lg font-bold">{categories?.length || 0}</p>
+                  </div>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Progresso</p>
+                    <p className="text-lg font-bold">{getInventoriedPercentage().toFixed(1)}%</p>
+                  </div>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Divergências</p>
+                    <p className="text-lg font-bold text-destructive">{stats?.divergenceCount || 0}</p>
+                  </div>
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tempo</p>
+                    <p className="text-lg font-bold">{getElapsedTime()}</p>
+                  </div>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Card>
+
+              <Card className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Acuracidade</p>
+                    <p className="text-lg font-bold text-success">{stats?.accuracyRate?.toFixed(1) || 0}%</p>
+                  </div>
+                  <BarChart3 className="h-4 w-4 text-success" />
+                </div>
               </Card>
             </div>
 
-            {/* Filters and Search */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Controle de Itens</CardTitle>
-                <CardDescription>
-                  Acompanhe o progresso de contagem por item
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row gap-4 mb-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por produto ou local..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
+            {/* Barra de Progresso Simples */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Status: {getCountingStageText(selectedInventory.status)}</span>
+                <span>{stats?.itemsCompleted || 0} de {(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)} itens</span>
+              </div>
+              <Progress value={getInventoriedPercentage()} className="h-2" />
+            </div>
+
+            {/* Tabela Principal - Ocupa Maior Espaço */}
+            <Card className="flex-1">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Controle de Itens
+                  </CardTitle>
+                  <div className="text-sm text-muted-foreground">
+                    Acompanhe o progresso de contagem por item
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por produto ou local..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 h-9"
+                    />
                   </div>
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="Filtrar por status" />
+                    <SelectTrigger className="w-full sm:w-40 h-9">
+                      <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
@@ -910,35 +895,35 @@ export default function InventoryControlBoard() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Main Table */}
-                <div className="border rounded-lg">
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-auto max-h-[60vh]">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Produto</TableHead>
                         <TableHead>Local de Estoque</TableHead>
-                        <TableHead>Qtd. Estoque</TableHead>
+                        <TableHead className="text-center">Qtd. Estoque</TableHead>
                         <TableHead className="text-center">C1</TableHead>
                         <TableHead className="text-center">C2</TableHead>
                         <TableHead className="text-center">C3</TableHead>
                         <TableHead className="text-center">C4</TableHead>
-                        <TableHead>Qtd. Final</TableHead>
-                        <TableHead>Diferença</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="text-center">Qtd. Final</TableHead>
+                        <TableHead className="text-center">Diferença</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredItems.map((item) => (
-                        <TableRow key={item.id}>
+                        <TableRow key={item.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">
                             {getProductName(item.productId)}
                           </TableCell>
                           <TableCell>
                             {getLocationName(item.locationId)}
                           </TableCell>
-                          <TableCell>{item.expectedQuantity}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">{item.expectedQuantity}</TableCell>
+                          <TableCell className="text-center">
                             <CountIndicator
                               count={item.count1}
                               countBy={item.count1By?.toString()}
@@ -946,7 +931,7 @@ export default function InventoryControlBoard() {
                               stage="C1"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <CountIndicator
                               count={item.count2}
                               countBy={item.count2By?.toString()}
@@ -954,7 +939,7 @@ export default function InventoryControlBoard() {
                               stage="C2"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <CountIndicator
                               count={item.count3}
                               countBy={item.count3By?.toString()}
@@ -962,7 +947,7 @@ export default function InventoryControlBoard() {
                               stage="C3"
                             />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {isAuditMode && hasAuditAccess() ? (
                               <div className="flex items-center gap-2">
                                 <Input
@@ -1002,7 +987,7 @@ export default function InventoryControlBoard() {
                               />
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {item.finalQuantity !== undefined ? (
                               <span className="font-bold">
                                 {item.finalQuantity}
@@ -1011,7 +996,7 @@ export default function InventoryControlBoard() {
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {item.count1 !== undefined &&
                             item.count2 !== undefined ? (
                               <span
@@ -1035,7 +1020,7 @@ export default function InventoryControlBoard() {
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             <Badge
                               variant={
                                 item.status === "COMPLETED"
@@ -1057,48 +1042,26 @@ export default function InventoryControlBoard() {
                     </TableBody>
                   </Table>
                 </div>
-
-                {/* Footer with Totals */}
-                <div className="mt-4 p-4 bg-muted rounded-lg">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Total de Itens: </span>
-                      <span>{filteredItems.length}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium">Concluídos: </span>
-                      <span>
-                        {
-                          filteredItems.filter(
-                            (item) =>
-                              item.count1 !== undefined &&
-                              item.count2 !== undefined,
-                          ).length
-                        }
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-medium">Divergências: </span>
-                      <span className="text-red-600">
-                        {
-                          filteredItems.filter(
-                            (item) =>
-                              item.count1 !== undefined &&
-                              item.count2 !== undefined &&
-                              (Math.abs(item.count1 - item.expectedQuantity) >
-                                0 ||
-                                Math.abs(item.count2 - item.expectedQuantity) >
-                                  0),
-                          ).length
-                        }
-                      </span>
-                    </div>
-                    <div>
-                      <span className="font-medium">Acuracidade Média: </span>
-                      <span className="font-bold">
-                        {stats?.accuracyRate?.toFixed(1) || 0}%
-                      </span>
-                    </div>
+                
+                <div className="flex justify-between items-center m-4 pt-4 border-t text-sm text-muted-foreground">
+                  <div className="flex gap-6">
+                    <span>Total de Itens: <strong className="text-foreground">{filteredItems.length}</strong></span>
+                    <span>Concluídos: <strong className="text-foreground">
+                      {filteredItems.filter(item => 
+                        item.count1 !== undefined && item.count2 !== undefined
+                      ).length}
+                    </strong></span>
+                  </div>
+                  <div className="flex gap-6">
+                    <span>Divergências: <strong className="text-red-60">
+                      {filteredItems.filter(item =>
+                        item.count1 !== undefined &&
+                        item.count2 !== undefined &&
+                        (Math.abs(item.count1 - item.expectedQuantity) > 0 ||
+                         Math.abs(item.count2 - item.expectedQuantity) > 0)
+                      ).length}
+                    </strong></span>
+                    <span>Acuracidade Média: <strong className="text-foreground">{stats?.accuracyRate?.toFixed(1) || 0}%</strong></span>
                   </div>
                 </div>
               </CardContent>
@@ -1172,7 +1135,7 @@ export default function InventoryControlBoard() {
                                     <Input
                                       type="number"
                                       min="0"
-                                      step="0.01"
+                                      step="1"
                                       placeholder="Quantidade auditada..."
                                       value={
                                         editingCount4[item.id] ??
@@ -1317,7 +1280,7 @@ export default function InventoryControlBoard() {
             )}
           </>
         ) : (
-          <Card>
+          <Card className="flex-1">
             <CardContent className="py-12 text-center">
               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">
