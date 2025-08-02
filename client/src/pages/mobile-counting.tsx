@@ -292,8 +292,9 @@ export default function MobileCounting() {
   const handleAddSelectedProduct = async () => {
     if (
       !selectedProduct ||
-      !quantityInput ||
-      quantityInput <= 0 ||
+      quantityInput === null ||
+      quantityInput === undefined ||
+      quantityInput < 0 ||
       !selectedInventoryId
     ) {
       /*toast({
@@ -894,7 +895,7 @@ export default function MobileCounting() {
                   onSelect={(product) => {
                     setSelectedProduct(product);
                     // Auto-adicionar se quantidade já estiver definida
-                    if (product && quantityInput > 0) {
+                    if (product && quantityInput >= 0) {
                       handleAddSelectedProduct();
                     }
                   }}
@@ -905,7 +906,7 @@ export default function MobileCounting() {
                 <div className="flex gap-2">
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     placeholder="Quantidade"
                     value={quantityInput || ""}
                     onChange={(e) => setQuantityInput(Number(e.target.value))}
@@ -913,7 +914,7 @@ export default function MobileCounting() {
                       if (
                         e.key === "Enter" &&
                         selectedProduct &&
-                        quantityInput > 0
+                        quantityInput >= 0
                       ) {
                         handleAddSelectedProduct();
                       }
@@ -924,7 +925,8 @@ export default function MobileCounting() {
                     onClick={handleAddSelectedProduct}
                     disabled={
                       !selectedProduct ||
-                      !quantityInput ||
+                      quantityInput === null ||
+                      quantityInput === undefined ||
                       isLoading ||
                       !selectedLocationId
                     }
