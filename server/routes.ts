@@ -1077,6 +1077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           newStatus = 'count2_open';
           break;
         case 'count2_closed':
+        case 'count3_required':
           newStatus = 'count3_open';
           break;
         default:

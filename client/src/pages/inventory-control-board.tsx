@@ -509,7 +509,7 @@ export default function InventoryControlBoard() {
 
   // Helper functions for counting status
   const canStartCounting = (status: string) => {
-    return ["open", "count1_closed", "count2_closed"].includes(status);
+    return ["open", "count1_closed", "count2_closed", "count3_required"].includes(status);
   };
 
   const canFinishCounting = (status: string) => {
@@ -528,6 +528,8 @@ export default function InventoryControlBoard() {
         return "2ª Contagem Aberta";
       case "count2_closed":
         return "Pronto para 3ª Contagem";
+      case "count3_required":
+        return "3ª Contagem Necessária";
       case "count3_open":
         return "3ª Contagem Aberta";
       case "count3_closed":

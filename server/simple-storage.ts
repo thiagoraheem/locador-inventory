@@ -848,9 +848,11 @@ export class SimpleStorage {
         item.finalQuantity === null || item.finalQuantity === undefined
       );
       
-      // If items need 3rd count, keep count2_closed status to allow 3rd count start
+      // If items need 3rd count, set to count3_required
       // If no items need 3rd count, move to completed
-      if (itemsNeedingThirdCount.length === 0) {
+      if (itemsNeedingThirdCount.length > 0) {
+        newStatus = 'count3_required';
+      } else {
         newStatus = 'count2_completed';
       }
     }
@@ -894,7 +896,7 @@ export class SimpleStorage {
       item.finalQuantity === null || item.finalQuantity === undefined
     );
 
-    return itemsNeedingThirdCount.length > 0 ? 'count2_closed' : 'count2_completed';
+    return itemsNeedingThirdCount.length > 0 ? 'count3_required' : 'count2_completed';
   }
 
   // Calculate final quantities based on business rules
