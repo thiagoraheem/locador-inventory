@@ -483,25 +483,26 @@ export class SimpleStorage {
   async closeInventory(id: number): Promise<void> {
     const request = this.pool.request();
     await request
-      .input('id', sql.Int, id)
-      .input('endDate', sql.BigInt, Date.now())
-      .query(`
+      .input("id", sql.Int, id)
+      .input("endDate", sql.BigInt, Date.now()).query(`
         UPDATE inventories 
         SET status = 'CLOSED', endDate = @endDate
         WHERE id = @id
       `);
   }
 
-  async closeInventoryWithEndDate(inventoryId: number, userId: number): Promise<void> {
+  async closeInventoryWithEndDate(
+    inventoryId: number,
+    userId: number,
+  ): Promise<void> {
     const request = this.pool.request();
     const endDate = Date.now();
 
     await request
-      .input('id', sql.Int, inventoryId)
-      .input('status', sql.NVarChar, 'closed')
-      .input('endDate', sql.BigInt, endDate)
-      .input('updatedAt', sql.DateTime, new Date())
-      .query(`
+      .input("id", sql.Int, inventoryId)
+      .input("status", sql.NVarChar, "closed")
+      .input("endDate", sql.BigInt, endDate)
+      .input("updatedAt", sql.DateTime, new Date()).query(`
         UPDATE inventories 
         SET status = @status, endDate = @endDate, updatedAt = @updatedAt
         WHERE id = @id
@@ -513,14 +514,14 @@ export class SimpleStorage {
       action: "INVENTORY_CLOSED",
       entityType: "inventory",
       entityId: inventoryId.toString(),
-      newValues: JSON.stringify({ 
-        status: 'closed', 
+      newValues: JSON.stringify({
+        status: "closed",
         endDate: endDate,
-        closedAt: new Date().toISOString()
+        closedAt: new Date().toISOString(),
       }),
-      metadata: JSON.stringify({ 
+      metadata: JSON.stringify({
         timestamp: Date.now(),
-        closedBy: userId
+        closedBy: userId,
       }),
     });
   }
@@ -995,7 +996,6 @@ export class SimpleStorage {
   // Calculate final quantities based on business rules
   async calculateFinalQuantities(inventoryId: number): Promise<void> {
     const items = await this.getInventoryItemsByInventory(inventoryId);
-    const inventory = await this.getInventory(inventoryId);
 
     for (const item of items) {
       const count1 = item.count1;

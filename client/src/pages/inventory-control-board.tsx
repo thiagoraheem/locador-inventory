@@ -373,7 +373,7 @@ export default function InventoryControlBoard() {
 
       if (!validateResponse.ok) {
         throw new Error(
-          `Failed to validate inventory closure. ${JSON.stringify(validateResponse) || ""}`,
+          `Failed to validate inventory closure.\n${JSON.stringify(validateResponse) || ""}`,
         );
       }
 
@@ -638,7 +638,8 @@ export default function InventoryControlBoard() {
       (item) =>
         item.finalQuantity === null ||
         item.finalQuantity === undefined ||
-        (item.count1 !== undefined &&
+        (item.status !== "confirmed" &&
+          item.count1 !== undefined &&
           item.count2 !== undefined &&
           item.count1 !== item.count2),
     );
