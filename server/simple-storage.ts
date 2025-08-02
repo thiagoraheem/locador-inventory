@@ -927,7 +927,8 @@ export class SimpleStorage {
     newStatus: InventoryStatus,
     userId: number,
   ): Promise<void> {
-    // If closing count2, check if 3rd count is needed    if (newStatus === "count2_closed") {
+    // If closing count2, check if 3rd count is needed
+    if (newStatus === "count2_closed") {
       await this.calculateFinalQuantities(inventoryId);
 
       // Check if any items still need 3rd count (have null finalQuantity)
@@ -1771,7 +1772,7 @@ export class SimpleStorage {
       count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
       count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
     }));
-    }
+  }
 
   // Buscar itens de série por produto
   async getInventorySerialItemsByProduct(
