@@ -1523,18 +1523,56 @@ export class SimpleStorage {
     itemData: InsertInventoryItem,
   ): Promise<InventoryItem> {
     const request = this.pool.request();
-    const result = await request
+    
+    // Campos básicos obrigatórios
+    request
       .input("inventoryId", itemData.inventoryId)
       .input("productId", itemData.productId)
       .input("locationId", itemData.locationId)
       .input("expectedQuantity", itemData.expectedQuantity)
       .input("status", itemData.status || "pending")
       .input("createdAt", new Date())
-      .input("updatedAt", new Date()).query(`
-        INSERT INTO inventory_items (inventoryId, productId, locationId, expectedQuantity, status, createdAt, updatedAt)
-        OUTPUT INSERTED.*
-        VALUES (@inventoryId, @productId, @locationId, @expectedQuantity, @status, @createdAt, @updatedAt)
-      `);
+      .input("updatedAt", new Date());
+
+    // Construir campos dinâmicos para contagem
+    const dynamicFields: string[] = [];
+    const dynamicValues: string[] = [];
+    
+    Object.keys(itemData).forEach(key => {
+      // Incluir campos de contagem (count1, count1By, count1At, etc.)
+      if (key.startsWith('count') && !['inventoryId', 'productId', 'locationId', 'expectedQuantity', 'status', 'createdAt', 'updatedAt'].includes(key)) {
+        const value = (itemData as any)[key];
+        if (value !== undefined && value !== null) {
+          dynamicFields.push(key);
+          dynamicValues.push(`@${key}`);
+          
+          // Adicionar como parâmetro
+          if (key.endsWith('At')) {
+            // Campos de timestamp
+            request.input(key, new Date(value));
+          } else {
+            request.input(key, value);
+          }
+        }
+      }
+    });
+
+    // Construir query dinâmica
+    const baseFields = "inventoryId, productId, locationId, expectedQuantity, status, createdAt, updatedAt";
+    const baseValues = "@inventoryId, @productId, @locationId, @expectedQuantity, @status, @createdAt, @updatedAt";
+    
+    const allFields = dynamicFields.length > 0 ? `${baseFields}, ${dynamicFields.join(', ')}` : baseFields;
+    const allValues = dynamicValues.length > 0 ? `${baseValues}, ${dynamicValues.join(', ')}` : baseValues;
+
+    const query = `
+      INSERT INTO inventory_items (${allFields})
+      OUTPUT INSERTED.*
+      VALUES (${allValues})
+    `;
+
+
+
+    const result = await request.query(query);
 
     const item = result.recordset[0];
     return {
