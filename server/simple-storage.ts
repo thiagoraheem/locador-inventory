@@ -5,13 +5,9 @@ import type {
   User,
   InsertUser,
   Category,
-  InsertCategory,
   Product,
-  InsertProduct,
   Location,
-  InsertLocation,
   Stock,
-  InsertStock,
   Inventory,
   InsertInventory,
   InventoryItem,
@@ -28,9 +24,7 @@ import type {
   InventoryFinalReport,
   InventoryStatus,
   InventorySerialItem,
-  InsertInventorySerialItem,
   ProductWithSerialControl,
-  InventoryItemWithSerial,
   SerialReadingRequest,
   SerialReadingResponse,
 } from "@shared/schema";
@@ -294,13 +288,15 @@ export class SimpleStorage {
       ORDER BY i.createdAt DESC
     `);
 
-    return result.recordset.map(inventory => ({
+    return result.recordset.map((inventory) => ({
       ...inventory,
       createdAt: new Date(inventory.createdAt).getTime(),
       updatedAt: new Date(inventory.updatedAt).getTime(),
       startDate: new Date(inventory.startDate).getTime(),
       endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
-      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
+      predictedEndDate: inventory.predictedEndDate
+        ? new Date(inventory.predictedEndDate).getTime()
+        : null,
       type: {
         id: inventory.typeId,
         name: inventory.typeName,
@@ -311,15 +307,17 @@ export class SimpleStorage {
         lastName: inventory.lastName,
         email: inventory.createdByEmail,
       },
-      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
-      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
+      selectedLocationIds: inventory.selectedLocationIds
+        ? JSON.parse(inventory.selectedLocationIds)
+        : null,
+      selectedCategoryIds: inventory.selectedCategoryIds
+        ? JSON.parse(inventory.selectedCategoryIds)
+        : null,
     }));
   }
 
   async getInventory(id: number) {
-    const result = await this.pool.request()
-      .input('id', sql.Int, id)
-      .query(`
+    const result = await this.pool.request().input("id", sql.Int, id).query(`
         SELECT i.*, 
                it.name as typeName, 
                it.description as typeDescription,
@@ -341,7 +339,9 @@ export class SimpleStorage {
       updatedAt: new Date(inventory.updatedAt).getTime(),
       startDate: new Date(inventory.startDate).getTime(),
       endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
-      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
+      predictedEndDate: inventory.predictedEndDate
+        ? new Date(inventory.predictedEndDate).getTime()
+        : null,
       type: {
         id: inventory.typeId,
         name: inventory.typeName,
@@ -352,8 +352,12 @@ export class SimpleStorage {
         lastName: inventory.lastName,
         email: inventory.createdByEmail,
       },
-      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
-      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
+      selectedLocationIds: inventory.selectedLocationIds
+        ? JSON.parse(inventory.selectedLocationIds)
+        : null,
+      selectedCategoryIds: inventory.selectedCategoryIds
+        ? JSON.parse(inventory.selectedCategoryIds)
+        : null,
     };
   }
 
@@ -363,22 +367,41 @@ export class SimpleStorage {
     const request = this.pool.request();
 
     // Handle optional fields with proper types
-    const selectedLocationIds = inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null;
-    const selectedCategoryIds = inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null;
-    const predictedEndDate = inventoryData.predictedEndDate ? 
-      (typeof inventoryData.predictedEndDate === 'number' ? new Date(inventoryData.predictedEndDate) : new Date(inventoryData.predictedEndDate)) : null;
+    const selectedLocationIds = inventoryData.selectedLocationIds
+      ? JSON.stringify(inventoryData.selectedLocationIds)
+      : null;
+    const selectedCategoryIds = inventoryData.selectedCategoryIds
+      ? JSON.stringify(inventoryData.selectedCategoryIds)
+      : null;
+    const predictedEndDate = inventoryData.predictedEndDate
+      ? typeof inventoryData.predictedEndDate === "number"
+        ? new Date(inventoryData.predictedEndDate)
+        : new Date(inventoryData.predictedEndDate)
+      : null;
 
     // Debug log para verificar o valor de isToBlockSystem
-    console.log("📝 Creating inventory with isToBlockSystem:", inventoryData.isToBlockSystem);
+    console.log(
+      "📝 Creating inventory with isToBlockSystem:",
+      inventoryData.isToBlockSystem,
+    );
 
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
       .input("status", inventoryData.status || "open")
-      .input("startDate", typeof inventoryData.startDate === 'number' ? new Date(inventoryData.startDate) : new Date(inventoryData.startDate))
+      .input(
+        "startDate",
+        typeof inventoryData.startDate === "number"
+          ? new Date(inventoryData.startDate)
+          : new Date(inventoryData.startDate),
+      )
       .input(
         "endDate",
-        inventoryData.endDate ? (typeof inventoryData.endDate === 'number' ? new Date(inventoryData.endDate) : new Date(inventoryData.endDate)) : null,
+        inventoryData.endDate
+          ? typeof inventoryData.endDate === "number"
+            ? new Date(inventoryData.endDate)
+            : new Date(inventoryData.endDate)
+          : null,
       )
       .input("predictedEndDate", predictedEndDate)
       .input("description", inventoryData.description || null)
@@ -404,9 +427,15 @@ export class SimpleStorage {
       updatedAt: new Date(inventory.updatedAt).getTime(),
       startDate: new Date(inventory.startDate).getTime(),
       endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : null,
-      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : null,
-      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
-      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
+      predictedEndDate: inventory.predictedEndDate
+        ? new Date(inventory.predictedEndDate).getTime()
+        : null,
+      selectedLocationIds: inventory.selectedLocationIds
+        ? JSON.parse(inventory.selectedLocationIds)
+        : null,
+      selectedCategoryIds: inventory.selectedCategoryIds
+        ? JSON.parse(inventory.selectedCategoryIds)
+        : null,
     };
   }
 
@@ -535,10 +564,6 @@ export class SimpleStorage {
     console.log("✅ Inventory schema fixed successfully");
   }
 
-
-
-
-
   async createUser(user: InsertUser): Promise<User> {
     // Check if username already exists
     const existingUser = await this.pool
@@ -564,8 +589,7 @@ export class SimpleStorage {
       .input("isActive", sql.Bit, user.isActive ?? true)
       .input("password", sql.VarChar, hashedPassword)
       .input("createdAt", sql.DateTime, new Date())
-      .input("updatedAt", sql.DateTime, new Date())
-      .query(`
+      .input("updatedAt", sql.DateTime, new Date()).query(`
         INSERT INTO users (username, email, firstName, lastName, role, isActive, password, createdAt, updatedAt)
         OUTPUT INSERTED.*
         VALUES (@username, @email, @firstName, @lastName, @role, @isActive, @password, @createdAt, @updatedAt)
@@ -601,7 +625,9 @@ export class SimpleStorage {
         .request()
         .input("username", sql.VarChar, updates.username)
         .input("currentId", sql.VarChar, id)
-        .query("SELECT id FROM users WHERE username = @username AND id != @currentId");
+        .query(
+          "SELECT id FROM users WHERE username = @username AND id != @currentId",
+        );
 
       if (existingUser.recordset.length > 0) {
         throw new Error("Username already exists");
@@ -794,7 +820,9 @@ export class SimpleStorage {
   // Enhanced Inventory Methods for Multi-Stage Process
 
   // Create inventory with location/category selection
-  async createInventoryWithSelection(inventoryData: InsertInventory): Promise<Inventory> {
+  async createInventoryWithSelection(
+    inventoryData: InsertInventory,
+  ): Promise<Inventory> {
     const newInventory = {
       id: 0, // Will be set by SQL Server IDENTITY
       ...inventoryData,
@@ -808,16 +836,33 @@ export class SimpleStorage {
       .input("typeId", newInventory.typeId)
       .input("status", newInventory.status || "planning")
       .input("startDate", new Date(newInventory.startDate))
-      .input("endDate", newInventory.endDate ? new Date(newInventory.endDate) : null)
-      .input("predictedEndDate", newInventory.predictedEndDate ? new Date(newInventory.predictedEndDate) : null)
+      .input(
+        "endDate",
+        newInventory.endDate ? new Date(newInventory.endDate) : null,
+      )
+      .input(
+        "predictedEndDate",
+        newInventory.predictedEndDate
+          ? new Date(newInventory.predictedEndDate)
+          : null,
+      )
       .input("description", newInventory.description || null)
-      .input("selectedLocationIds", inventoryData.selectedLocationIds ? JSON.stringify(inventoryData.selectedLocationIds) : null)
-      .input("selectedCategoryIds", inventoryData.selectedCategoryIds ? JSON.stringify(inventoryData.selectedCategoryIds) : null)
+      .input(
+        "selectedLocationIds",
+        inventoryData.selectedLocationIds
+          ? JSON.stringify(inventoryData.selectedLocationIds)
+          : null,
+      )
+      .input(
+        "selectedCategoryIds",
+        inventoryData.selectedCategoryIds
+          ? JSON.stringify(inventoryData.selectedCategoryIds)
+          : null,
+      )
       .input("isToBlockSystem", inventoryData.isToBlockSystem || false)
       .input("createdBy", newInventory.createdBy)
       .input("createdAt", new Date(newInventory.createdAt))
-      .input("updatedAt", new Date(newInventory.updatedAt))
-      .query(`
+      .input("updatedAt", new Date(newInventory.updatedAt)).query(`
         INSERT INTO inventories (code, typeId, status, startDate, endDate, predictedEndDate, description, selectedLocationIds, selectedCategoryIds, isToBlockSystem, createdBy, createdAt, updatedAt)
         OUTPUT INSERTED.*
         VALUES (@code, @typeId, @status, @startDate, @endDate, @predictedEndDate, @description, @selectedLocationIds, @selectedCategoryIds, @isToBlockSystem, @createdBy, @createdAt, @updatedAt)
@@ -829,45 +874,57 @@ export class SimpleStorage {
       createdAt: new Date(inventory.createdAt).getTime(),
       updatedAt: new Date(inventory.updatedAt).getTime(),
       startDate: new Date(inventory.startDate).getTime(),
-      endDate: inventory.endDate ? new Date(inventory.endDate).getTime() : undefined,
-      predictedEndDate: inventory.predictedEndDate ? new Date(inventory.predictedEndDate).getTime() : undefined,
-      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : undefined,
-      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : undefined,
+      endDate: inventory.endDate
+        ? new Date(inventory.endDate).getTime()
+        : undefined,
+      predictedEndDate: inventory.predictedEndDate
+        ? new Date(inventory.predictedEndDate).getTime()
+        : undefined,
+      selectedLocationIds: inventory.selectedLocationIds
+        ? JSON.parse(inventory.selectedLocationIds)
+        : undefined,
+      selectedCategoryIds: inventory.selectedCategoryIds
+        ? JSON.parse(inventory.selectedCategoryIds)
+        : undefined,
     };
   }
 
   // Transition inventory status
-  async transitionInventoryStatus(inventoryId: number, newStatus: InventoryStatus, userId: number): Promise<void> {
+  async transitionInventoryStatus(
+    inventoryId: number,
+    newStatus: InventoryStatus,
+    userId: number,
+  ): Promise<void> {
     // If closing count2, check if 3rd count is needed
-    if (newStatus === 'count2_closed') {
+    if (newStatus === "count2_closed") {
       await this.calculateFinalQuantities(inventoryId);
-      
+
       // Check if any items still need 3rd count (have null finalQuantity)
       const items = await this.getInventoryItemsByInventory(inventoryId);
-      const itemsNeedingThirdCount = items.filter(item => 
-        item.finalQuantity === null || item.finalQuantity === undefined
+      const itemsNeedingThirdCount = items.filter(
+        (item) =>
+          item.finalQuantity === null || item.finalQuantity === undefined,
       );
-      
+
       // If items need 3rd count, set to count3_required
       // If no items need 3rd count, move to completed
       if (itemsNeedingThirdCount.length > 0) {
-        newStatus = 'count3_required';
+        newStatus = "count3_required";
       } else {
-        newStatus = 'count2_completed';
+        newStatus = "count2_completed";
       }
     }
     // If closing count3, automatically move to audit mode
-    else if (newStatus === 'count3_closed') {
+    else if (newStatus === "count3_closed") {
       await this.calculateFinalQuantities(inventoryId);
-      newStatus = 'audit_mode';
+      newStatus = "audit_mode";
     }
 
     const request = this.pool.request();
     await request
       .input("id", inventoryId)
       .input("status", newStatus)
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventories 
         SET status = @status, updatedAt = @updatedAt
         WHERE id = @id
@@ -885,18 +942,22 @@ export class SimpleStorage {
   }
 
   // Determine status after count2 closes based on business rules
-  async determinePostCount2Status(inventoryId: number): Promise<InventoryStatus> {
+  async determinePostCount2Status(
+    inventoryId: number,
+  ): Promise<InventoryStatus> {
     // First calculate final quantities
     await this.calculateFinalQuantities(inventoryId);
 
     // Then check if any items still need 3rd count (have null finalQuantity)
     const items = await this.getInventoryItemsByInventory(inventoryId);
 
-    const itemsNeedingThirdCount = items.filter(item => 
-      item.finalQuantity === null || item.finalQuantity === undefined
+    const itemsNeedingThirdCount = items.filter(
+      (item) => item.finalQuantity === null || item.finalQuantity === undefined,
     );
 
-    return itemsNeedingThirdCount.length > 0 ? 'count3_required' : 'count2_completed';
+    return itemsNeedingThirdCount.length > 0
+      ? "count3_required"
+      : "count2_completed";
   }
 
   // Calculate final quantities based on business rules
@@ -942,8 +1003,7 @@ export class SimpleStorage {
         await request
           .input("id", item.id)
           .input("finalQuantity", finalQuantity)
-          .input("updatedAt", new Date())
-          .query(`
+          .input("updatedAt", new Date()).query(`
             UPDATE inventory_items 
             SET finalQuantity = @finalQuantity, updatedAt = @updatedAt
             WHERE id = @id
@@ -953,9 +1013,10 @@ export class SimpleStorage {
   }
 
   // Get divergent items that need 3rd count (C1 ≠ C2)
-  async getDivergentInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
-    const result = await this.pool.request()
-      .input("inventoryId", inventoryId)
+  async getDivergentInventoryItems(
+    inventoryId: number,
+  ): Promise<InventoryItem[]> {
+    const result = await this.pool.request().input("inventoryId", inventoryId)
       .query(`
         SELECT 
           ii.*,
@@ -984,18 +1045,10 @@ export class SimpleStorage {
       updatedAt: item.updatedAt
         ? new Date(item.updatedAt).getTime()
         : Date.now(),
-      count1At: item.count1At
-        ? new Date(item.count1At).getTime()
-        : null,
-      count2At: item.count2At
-        ? new Date(item.count2At).getTime()
-        : null,
-      count3At: item.count3At
-        ? new Date(item.count3At).getTime()
-        : null,
-      count4At: item.count4At
-        ? new Date(item.count4At).getTime()
-        : null,
+      count1At: item.count1At ? new Date(item.count1At).getTime() : null,
+      count2At: item.count2At ? new Date(item.count2At).getTime() : null,
+      count3At: item.count3At ? new Date(item.count3At).getTime() : null,
+      count4At: item.count4At ? new Date(item.count4At).getTime() : null,
     }));
   }
 
@@ -1003,12 +1056,13 @@ export class SimpleStorage {
   async getInventoryStats(inventoryId: number): Promise<ControlPanelStats> {
     const request = this.pool.request();
 
-    const [inventoryResult, itemsResult, countsResult, differencesResult] = await Promise.all([
-      request.input("id", inventoryId).query(`
+    const [inventoryResult, itemsResult, countsResult, differencesResult] =
+      await Promise.all([
+        request.input("id", inventoryId).query(`
         SELECT COUNT(*) as activeInventories FROM inventories 
         WHERE status NOT IN ('closed', 'cancelled')
       `),
-      request.input("inventoryId", inventoryId).query(`
+        request.input("inventoryId", inventoryId).query(`
         SELECT 
           COUNT(*) as totalItems,
           COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
@@ -1017,7 +1071,7 @@ export class SimpleStorage {
         FROM inventory_items 
         WHERE inventoryId = @inventoryId
       `),
-      request.input("inventoryId2", inventoryId).query(`
+        request.input("inventoryId2", inventoryId).query(`
         SELECT 
           COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Total,
           COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Total,
@@ -1026,15 +1080,15 @@ export class SimpleStorage {
         FROM inventory_items 
         WHERE inventoryId = @inventoryId2
       `),
-      request.input("inventoryId3", inventoryId).query(`
+        request.input("inventoryId3", inventoryId).query(`
         SELECT 
           SUM(CASE WHEN finalQuantity IS NOT NULL THEN (finalQuantity - expectedQuantity) ELSE 0 END) as totalDifference,
           SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity > expectedQuantity THEN (finalQuantity - expectedQuantity) ELSE 0 END) as positiveAdjustments,
           SUM(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity < expectedQuantity THEN ABS(finalQuantity - expectedQuantity) ELSE 0 END) as negativeAdjustments
         FROM inventory_items 
         WHERE inventoryId = @inventoryId3
-      `)
-    ]);
+      `),
+      ]);
 
     const items = itemsResult.recordset[0];
     const counts = countsResult.recordset[0];
@@ -1046,7 +1100,8 @@ export class SimpleStorage {
     const divergentItems = items.divergentItems || 0;
 
     // Calculate accuracy rate based on completed items with finalQuantity
-    const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+    const accuracyRate =
+      completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
 
     return {
       totalInventories: 1,
@@ -1069,79 +1124,109 @@ export class SimpleStorage {
   }
 
   // Update individual count methods
-  async updateCount1(itemId: number, count: number, countedBy: string | number): Promise<void> {
+  async updateCount1(
+    itemId: number,
+    count: number,
+    countedBy: string | number,
+  ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count1", count)
       .input("count1By", countedByStr)
       .input("count1At", new Date())
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventory_items 
         SET count1 = @count1, count1By = @count1By, count1At = @count1At, updatedAt = @updatedAt
         WHERE id = @id
       `);
   }
 
-  async updateCount2(itemId: number, count: number, countedBy: string | number): Promise<void> {
+  async updateCount2(
+    itemId: number,
+    count: number,
+    countedBy: string | number,
+  ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count2", count)
       .input("count2By", countedByStr)
       .input("count2At", new Date())
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventory_items 
         SET count2 = @count2, count2By = @count2By, count2At = @count2At, updatedAt = @updatedAt
         WHERE id = @id
       `);
   }
 
-  async updateCount3(itemId: number, count: number, countedBy: string | number): Promise<void> {
+  async updateCount3(
+    itemId: number,
+    count: number,
+    countedBy: string | number,
+  ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count3", count)
       .input("count3By", countedByStr)
       .input("count3At", new Date())
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventory_items 
         SET count3 = @count3, count3By = @count3By, count3At = @count3At, updatedAt = @updatedAt
         WHERE id = @id
       `);
   }
 
-  async updateCount4(itemId: number, count: number, countedBy: string | number): Promise<void> {
+  async updateCount4(
+    itemId: number,
+    count: number,
+    countedBy: string | number,
+  ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr = typeof countedBy === 'number' ? countedBy.toString() : countedBy;
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count4", count)
       .input("count4By", countedByStr)
       .input("count4At", new Date())
       .input("finalQuantity", count) // Automatically update finalQuantity when count4 is set
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventory_items 
         SET count4 = @count4, count4By = @count4By, count4At = @count4At, 
-            finalQuantity = @finalQuantity, updatedAt = @updatedAt
+            finalQuantity = @finalQuantity, updatedAt = @updatedAt, 
+            status = 'confirmed'
+        WHERE id = @id
+      `);
+  }
+
+  async updateInventoryItemStatus(
+    itemId: number,
+    status: string,
+  ): Promise<void> {
+    const request = this.pool.request();
+    await request.input("id", itemId).input("status", status).query(`
+        UPDATE inventory_items 
+        SET status = @status
         WHERE id = @id
       `);
   }
 
   // Generate comprehensive final report for inventory
-  async getInventoryFinalReport(inventoryId: number): Promise<InventoryFinalReport> {
+  async getInventoryFinalReport(
+    inventoryId: number,
+  ): Promise<InventoryFinalReport> {
     const request = this.pool.request();
 
     // Get inventory basic info
-    const inventoryResult = await request
-      .input("inventoryId", inventoryId)
+    const inventoryResult = await request.input("inventoryId", inventoryId)
       .query(`
         SELECT i.*, it.name as typeName
         FROM inventories i
@@ -1156,8 +1241,9 @@ export class SimpleStorage {
     const inventory = inventoryResult.recordset[0];
 
     // Get comprehensive statistics
-    const [itemsResult, divergentItemsResult, financialResult] = await Promise.all([
-      request.input("inventoryId1", inventoryId).query(`
+    const [itemsResult, divergentItemsResult, financialResult] =
+      await Promise.all([
+        request.input("inventoryId1", inventoryId).query(`
         SELECT 
           COUNT(*) as totalItems,
           COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
@@ -1174,7 +1260,7 @@ export class SimpleStorage {
         FROM inventory_items 
         WHERE inventoryId = @inventoryId1
       `),
-      request.input("inventoryId2", inventoryId).query(`
+        request.input("inventoryId2", inventoryId).query(`
         SELECT 
           ii.id,
           p.name as productName,
@@ -1192,46 +1278,60 @@ export class SimpleStorage {
           AND ii.finalQuantity != ii.expectedQuantity
         ORDER BY ABS(ii.finalQuantity - ii.expectedQuantity) DESC
       `),
-      request.input("inventoryId3", inventoryId).query(`
+        request.input("inventoryId3", inventoryId).query(`
         SELECT 
           SUM(ii.expectedQuantity * ISNULL(p.costValue, 0)) as totalValue,
           SUM((ii.finalQuantity - ii.expectedQuantity) * ISNULL(p.costValue, 0)) as differenceValue
         FROM inventory_items ii
         LEFT JOIN products p ON ii.productId = p.id
         WHERE ii.inventoryId = @inventoryId3 AND ii.finalQuantity IS NOT NULL
-      `)
-    ]);
+      `),
+      ]);
 
     const stats = itemsResult.recordset[0];
     const divergentItems = divergentItemsResult.recordset;
     const financial = financialResult.recordset[0];
 
-    const accuracyRate = stats.completedItems > 0 ? (stats.accurateItems / stats.completedItems) * 100 : 0;
+    const accuracyRate =
+      stats.completedItems > 0
+        ? (stats.accurateItems / stats.completedItems) * 100
+        : 0;
     const totalValue = financial.totalValue || 0;
     const differenceValue = financial.differenceValue || 0;
-    const impactPercentage = totalValue > 0 ? Math.abs(differenceValue / totalValue) * 100 : 0;
+    const impactPercentage =
+      totalValue > 0 ? Math.abs(differenceValue / totalValue) * 100 : 0;
 
     // Generate recommendations based on results
     const recommendations: string[] = [];
 
     if (accuracyRate < 95) {
-      recommendations.push("Taxa de acurácia abaixo de 95%. Considere revisar processos de contagem.");
+      recommendations.push(
+        "Taxa de acurácia abaixo de 95%. Considere revisar processos de contagem.",
+      );
     }
 
     if (stats.divergentItems > stats.totalItems * 0.1) {
-      recommendations.push("Mais de 10% dos itens apresentam divergências. Recomenda-se auditoria adicional.");
+      recommendations.push(
+        "Mais de 10% dos itens apresentam divergências. Recomenda-se auditoria adicional.",
+      );
     }
 
     if (Math.abs(differenceValue) > totalValue * 0.05) {
-      recommendations.push("Impacto financeiro superior a 5%. Necessária aprovação gerencial para ajustes.");
+      recommendations.push(
+        "Impacto financeiro superior a 5%. Necessária aprovação gerencial para ajustes.",
+      );
     }
 
     if (stats.auditItems > 0) {
-      recommendations.push(`${stats.auditItems} itens passaram por auditoria manual (C4). Documentar justificativas.`);
+      recommendations.push(
+        `${stats.auditItems} itens passaram por auditoria manual (C4). Documentar justificativas.`,
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push("Inventário concluído com excelentes resultados. Nenhuma ação adicional necessária.");
+      recommendations.push(
+        "Inventário concluído com excelentes resultados. Nenhuma ação adicional necessária.",
+      );
     }
 
     return {
@@ -1246,24 +1346,24 @@ export class SimpleStorage {
         totalItems: stats.totalItems,
         accurateItems: stats.accurateItems,
         divergentItems: stats.divergentItems,
-        accuracyRate: Math.round(accuracyRate * 10) / 10
+        accuracyRate: Math.round(accuracyRate * 10) / 10,
       },
       differences: {
         totalDifference: stats.totalDifference || 0,
         positiveAdjustments: stats.positiveAdjustments || 0,
         negativeAdjustments: stats.negativeAdjustments || 0,
-        adjustmentCount: stats.adjustmentCount || 0
+        adjustmentCount: stats.adjustmentCount || 0,
       },
       financial: {
         totalValue: totalValue,
         differenceValue: differenceValue,
-        impactPercentage: Math.round(impactPercentage * 100) / 100
+        impactPercentage: Math.round(impactPercentage * 100) / 100,
       },
       countingSummary: {
         count1Items: stats.count1Items,
         count2Items: stats.count2Items,
         count3Items: stats.count3Items,
-        auditItems: stats.auditItems
+        auditItems: stats.auditItems,
       },
       divergentItems: divergentItems.map((item: any) => ({
         id: item.id,
@@ -1274,9 +1374,11 @@ export class SimpleStorage {
         finalQuantity: item.finalQuantity,
         difference: item.difference,
         costValue: item.costValue,
-        totalImpact: item.costValue ? item.difference * item.costValue : undefined
+        totalImpact: item.costValue
+          ? item.difference * item.costValue
+          : undefined,
       })),
-      recommendations
+      recommendations,
     };
   }
 
@@ -1287,7 +1389,9 @@ export class SimpleStorage {
   }
 
   // Inventory Stock Items methods (for patrimônio)
-  async createInventoryStockItem(data: InsertInventoryStockItem): Promise<InventoryStockItem> {
+  async createInventoryStockItem(
+    data: InsertInventoryStockItem,
+  ): Promise<InventoryStockItem> {
     const newItem = {
       id: 0,
       ...data,
@@ -1302,8 +1406,7 @@ export class SimpleStorage {
       .input("expectedQuantity", newItem.expectedQuantity || 0)
       .input("status", newItem.status || "PENDING")
       .input("createdAt", new Date(newItem.createdAt))
-      .input("updatedAt", new Date(newItem.updatedAt))
-      .query(`
+      .input("updatedAt", new Date(newItem.updatedAt)).query(`
         INSERT INTO inventory_stock_items (inventoryId, stockItemId, expectedQuantity, status, createdAt, updatedAt)
         OUTPUT INSERTED.*
         VALUES (@inventoryId, @stockItemId, @expectedQuantity, @status, @createdAt, @updatedAt)
@@ -1317,10 +1420,10 @@ export class SimpleStorage {
     };
   }
 
-  async getInventoryStockItems(inventoryId: number): Promise<InventoryStockItem[]> {
-    const result = await this.pool
-      .request()
-      .input("inventoryId", inventoryId)
+  async getInventoryStockItems(
+    inventoryId: number,
+  ): Promise<InventoryStockItem[]> {
+    const result = await this.pool.request().input("inventoryId", inventoryId)
       .query(`
         SELECT * FROM inventory_stock_items 
         WHERE inventoryId = @inventoryId 
@@ -1338,7 +1441,14 @@ export class SimpleStorage {
     }));
   }
 
-  async updateInventoryStockItemCount(itemId: number, countData: { count: number; countBy: string; countType: 'count1' | 'count2' | 'count3' | 'count4' }): Promise<void> {
+  async updateInventoryStockItemCount(
+    itemId: number,
+    countData: {
+      count: number;
+      countBy: string;
+      countType: "count1" | "count2" | "count3" | "count4";
+    },
+  ): Promise<void> {
     const { count, countBy, countType } = countData;
     const countByField = `${countType}By`;
     const countAtField = `${countType}At`;
@@ -1349,8 +1459,7 @@ export class SimpleStorage {
       .input("count", count)
       .input("countBy", countBy)
       .input("countAt", new Date())
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         UPDATE inventory_stock_items 
         SET ${countType} = @count, ${countByField} = @countBy, ${countAtField} = @countAt, updatedAt = @updatedAt
         WHERE id = @id
@@ -1367,17 +1476,18 @@ export class SimpleStorage {
   }
 
   // Create inventory item
-  async createInventoryItem(itemData: InsertInventoryItem): Promise<InventoryItem> {
+  async createInventoryItem(
+    itemData: InsertInventoryItem,
+  ): Promise<InventoryItem> {
     const request = this.pool.request();
     const result = await request
       .input("inventoryId", itemData.inventoryId)
       .input("productId", itemData.productId)
       .input("locationId", itemData.locationId)
       .input("expectedQuantity", itemData.expectedQuantity)
-      .input("status", itemData.status || 'pending')
+      .input("status", itemData.status || "pending")
       .input("createdAt", new Date())
-      .input("updatedAt", new Date())
-      .query(`
+      .input("updatedAt", new Date()).query(`
         INSERT INTO inventory_items (inventoryId, productId, locationId, expectedQuantity, status, createdAt, updatedAt)
         OUTPUT INSERTED.*
         VALUES (@inventoryId, @productId, @locationId, @expectedQuantity, @status, @createdAt, @updatedAt)
@@ -1386,8 +1496,12 @@ export class SimpleStorage {
     const item = result.recordset[0];
     return {
       ...item,
-      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
-      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).getTime()
+        : Date.now(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).getTime()
+        : Date.now(),
     };
   }
 
@@ -1397,30 +1511,43 @@ export class SimpleStorage {
       .request()
       .query("SELECT * FROM inventory_items ORDER BY id");
 
-    return result.recordset.map(item => ({
+    return result.recordset.map((item) => ({
       ...item,
-      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
-      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).getTime()
+        : Date.now(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).getTime()
+        : Date.now(),
     }));
   }
 
   // Get inventory items by inventory ID
-  async getInventoryItemsByInventory(inventoryId: number): Promise<InventoryItem[]> {
+  async getInventoryItemsByInventory(
+    inventoryId: number,
+  ): Promise<InventoryItem[]> {
     const result = await this.pool
       .request()
       .input("inventoryId", inventoryId)
-      .query("SELECT * FROM inventory_items WHERE inventoryId = @inventoryId ORDER BY id");
+      .query(
+        "SELECT * FROM inventory_items WHERE inventoryId = @inventoryId ORDER BY id",
+      );
 
-    return result.recordset.map(item => ({
+    return result.recordset.map((item) => ({
       ...item,
-      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
-      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).getTime()
+        : Date.now(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).getTime()
+        : Date.now(),
     }));
   }
 
-  async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
-    const result = await this.pool.request()
-      .input("inventoryId", inventoryId)
+  async getInventoryItemsWithDetails(
+    inventoryId: number,
+  ): Promise<(InventoryItem & { product: Product; location: Location })[]> {
+    const result = await this.pool.request().input("inventoryId", inventoryId)
       .query(`
         SELECT 
           ii.*,
@@ -1436,34 +1563,38 @@ export class SimpleStorage {
         ORDER BY p.sku, l.code
       `);
 
-    return result.recordset.map(item => ({
+    return result.recordset.map((item) => ({
       ...item,
-      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
-      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).getTime()
+        : Date.now(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).getTime()
+        : Date.now(),
       count1At: item.count1At ? new Date(item.count1At).getTime() : undefined,
       count2At: item.count2At ? new Date(item.count2At).getTime() : undefined,
       count3At: item.count3At ? new Date(item.count3At).getTime() : undefined,
       count4At: item.count4At ? new Date(item.count4At).getTime() : undefined,
       product: {
         id: item.productId,
-        sku: item.sku || 'N/A',
-        name: item.productName || 'Produto não encontrado',
-        description: item.productDescription || 'Sem descrição',
+        sku: item.sku || "N/A",
+        name: item.productName || "Produto não encontrado",
+        description: item.productDescription || "Sem descrição",
         categoryId: 0,
         costValue: 0,
         isActive: false,
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       },
       location: {
         id: item.locationId,
-        code: item.locationCode || 'N/A',
-        name: item.locationName || 'Local não encontrado',
-        description: '',
+        code: item.locationCode || "N/A",
+        name: item.locationName || "Local não encontrado",
+        description: "",
         isActive: false,
         createdAt: Date.now(),
-        updatedAt: Date.now()
-      }
+        updatedAt: Date.now(),
+      },
     }));
   }
 
@@ -1475,13 +1606,17 @@ export class SimpleStorage {
     totalInventories: number;
   }> {
     try {
-      const [productsResult, categoriesResult, locationsResult, inventoriesResult] =
-        await Promise.all([
-          this.pool.request().query("SELECT COUNT(*) as count FROM products"),
-          this.pool.request().query("SELECT COUNT(*) as count FROM categories"),
-          this.pool.request().query("SELECT COUNT(*) as count FROM locations"),
-          this.pool.request().query("SELECT COUNT(*) as count FROM inventories"),
-        ]);
+      const [
+        productsResult,
+        categoriesResult,
+        locationsResult,
+        inventoriesResult,
+      ] = await Promise.all([
+        this.pool.request().query("SELECT COUNT(*) as count FROM products"),
+        this.pool.request().query("SELECT COUNT(*) as count FROM categories"),
+        this.pool.request().query("SELECT COUNT(*) as count FROM locations"),
+        this.pool.request().query("SELECT COUNT(*) as count FROM inventories"),
+      ]);
 
       return {
         totalProducts: productsResult.recordset[0].count,
@@ -1497,19 +1632,24 @@ export class SimpleStorage {
 
   async deleteInventory(id: number): Promise<void> {
     // Delete related records first (counts must be deleted before inventory_items)
-    await this.pool.request()
-      .input('inventoryId1', id)
-      .query('DELETE FROM counts WHERE inventoryItemId IN (SELECT id FROM inventory_items WHERE inventoryId = @inventoryId1)');
+    await this.pool
+      .request()
+      .input("inventoryId1", id)
+      .query(
+        "DELETE FROM counts WHERE inventoryItemId IN (SELECT id FROM inventory_items WHERE inventoryId = @inventoryId1)",
+      );
 
     // Delete inventory items
-    await this.pool.request()
-      .input('inventoryId2', id)
-      .query('DELETE FROM inventory_items WHERE inventoryId = @inventoryId2');
+    await this.pool
+      .request()
+      .input("inventoryId2", id)
+      .query("DELETE FROM inventory_items WHERE inventoryId = @inventoryId2");
 
     // Finally delete the inventory itself
-    await this.pool.request()
-      .input('inventoryId3', id)
-      .query('DELETE FROM inventories WHERE id = @inventoryId3');
+    await this.pool
+      .request()
+      .input("inventoryId3", id)
+      .query("DELETE FROM inventories WHERE id = @inventoryId3");
   }
 
   // ===== CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
@@ -1535,8 +1675,7 @@ export class SimpleStorage {
       }*/
 
       // Create serial items with location filtering
-      await this.pool.request()
-        .input('inventoryId', sql.Int, inventoryId)
+      await this.pool.request().input("inventoryId", sql.Int, inventoryId)
         .query(`
           INSERT INTO inventory_serial_items (
             inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus
@@ -1565,18 +1704,22 @@ export class SimpleStorage {
           WHERE ii.inventoryId = @inventoryId;
         `);
 
-      console.log(`✅ Created serial items for inventory ${inventoryId} with location filtering`);
+      console.log(
+        `✅ Created serial items for inventory ${inventoryId} with location filtering`,
+      );
     } catch (error) {
-      console.error('❌ Error creating inventory serial items:', error);
+      console.error("❌ Error creating inventory serial items:", error);
       throw error;
     }
   }
 
   // Buscar todos os itens de série de um inventário
-  async getInventorySerialItems(inventoryId: number): Promise<InventorySerialItem[]> {
-    const result = await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .query(`
+  async getInventorySerialItems(
+    inventoryId: number,
+  ): Promise<InventorySerialItem[]> {
+    const result = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId).query(`
         SELECT 
           id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
           count1_found, count2_found, count3_found, count4_found,
@@ -1588,7 +1731,7 @@ export class SimpleStorage {
         ORDER BY serialNumber
       `);
 
-    return result.recordset.map(row => ({
+    return result.recordset.map((row) => ({
       ...row,
       createdAt: new Date(row.createdAt).getTime(),
       updatedAt: new Date(row.updatedAt).getTime(),
@@ -1600,11 +1743,14 @@ export class SimpleStorage {
   }
 
   // Buscar itens de série por produto
-  async getInventorySerialItemsByProduct(inventoryId: number, productId: number): Promise<InventorySerialItem[]> {
-    const result = await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .input('productId', sql.Int, productId)
-      .query(`
+  async getInventorySerialItemsByProduct(
+    inventoryId: number,
+    productId: number,
+  ): Promise<InventorySerialItem[]> {
+    const result = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("productId", sql.Int, productId).query(`
         SELECT 
           id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
           count1_found, count2_found, count3_found, count4_found,
@@ -1616,7 +1762,7 @@ export class SimpleStorage {
         ORDER BY serialNumber
       `);
 
-    return result.recordset.map(row => ({
+    return result.recordset.map((row) => ({
       ...row,
       createdAt: new Date(row.createdAt).getTime(),
       updatedAt: new Date(row.updatedAt).getTime(),
@@ -1629,25 +1775,25 @@ export class SimpleStorage {
 
   // Registrar leitura de número de série
   async registerSerialReading(
-    inventoryId: number, 
-    request: SerialReadingRequest, 
-    userId: Number
+    inventoryId: number,
+    request: SerialReadingRequest,
+    userId: Number,
   ): Promise<SerialReadingResponse> {
     // Verificar se série existe
     const product = await this.findProductBySerial(request.serialNumber);
     if (!product) {
-      return { 
-        success: false, 
-        newSerial: true, 
-        message: "Número de série não encontrado no sistema" 
+      return {
+        success: false,
+        newSerial: true,
+        message: "Número de série não encontrado no sistema",
       };
     }
 
     // Verificar se já foi lida neste estágio
-    const existingReading = await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .input('serialNumber', sql.NVarChar, request.serialNumber)
-      .query(`
+    const existingReading = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("serialNumber", sql.NVarChar, request.serialNumber).query(`
         SELECT * FROM inventory_serial_items 
         WHERE inventoryId = @inventoryId 
         AND serialNumber = @serialNumber
@@ -1655,20 +1801,20 @@ export class SimpleStorage {
       `);
 
     if (existingReading.recordset.length > 0) {
-      return { 
-        success: false, 
-        alreadyRead: true, 
+      return {
+        success: false,
+        alreadyRead: true,
         productId: product.id,
         productName: product.name,
-        message: "Número de série já foi lido neste estágio" 
+        message: "Número de série já foi lido neste estágio",
       };
     }
 
     // Obter informações do produto para identificar o local
-    const serialItemInfo = await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .input('serialNumber', sql.NVarChar, request.serialNumber)
-      .query(`
+    const serialItemInfo = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("serialNumber", sql.NVarChar, request.serialNumber).query(`
         SELECT isi.productId, isi.locationId, l.name as locationName
         FROM inventory_serial_items isi
         LEFT JOIN locations l ON isi.locationId = l.id
@@ -1684,30 +1830,36 @@ export class SimpleStorage {
     }
 
     // Registrar leitura usando stored procedure
-    await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .input('serialNumber', sql.NVarChar, request.serialNumber)
-      .input('countStage', sql.NVarChar, request.countStage)
-      .input('userId', sql.Int, userId)
-      .query('EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId');
+    await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("serialNumber", sql.NVarChar, request.serialNumber)
+      .input("countStage", sql.NVarChar, request.countStage)
+      .input("userId", sql.Int, userId)
+      .query(
+        "EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId",
+      );
 
     // Note: Count increment should now be handled by the updated stored procedure
     // If still needed, we keep this as fallback
     // await this.incrementInventoryItemCount(inventoryId, product.id, locationId, request.countStage, Number(userId));
 
-    return { 
-      success: true, 
-      productId: product.id, 
+    return {
+      success: true,
+      productId: product.id,
       productName: product.name,
       productSku: product.sku,
       locationId: locationId,
       locationName: locationName,
-      message: "Leitura registrada com sucesso"
+      message: "Leitura registrada com sucesso",
     };
   }
 
   // Update stored procedure to include inventory_items count increment
-  async updateStoredProcedure(): Promise<{ success: boolean; message: string }> {
+  async updateStoredProcedure(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     try {
       const sqlContent = `
         -- Drop existing procedure
@@ -1815,13 +1967,14 @@ export class SimpleStorage {
 
       return {
         success: true,
-        message: "Stored procedure atualizada com sucesso! Agora os números de série incrementam a contagem na tabela inventory_items."
+        message:
+          "Stored procedure atualizada com sucesso! Agora os números de série incrementam a contagem na tabela inventory_items.",
       };
     } catch (error: any) {
-      console.error('Error updating stored procedure:', error);
+      console.error("Error updating stored procedure:", error);
       return {
         success: false,
-        message: `Erro ao atualizar stored procedure: ${error.message}`
+        message: `Erro ao atualizar stored procedure: ${error.message}`,
       };
     }
   }
@@ -1832,7 +1985,7 @@ export class SimpleStorage {
     productId: number,
     locationId: number | null,
     countStage: string,
-    userId?: number
+    userId?: number,
   ): Promise<void> {
     try {
       const countColumn = countStage; // count1, count2, count3, count4
@@ -1840,13 +1993,19 @@ export class SimpleStorage {
       const countAtColumn = `${countStage}At`;
 
       // Check if item exists before updating, and handle NULL locationId
-      const locationCondition = locationId ? 'AND locationId = @locationId' : 'AND locationId IS NULL';
+      const locationCondition = locationId
+        ? "AND locationId = @locationId"
+        : "AND locationId IS NULL";
 
-      await this.pool.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .input('productId', sql.Int, productId)
-        .input('locationId', locationId ? sql.Int : sql.VarChar, locationId || null)
-        .query(`
+      await this.pool
+        .request()
+        .input("inventoryId", sql.Int, inventoryId)
+        .input("productId", sql.Int, productId)
+        .input(
+          "locationId",
+          locationId ? sql.Int : sql.VarChar,
+          locationId || null,
+        ).query(`
           UPDATE inventory_items 
           SET 
             ${countColumn} = ISNULL(${countColumn}, 0) + 1,
@@ -1858,16 +2017,16 @@ export class SimpleStorage {
           ${locationCondition}
         `);
     } catch (error) {
-      console.error('Error incrementing inventory item count:', error);
+      console.error("Error incrementing inventory item count:", error);
       // Don't throw error to avoid breaking the serial reading process
     }
   }
 
   // Buscar produto por número de série
   async findProductBySerial(serialNumber: string): Promise<Product | null> {
-    const result = await this.pool.request()
-      .input('serialNumber', sql.NVarChar, serialNumber)
-      .query(`
+    const result = await this.pool
+      .request()
+      .input("serialNumber", sql.NVarChar, serialNumber).query(`
         SELECT DISTINCT p.* FROM products p
         JOIN stock_items si ON p.id = si.productId
         WHERE si.serialNumber = @serialNumber
@@ -1886,9 +2045,9 @@ export class SimpleStorage {
 
   // Validar se número de série existe
   async validateSerialExists(serialNumber: string): Promise<boolean> {
-    const result = await this.pool.request()
-      .input('serialNumber', sql.NVarChar, serialNumber)
-      .query(`
+    const result = await this.pool
+      .request()
+      .input("serialNumber", sql.NVarChar, serialNumber).query(`
         SELECT COUNT(*) as count FROM stock_items 
         WHERE serialNumber = @serialNumber AND isActive = 1
       `);
@@ -1898,9 +2057,9 @@ export class SimpleStorage {
 
   // Buscar histórico de um número de série
   async getSerialHistory(serialNumber: string): Promise<InventorySerialItem[]> {
-    const result = await this.pool.request()
-      .input('serialNumber', sql.NVarChar, serialNumber)
-      .query(`
+    const result = await this.pool
+      .request()
+      .input("serialNumber", sql.NVarChar, serialNumber).query(`
         SELECT 
           isi.*, i.code as inventoryCode, i.startDate
         FROM inventory_serial_items isi
@@ -1909,7 +2068,7 @@ export class SimpleStorage {
         ORDER BY i.startDate DESC
       `);
 
-    return result.recordset.map(row => ({
+    return result.recordset.map((row) => ({
       ...row,
       createdAt: new Date(row.createdAt).getTime(),
       updatedAt: new Date(row.updatedAt).getTime(),
@@ -1921,47 +2080,59 @@ export class SimpleStorage {
   }
 
   // Atualizar item de série
-  async updateInventorySerialItem(id: number, data: Partial<InventorySerialItem>): Promise<InventorySerialItem> {
+  async updateInventorySerialItem(
+    id: number,
+    data: Partial<InventorySerialItem>,
+  ): Promise<InventorySerialItem> {
     const updateFields = [];
-    const request = this.pool.request().input('id', sql.Int, id);
+    const request = this.pool.request().input("id", sql.Int, id);
 
     if (data.status !== undefined) {
-      updateFields.push('status = @status');
-      request.input('status', sql.NVarChar, data.status);
+      updateFields.push("status = @status");
+      request.input("status", sql.NVarChar, data.status);
     }
 
     if (data.notes !== undefined) {
-      updateFields.push('notes = @notes');
-      request.input('notes', sql.NVarChar, data.notes);
+      updateFields.push("notes = @notes");
+      request.input("notes", sql.NVarChar, data.notes);
     }
 
     if (data.finalStatus !== undefined) {
-      updateFields.push('finalStatus = @finalStatus');
-      request.input('finalStatus', sql.Bit, data.finalStatus);
+      updateFields.push("finalStatus = @finalStatus");
+      request.input("finalStatus", sql.Bit, data.finalStatus);
     }
 
-    updateFields.push('updatedAt = GETDATE()');
+    updateFields.push("updatedAt = GETDATE()");
 
     await request.query(`
       UPDATE inventory_serial_items 
-      SET ${updateFields.join(', ')}
+      SET ${updateFields.join(", ")}
       WHERE id = @id
     `);
 
     //    // Retornar item atualizado
-    const result = await this.pool.request()
-      .input('id', sql.Int, id)
-      .query('SELECT * FROM inventory_serial_items WHERE id = @id');
+    const result = await this.pool
+      .request()
+      .input("id", sql.Int, id)
+      .query("SELECT * FROM inventory_serial_items WHERE id = @id");
 
     const item = result.recordset[0];
     return {
       ...item,
       createdAt: new Date(item.createdAt).getTime(),
       updatedAt: new Date(item.updatedAt).getTime(),
-      count1_at: item.count1_at ? new Date(item.count1_at).getTime() : undefined,
-      count2_at: item.count2_at ? new Date(item.count2_at).getTime() : undefined,
-      count3_at: item.count3_at ? new Date(item.count3_at).getTime() : undefined,
-      count4_at: item.count4_at ? new Date(item.count4_at).getTime() : undefined,
+      count1_at: item.count1_at
+        ? new Date(item.count1_at).getTime()
+        : undefined,
+      count2_at: item.count2_at
+        ? new Date(item.count2_at).getTime()
+        : undefined,
+      count3_at: item.count3_at
+        ? new Date(item.count3_at).getTime()
+        : undefined,
+      count4_at: item.count4_at
+        ? new Date(item.count4_at).getTime()
+        : undefined,
     };
   }
 
@@ -1986,16 +2157,17 @@ export class SimpleStorage {
       WHERE ii.inventoryId = @inventoryId
     `;
 
-    await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
+    await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
       .query(query);
   }
 
   // Buscar dados de reconciliação
   async getInventoryReconciliation(inventoryId: number): Promise<any[]> {
-    const result = await this.pool.request()
-      .input('inventoryId', sql.Int, inventoryId)
-      .query(`
+    const result = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId).query(`
         SELECT 
           ii.inventoryId,
           ii.productId,
@@ -2039,10 +2211,12 @@ export class SimpleStorage {
         ORDER BY p.name
       `);
 
-      console.log(`✅ Found ${result.recordset.length} products with serial control info`);
+      console.log(
+        `✅ Found ${result.recordset.length} products with serial control info`,
+      );
       return result.recordset;
     } catch (error) {
-      console.error('❌ Error fetching products with serial control:', error);
+      console.error("❌ Error fetching products with serial control:", error);
       throw error;
     }
   }
@@ -2055,9 +2229,8 @@ export class SimpleStorage {
       console.log(`Searching products with term: "${searchTerm}"`);
 
       const result = await request
-        .input('searchTerm', searchPattern)
-        .input('limit', limit)
-        .query(`
+        .input("searchTerm", searchPattern)
+        .input("limit", limit).query(`
           SELECT TOP (@limit)
             p.id,
             p.sku,
@@ -2082,10 +2255,12 @@ export class SimpleStorage {
             p.name
         `);
 
-      console.log(`Search for "${searchTerm}" returned ${result.recordset.length} results`);
+      console.log(
+        `Search for "${searchTerm}" returned ${result.recordset.length} results`,
+      );
       return result.recordset;
     } catch (error) {
-      console.error('Error searching products:', error);
+      console.error("Error searching products:", error);
       throw error;
     }
   }
@@ -2116,12 +2291,8 @@ export class SimpleStorage {
       WHERE inventoryId = @inventoryId
     `;
 
-    await this.pool.request()
-      .input('inventoryId', inventoryId)
-      .query(query);
+    await this.pool.request().input("inventoryId", inventoryId).query(query);
   }
-
-
 
   async createInventorySerialItems2(inventoryId: number): Promise<void> {
     // Implementação simplificada - criar registros baseados nos stock_items
@@ -2151,13 +2322,16 @@ export class SimpleStorage {
       )
     `;
 
-    await this.pool.request()
-      .input('inventoryId', inventoryId)
-      .input('timestamp', Date.now())
+    await this.pool
+      .request()
+      .input("inventoryId", inventoryId)
+      .input("timestamp", Date.now())
       .query(query);
   }
 
-  async createAuditLog(auditLog: Omit<AuditLog, 'id' | 'timestamp'>): Promise<AuditLog> {
+  async createAuditLog(
+    auditLog: Omit<AuditLog, "id" | "timestamp">,
+  ): Promise<AuditLog> {
     const request = this.pool.request();
     try {
       // Convert timestamp to datetime for SQL Server compatibility
@@ -2171,8 +2345,7 @@ export class SimpleStorage {
         .input("oldValues", auditLog.oldValues || null)
         .input("newValues", auditLog.newValues || null)
         .input("metadata", auditLog.metadata || null)
-        .input("timestamp", timestamp)
-        .query(`
+        .input("timestamp", timestamp).query(`
           INSERT INTO audit_logs (userId, action, entityType, entityId, oldValues, newValues, metadata, timestamp)
           OUTPUT INSERTED.*
           VALUES (@userId, @action, @entityType, @entityId, @oldValues, @newValues, @metadata, @timestamp)
@@ -2181,7 +2354,8 @@ export class SimpleStorage {
       const record = result.recordset[0];
       return {
         ...record,
-        timestamp: typeof record.timestamp === 'number' ? record.timestamp : Date.now()
+        timestamp:
+          typeof record.timestamp === "number" ? record.timestamp : Date.now(),
       };
     } catch (error) {
       // Log error but don't throw - audit log shouldn't break main functionality
@@ -2189,13 +2363,13 @@ export class SimpleStorage {
       return {
         id: 0,
         userId: 0,
-        action: '',
-        entityType: '',
-        entityId: '',
-        oldValues: '',
-        newValues: '',
-        metadata: '',
-        timestamp: Date.now()
+        action: "",
+        entityType: "",
+        entityId: "",
+        oldValues: "",
+        newValues: "",
+        metadata: "",
+        timestamp: Date.now(),
       };
     }
   }

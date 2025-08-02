@@ -1,28 +1,15 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getStorage } from "./db";
-import {
-  setupAuth,
-  isAuthenticated,
-  hashPassword,
-  verifyPassword,
-} from "./auth";
+import { setupAuth, isAuthenticated, verifyPassword } from "./auth";
 import checkIpRouter from "./check-ip";
 import {
-  insertProductSchema,
-  insertCategorySchema,
-  insertLocationSchema,
-  insertStockSchema,
   insertInventorySchema,
-  insertInventoryTypeSchema,
   insertCountSchema,
   insertUserSchema,
   loginSchema,
   registerSchema,
-  insertInventoryStockItemSchema,
-  insertInventorySerialItemSchema,
   serialReadingRequestSchema,
-  updateProductSerialControlSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -30,7 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Registrar o router de check-ip
-  app.use('/api', checkIpRouter);
+  app.use("/api", checkIpRouter);
 
   // Initialize SQL Server storage
   let storage = await getStorage();
@@ -44,11 +31,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user has appropriate role for audit mode access
       const userRole = req.user.role?.toLowerCase();
-      const allowedRoles = ['admin', 'gerente', 'supervisor'];
+      const allowedRoles = ["admin", "gerente", "supervisor"];
 
       if (!allowedRoles.includes(userRole)) {
-        return res.status(403).json({ 
-          message: "Access denied. Only users with Mesa de Controle access can perform audit mode operations." 
+        return res.status(403).json({
+          message:
+            "Access denied. Only users with Mesa de Controle access can perform audit mode operations.",
         });
       }
 
@@ -58,9 +46,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage = await getStorage();
         const inventory = await storage.getInventory(inventoryId);
 
-        if (inventory && inventory.status !== 'audit_mode') {
-          return res.status(400).json({ 
-            message: "This operation is only allowed when inventory is in audit mode." 
+        if (inventory && inventory.status !== "audit_mode") {
+          return res.status(400).json({
+            message:
+              "This operation is only allowed when inventory is in audit mode.",
           });
         }
       }
@@ -127,9 +116,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.fixInventorySchema();
 
       console.log("✅ Inventory schema fixed successfully");
-      res.json({ 
+      res.json({
         message: "Inventory schema fixed successfully",
-        details: "Added selectedLocationIds, selectedCategoryIds, predictedEndDate, and isToBlockSystem columns"
+        details:
+          "Added selectedLocationIds, selectedCategoryIds, predictedEndDate, and isToBlockSystem columns",
       });
     } catch (error) {
       console.error("Error fixing inventory schema:", error as Error);
@@ -148,7 +138,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       storage = await getStorage();
       const user = await storage.getUserByUsername(username);
       if (!user || !user.isActive) {
-        const message = user && !user.isActive ? "Usuário desativado" : "Usuário não encontrado";
+        const message =
+          user && !user.isActive
+            ? "Usuário desativado"
+            : "Usuário não encontrado";
         return res.status(401).json({ message: message });
       }
 
@@ -170,7 +163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password: _, ...userWithoutPassword } = user;
 
       res.json({ user: userWithoutPassword });
-
     } catch (error) {
       console.error("Error during login:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -276,23 +268,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q, limit = 10 } = req.query;
 
-      console.log('🔍 Search request received:', { q, limit });
+      console.log("🔍 Search request received:", { q, limit });
 
-      if (!q || typeof q !== 'string' || q.trim().length < 1) {
-        console.log('❌ Search term too short or empty');
+      if (!q || typeof q !== "string" || q.trim().length < 1) {
+        console.log("❌ Search term too short or empty");
         return res.json([]);
       }
 
       storage = await getStorage();
-      const products = await storage.searchProducts(q.trim(), parseInt(limit.toString()));
+      const products = await storage.searchProducts(
+        q.trim(),
+        parseInt(limit.toString()),
+      );
 
-      console.log(`✅ Found ${products.length} products for search term: "${q}"`);
+      console.log(
+        `✅ Found ${products.length} products for search term: "${q}"`,
+      );
       res.json(products);
     } catch (error) {
       console.error("❌ Error searching products:", error);
-      res.status(500).json({ 
-        message: "Failed to search products", 
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.status(500).json({
+        message: "Failed to search products",
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -382,19 +379,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventoryData: any = {
         code: req.body.code,
         typeId: req.body.typeId,
-        startDate: typeof req.body.startDate === 'string' ? new Date(req.body.startDate).getTime() : req.body.startDate,
-        status: req.body.status || 'open',
-        isToBlockSystem: req.body.isToBlockSystem === true || req.body.isToBlockSystem === 'true',
+        startDate:
+          typeof req.body.startDate === "string"
+            ? new Date(req.body.startDate).getTime()
+            : req.body.startDate,
+        status: req.body.status || "open",
+        isToBlockSystem:
+          req.body.isToBlockSystem === true ||
+          req.body.isToBlockSystem === "true",
         createdBy: req.user.id,
       };
 
       // Only add optional fields if they have values
       if (req.body.endDate) {
-        inventoryData.endDate = typeof req.body.endDate === 'string' ? new Date(req.body.endDate).getTime() : req.body.endDate;
+        inventoryData.endDate =
+          typeof req.body.endDate === "string"
+            ? new Date(req.body.endDate).getTime()
+            : req.body.endDate;
       }
 
       if (req.body.predictedEndDate) {
-        inventoryData.predictedEndDate = typeof req.body.predictedEndDate === 'string' ? new Date(req.body.predictedEndDate).getTime() : req.body.predictedEndDate;
+        inventoryData.predictedEndDate =
+          typeof req.body.predictedEndDate === "string"
+            ? new Date(req.body.predictedEndDate).getTime()
+            : req.body.predictedEndDate;
       }
 
       if (req.body.description) {
@@ -402,16 +410,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Add selected locations and categories to be saved in the database
-      if (req.body.selectedLocationIds && Array.isArray(req.body.selectedLocationIds)) {
+      if (
+        req.body.selectedLocationIds &&
+        Array.isArray(req.body.selectedLocationIds)
+      ) {
         inventoryData.selectedLocationIds = req.body.selectedLocationIds;
       }
 
-      if (req.body.selectedCategoryIds && Array.isArray(req.body.selectedCategoryIds)) {
+      if (
+        req.body.selectedCategoryIds &&
+        Array.isArray(req.body.selectedCategoryIds)
+      ) {
         inventoryData.selectedCategoryIds = req.body.selectedCategoryIds;
       }
 
       // Use partial validation to allow optional fields
-      const validatedData = insertInventorySchema.partial().parse(inventoryData);
+      const validatedData = insertInventorySchema
+        .partial()
+        .parse(inventoryData);
 
       const inventory = await storage.createInventory(validatedData);
 
@@ -424,29 +440,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const products = await storage.getProducts();
 
         for (const locationId of selectedLocationIds) {
-          const locationStock = stockItems.filter((item: any) => item.locationId === locationId);
+          const locationStock = stockItems.filter(
+            (item: any) => item.locationId === locationId,
+          );
 
           for (const stockItem of locationStock) {
-            const product = products.find((p: any) => p.id === stockItem.productId);
+            const product = products.find(
+              (p: any) => p.id === stockItem.productId,
+            );
             if (product && selectedCategoryIds.includes(product.categoryId)) {
               await storage.createInventoryItem({
                 inventoryId: inventory.id,
                 productId: stockItem.productId,
                 locationId: stockItem.locationId,
                 expectedQuantity: stockItem.quantity,
-                status: 'pending',
+                status: "pending",
               });
             }
           }
         }
 
         // Create serial items for products with serial control
-        console.log('🔧 Creating serial items for inventory...');
+        console.log("🔧 Creating serial items for inventory...");
         try {
           await storage.createInventorySerialItems(inventory.id);
-          console.log('✅ Serial items created successfully');
+          console.log("✅ Serial items created successfully");
         } catch (serialError) {
-          console.warn('⚠️ Failed to create serial items:', serialError);
+          console.warn("⚠️ Failed to create serial items:", serialError);
           // Don't fail the inventory creation if serial items fail
         }
       }
@@ -497,7 +517,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/inventories/:id/close",
+  app.post(
+    "/api/inventories/:id/close",
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -541,7 +562,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Count routes
-  app.get("/api/inventory-items/:id/counts",
+  app.get(
+    "/api/inventory-items/:id/counts",
     isAuthenticated,
     async (req: any, res) => {
       try {
@@ -746,495 +768,628 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Inventory Management Routes
 
   // Create inventory with location/category selection
-  app.post("/api/inventories/advanced", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const validatedData = insertInventorySchema.parse({
-        ...req.body,
-        createdBy: req.user.id,
-      });
-
-      const inventory = await storage.createInventoryWithSelection(validatedData);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "CREATE_ADVANCED_INVENTORY",
-        entityType: "inventory",
-        entityId: inventory.id.toString(),
-        newValues: JSON.stringify(validatedData),
-        metadata: JSON.stringify({ 
-          selectedLocationIds: validatedData.selectedLocationIds,
-          selectedCategoryIds: validatedData.selectedCategoryIds 
-        }),
-      });
-
-      res.status(201).json(inventory);
-    } catch (error) {
-      console.error("Error creating advanced inventory:", error as Error);
-      res.status(500).json({
-        message: "Failed to create advanced inventory",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Transition inventory status
-  app.put("/api/inventories/:id/status", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-      const { status } = req.body;
-
-      // Validate status transition
-      const validStatuses = ['planning', 'open', 'count1_open', 'count1_closed', 'count2_open', 'count2_closed', 'count3_open', 'count3_closed', 'audit', 'divergence', 'closed'];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid inventory status" });
-      }
-
-      await storage.transitionInventoryStatus(inventoryId, status, req.user.id);
-      res.json({ message: "Inventory status updated successfully" });
-    } catch (error) {
-      console.error("Error updating inventory status:", error as Error);
-      res.status(500).json({
-        message: "Failed to update inventory status",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Get products with serial control information
-  app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-
-      // Check if the method exists, if not, return all products for now
-      if (typeof storage.getProductsWithSerialControl === 'function') {
-        const products = await storage.getProductsWithSerialControl();
-        console.log(`✅ Fetched ${products.length} products with serial control info`);
-        res.json(products);
-      } else {
-        // Fallback: return all products with a serialControl flag
-        const products = await storage.getProducts();
-        const productsWithSerialInfo = products.map(product => ({
-          ...product,
-          hasSerialControl: false // Default value until proper implementation
-        }));
-        console.log(`✅ Fetched ${productsWithSerialInfo.length} products (fallback)`);
-        res.json(productsWithSerialInfo);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching products with serial control:', error);
-      res.status(500).json({ message: "Failed to fetch products with serial control" });
-    }
-  });
-
-  // Get inventory statistics for Control Panel
-  app.get("/api/inventories/:id/stats", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-      const stats = await storage.getInventoryStats(inventoryId);
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching inventory stats:", error as Error);
-      res.status(500).json({
-        message: "Failed to fetch inventory statistics",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Get serial items for inventory
-  app.get("/api/inventories/:id/serial-items", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-
-      // Check if method exists in storage, if not return empty array
-      if (typeof storage.getInventorySerialItems === 'function') {
-        const serialItems = await storage.getInventorySerialItems(inventoryId);
-        res.json(serialItems);
-      } else {
-        // Return empty array for now if method doesn't exist
-        res.json([]);
-      }
-    } catch (error) {
-      console.error("Error fetching inventory serial items:", error as Error);
-      res.status(500).json({
-        message: "Failed to fetch inventory serial items",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Get comprehensive final report for inventory
-  app.get("/api/inventories/:id/final-report", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-      const report = await storage.getInventoryFinalReport(inventoryId);
-      res.json(report);
-    } catch (error) {
-      console.error("Error generating final report:", error as Error);
-      res.status(500).json({
-        message: "Failed to generate final report",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Update count 1 for inventory item
-  app.put("/api/inventory-items/:id/count1", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const itemId = parseInt(req.params.id);
-      const { count } = req.body;
-
-      await storage.updateCount1(itemId, count, req.user.id);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE_COUNT1",
-        entityType: "inventory_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ count1: count }),
-        metadata: JSON.stringify({ countedAt: Date.now() }),
-      });
-
-      res.json({ message: "Count 1 updated successfully" });
-    } catch (error) {
-      console.error("Error updating count 1:", error as Error);
-      res.status(500).json({
-        message: "Failed to update count 1",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Update count 2 for inventory item
-  app.put("/api/inventory-items/:id/count2", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const itemId = parseInt(req.params.id);
-      const { count } = req.body;
-
-      await storage.updateCount2(itemId, count, String(req.user.id));
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE_COUNT2",
-        entityType: "inventory_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ count2: count }),
-        metadata: JSON.stringify({ countedAt: Date.now() }),
-      });
-
-      res.json({ message: "Count 2 updated successfully" });
-    } catch (error) {
-      console.error("Error updating count 2:", error as Error);
-      res.status(500).json({
-        message: "Failed to update count 2",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Update count 3 for inventory item
-  app.put("/api/inventory-items/:id/count3", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const itemId = parseInt(req.params.id);
-      const { count } = req.body;
-
-      await storage.updateCount3(itemId, count, String(req.user.id));
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE_COUNT3",
-        entityType: "inventory_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ count3: count }),
-        metadata: JSON.stringify({ countedAt: Date.now() }),
-      });
-
-      res.json({ message: "Count 3 updated successfully" });
-    } catch (error) {
-      console.error("Error updating count 3:", error as Error);
-      res.status(500).json({
-        message: "Failed to update count 3",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Update count 4 (audit) for inventory item
-  app.put("/api/inventory-items/:id/count4", isAuthenticated, async (req: any, res) => {
-        try {
-      const itemId = parseInt(req.params.id);
-      const { quantity } = req.body;
-
-      if (typeof quantity !== 'number') {
-        return res.status(400).json({ message: "Quantity must be a number" });
-      }
-
-      storage = await getStorage();
-
-      // Update count4 and automatically update finalQuantity
-      await storage.updateCount4(itemId, quantity, req.user.id);
-
-      // Create audit log for count4 change
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE_COUNT4",
-        entityType: "inventory_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ count4: quantity, finalQuantity: quantity }),
-        metadata: JSON.stringify({ timestamp: Date.now() }),
-      });
-
-      res.json({ 
-        message: "Count4 updated successfully and finalQuantity automatically updated",
-        count4: quantity,
-        finalQuantity: quantity
-      });
-    } catch (error) {
-      console.error("Error updating count4:", error);
-      res.status(500).json({ message: "Failed to update count4" });
-    }
-  });
-
-  // Bulk confirm all items with current final quantities
-  app.put("/api/inventories/:id/confirm-all-items", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
-
-      const inventory = await storage.getInventory(inventoryId);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
-      }
-
-      if (inventory.status !== 'audit_mode') {
-        return res.status(400).json({ message: "Inventory must be in audit mode to confirm all items" });
-      }
-
-      const items = await storage.getInventoryItems(inventoryId);
-      const confirmations = [];
-
-      for (const item of items) {
-        if (item.finalQuantity !== null && item.finalQuantity !== undefined) {
-          // Item has a final quantity, confirm it
-          await storage.updateCount4(item.id, item.finalQuantity, req.user.id);
-          confirmations.push({
-            itemId: item.id,
-            productId: item.productId,
-            confirmedQuantity: item.finalQuantity
-          });
-        }
-        // Items with null/undefined finalQuantity remain as "not found" 
-      }
-
-      // Create audit log for bulk confirmation
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "BULK_CONFIRM_ITEMS",
-        entityType: "inventory",
-        entityId: inventoryId.toString(),
-        newValues: JSON.stringify({ confirmedItems: confirmations.length }),
-        metadata: JSON.stringify({ confirmations, timestamp: Date.now() }),
-      });
-
-      res.json({ 
-        message: `${confirmations.length} items confirmed with current final quantities`,
-        confirmedItems: confirmations.length,
-        confirmations
-      });
-    } catch (error) {
-      console.error("Error confirming all items:", error);
-      res.status(500).json({ message: "Failed to confirm all items" });
-    }
-  });
-
-  // Get stock items for inventory (patrimônio control)
-  app.get("/api/inventories/:id/stock-items", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-      const stockItems = await storage.getInventoryStockItems(inventoryId);
-      res.json(stockItems);
-    } catch (error) {
-      console.error("Error fetching inventory stock items:", error as Error);
-      res.status(500).json({
-        message: "Failed to fetch inventory stock items",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Update count for stock item (patrimônio)
-  app.put("/api/inventory-stock-items/:id/count", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const itemId = parseInt(req.params.id);
-      const { count, countType } = req.body;
-
-      // Validate count type
-      const validCountTypes = ['count1', 'count2', 'count3', 'count4'];
-      if (!validCountTypes.includes(countType)) {
-        return res.status(400).json({ message: "Invalid count type" });
-      }
-
-      await storage.updateInventoryStockItemCount(itemId, {
-        count,
-        countBy: req.user.id,
-        countType,
-      });
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: `UPDATE_STOCK_ITEM_${countType.toUpperCase()}`,
-        entityType: "inventory_stock_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify({ [countType]: count }),
-        metadata: JSON.stringify({ countedAt: Date.now() }),
-      });
-
-      res.json({ message: "Stock item count updated successfully" });
-    } catch (error) {
-      console.error("Error updating stock item count:", error as Error);
-      res.status(500).json({
-        message: "Failed to update stock item count",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Start counting - transitions to next counting stage
-  app.put("/api/inventories/:id/start-counting", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-
-      const inventory = await storage.getInventory(inventoryId);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
-      }
-
-      let newStatus: string;
-      switch (inventory.status) {
-        case 'open':
-          newStatus = 'count1_open';
-          break;
-        case 'count1_closed':
-          newStatus = 'count2_open';
-          break;
-        case 'count2_closed':
-        case 'count3_required':
-          newStatus = 'count3_open';
-          break;
-        default:
-          return res.status(400).json({ message: "Cannot start counting from current status" });
-      }
-
-      await storage.transitionInventoryStatus(inventoryId, newStatus, req.user.id);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "START_COUNTING",
-        entityType: "INVENTORY",
-        entityId: inventoryId.toString(),
-        oldValues: { status: inventory.status },
-        newValues: { status: newStatus },
-        metadata: null,
-      });
-
-      res.json({ message: "Counting started successfully", newStatus });
-    } catch (error) {
-      console.error("Error starting counting:", error);
-      res.status(500).json({ message: "Failed to start counting" });
-    }
-  });
-
-  // Finish counting - closes current counting stage
-  app.put("/api/inventories/:id/finish-counting", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-
-      const inventory = await storage.getInventory(inventoryId);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
-      }
-
-      let newStatus: string;
-      switch (inventory.status) {
-        case 'count1_open':
-          newStatus = 'count1_closed';
-          break;
-        case 'count2_open':
-          newStatus = 'count2_closed';
-          break;
-        case 'count3_open':
-          newStatus = 'count3_closed';
-          break;
-        default:
-          return res.status(400).json({ message: "Cannot finish counting from current status" });
-      }
-
-      await storage.transitionInventoryStatus(inventoryId, newStatus, req.user.id);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "FINISH_COUNTING",
-        entityType: "INVENTORY",
-        entityId: inventoryId.toString(),
-        oldValues: { status: inventory.status },
-        newValues: { status: newStatus },
-        metadata: null,
-      });
-
-      res.json({ message: "Counting finished successfully", newStatus });
-    } catch (error) {
-      console.error("Error finishing counting:", error);
-      res.status(500).json({ message: "Failed to finish counting" });
-    }
-  });
-
-  // Cancel inventory - changes status to "CANCELLED"
-  app.put("/api/inventories/:id/cancel", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const inventoryId = parseInt(req.params.id);
-      const { reason } = req.body;
-
-      const inventory = await storage.getInventory(inventoryId);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
-      }
-
-      await storage.transitionInventoryStatus(inventoryId, 'cancelled', req.user.id);
-
-      // Try to create audit log but don't fail if it errors
+  app.post(
+    "/api/inventories/advanced",
+    isAuthenticated,
+    async (req: any, res) => {
       try {
+        storage = await getStorage();
+        const validatedData = insertInventorySchema.parse({
+          ...req.body,
+          createdBy: req.user.id,
+        });
+
+        const inventory =
+          await storage.createInventoryWithSelection(validatedData);
+
         await storage.createAuditLog({
           userId: req.user.id,
-          action: "CANCEL_INVENTORY",
+          action: "CREATE_ADVANCED_INVENTORY",
+          entityType: "inventory",
+          entityId: inventory.id.toString(),
+          newValues: JSON.stringify(validatedData),
+          metadata: JSON.stringify({
+            selectedLocationIds: validatedData.selectedLocationIds,
+            selectedCategoryIds: validatedData.selectedCategoryIds,
+          }),
+        });
+
+        res.status(201).json(inventory);
+      } catch (error) {
+        console.error("Error creating advanced inventory:", error as Error);
+        res.status(500).json({
+          message: "Failed to create advanced inventory",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Transition inventory status
+  app.put(
+    "/api/inventories/:id/status",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const { status } = req.body;
+
+        // Validate status transition
+        const validStatuses = [
+          "planning",
+          "open",
+          "count1_open",
+          "count1_closed",
+          "count2_open",
+          "count2_closed",
+          "count3_open",
+          "count3_closed",
+          "audit",
+          "divergence",
+          "closed",
+        ];
+        if (!validStatuses.includes(status)) {
+          return res.status(400).json({ message: "Invalid inventory status" });
+        }
+
+        await storage.transitionInventoryStatus(
+          inventoryId,
+          status,
+          req.user.id,
+        );
+        res.json({ message: "Inventory status updated successfully" });
+      } catch (error) {
+        console.error("Error updating inventory status:", error as Error);
+        res.status(500).json({
+          message: "Failed to update inventory status",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Get products with serial control information
+  app.get(
+    "/api/products/with-serial-control",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+
+        // Check if the method exists, if not, return all products for now
+        if (typeof storage.getProductsWithSerialControl === "function") {
+          const products = await storage.getProductsWithSerialControl();
+          console.log(
+            `✅ Fetched ${products.length} products with serial control info`,
+          );
+          res.json(products);
+        } else {
+          // Fallback: return all products with a serialControl flag
+          const products = await storage.getProducts();
+          const productsWithSerialInfo = products.map((product) => ({
+            ...product,
+            hasSerialControl: false, // Default value until proper implementation
+          }));
+          console.log(
+            `✅ Fetched ${productsWithSerialInfo.length} products (fallback)`,
+          );
+          res.json(productsWithSerialInfo);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching products with serial control:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch products with serial control" });
+      }
+    },
+  );
+
+  // Get inventory statistics for Control Panel
+  app.get(
+    "/api/inventories/:id/stats",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const stats = await storage.getInventoryStats(inventoryId);
+        res.json(stats);
+      } catch (error) {
+        console.error("Error fetching inventory stats:", error as Error);
+        res.status(500).json({
+          message: "Failed to fetch inventory statistics",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Get serial items for inventory
+  app.get(
+    "/api/inventories/:id/serial-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+
+        // Check if method exists in storage, if not return empty array
+        if (typeof storage.getInventorySerialItems === "function") {
+          const serialItems =
+            await storage.getInventorySerialItems(inventoryId);
+          res.json(serialItems);
+        } else {
+          // Return empty array for now if method doesn't exist
+          res.json([]);
+        }
+      } catch (error) {
+        console.error("Error fetching inventory serial items:", error as Error);
+        res.status(500).json({
+          message: "Failed to fetch inventory serial items",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Get comprehensive final report for inventory
+  app.get(
+    "/api/inventories/:id/final-report",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const report = await storage.getInventoryFinalReport(inventoryId);
+        res.json(report);
+      } catch (error) {
+        console.error("Error generating final report:", error as Error);
+        res.status(500).json({
+          message: "Failed to generate final report",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Update count 1 for inventory item
+  app.put(
+    "/api/inventory-items/:id/count1",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const itemId = parseInt(req.params.id);
+        const { count } = req.body;
+
+        await storage.updateCount1(itemId, count, req.user.id);
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "UPDATE_COUNT1",
+          entityType: "inventory_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify({ count1: count }),
+          metadata: JSON.stringify({ countedAt: Date.now() }),
+        });
+
+        res.json({ message: "Count 1 updated successfully" });
+      } catch (error) {
+        console.error("Error updating count 1:", error as Error);
+        res.status(500).json({
+          message: "Failed to update count 1",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Update count 2 for inventory item
+  app.put(
+    "/api/inventory-items/:id/count2",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const itemId = parseInt(req.params.id);
+        const { count } = req.body;
+
+        await storage.updateCount2(itemId, count, String(req.user.id));
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "UPDATE_COUNT2",
+          entityType: "inventory_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify({ count2: count }),
+          metadata: JSON.stringify({ countedAt: Date.now() }),
+        });
+
+        res.json({ message: "Count 2 updated successfully" });
+      } catch (error) {
+        console.error("Error updating count 2:", error as Error);
+        res.status(500).json({
+          message: "Failed to update count 2",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Update count 3 for inventory item
+  app.put(
+    "/api/inventory-items/:id/count3",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const itemId = parseInt(req.params.id);
+        const { count } = req.body;
+
+        await storage.updateCount3(itemId, count, String(req.user.id));
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "UPDATE_COUNT3",
+          entityType: "inventory_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify({ count3: count }),
+          metadata: JSON.stringify({ countedAt: Date.now() }),
+        });
+
+        res.json({ message: "Count 3 updated successfully" });
+      } catch (error) {
+        console.error("Error updating count 3:", error as Error);
+        res.status(500).json({
+          message: "Failed to update count 3",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Update count 4 (audit) for inventory item
+  app.put(
+    "/api/inventory-items/:id/count4",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const itemId = parseInt(req.params.id);
+        const { quantity } = req.body;
+
+        if (typeof quantity !== "number") {
+          return res.status(400).json({ message: "Quantity must be a number" });
+        }
+
+        storage = await getStorage();
+
+        // Update count4 and automatically update finalQuantity
+        await storage.updateCount4(itemId, quantity, req.user.id);
+
+        // Create audit log for count4 change
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "UPDATE_COUNT4",
+          entityType: "inventory_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify({
+            count4: quantity,
+            finalQuantity: quantity,
+          }),
+          metadata: JSON.stringify({ timestamp: Date.now() }),
+        });
+
+        res.json({
+          message:
+            "Count4 updated successfully and finalQuantity automatically updated",
+          count4: quantity,
+          finalQuantity: quantity,
+        });
+      } catch (error) {
+        console.error("Error updating count4:", error);
+        res.status(500).json({ message: "Failed to update count4" });
+      }
+    },
+  );
+
+  // Bulk confirm all items with current final quantities
+  // Bulk confirm all items with current final quantities
+  app.put(
+    "/api/inventories/:id/confirm-all-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        if (inventory.status !== "audit_mode") {
+          return res.status(400).json({
+            message: "Inventory must be in audit mode to confirm all items",
+          });
+        }
+
+        const items = await storage.getInventoryItems(inventoryId);
+        const confirmations = [];
+
+        for (const item of items) {
+          // Check if finalQuantity is defined
+          if (item.finalQuantity !== null && item.finalQuantity !== undefined) {
+            // Item has a final quantity, confirm it
+            await storage.updateCount4(
+              item.id,
+              item.finalQuantity,
+              req.user.id,
+            );
+            confirmations.push({
+              itemId: item.id,
+              productId: item.productId,
+              confirmedQuantity: item.finalQuantity,
+            });
+          } else {
+            // Item was not counted, set finalQuantity to 0
+            const stockQuantity = item.stockQuantity || 0; // Assuming 'stockQuantity' is the field for available stock
+            await storage.updateCount4(item.id, 0, req.user.id); // Updating count to 0
+            confirmations.push({
+              itemId: item.id,
+              productId: item.productId,
+              confirmedQuantity: 0, // Mark as confirmed with a quantity of 0
+            });
+          }
+
+          // Set status to 'confirmed'
+          await storage.updateInventoryItemStatus(item.id, "confirmed");
+        }
+
+        // Create audit log for bulk confirmation
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "BULK_CONFIRM_ITEMS",
+          entityType: "inventory",
+          entityId: inventoryId.toString(),
+          newValues: JSON.stringify({ confirmedItems: confirmations.length }),
+          metadata: JSON.stringify({ confirmations, timestamp: Date.now() }),
+        });
+
+        res.json({
+          message: `${confirmations.length} items confirmed with current final quantities`,
+          confirmedItems: confirmations.length,
+          confirmations,
+        });
+      } catch (error) {
+        console.error("Error confirming all items:", error);
+        res.status(500).json({ message: "Failed to confirm all items" });
+      }
+    },
+  );
+
+  // Get stock items for inventory (patrimônio control)
+  app.get(
+    "/api/inventories/:id/stock-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const stockItems = await storage.getInventoryStockItems(inventoryId);
+        res.json(stockItems);
+      } catch (error) {
+        console.error("Error fetching inventory stock items:", error as Error);
+        res.status(500).json({
+          message: "Failed to fetch inventory stock items",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Update count for stock item (patrimônio)
+  app.put(
+    "/api/inventory-stock-items/:id/count",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const itemId = parseInt(req.params.id);
+        const { count, countType } = req.body;
+
+        // Validate count type
+        const validCountTypes = ["count1", "count2", "count3", "count4"];
+        if (!validCountTypes.includes(countType)) {
+          return res.status(400).json({ message: "Invalid count type" });
+        }
+
+        await storage.updateInventoryStockItemCount(itemId, {
+          count,
+          countBy: req.user.id,
+          countType,
+        });
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: `UPDATE_STOCK_ITEM_${countType.toUpperCase()}`,
+          entityType: "inventory_stock_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify({ [countType]: count }),
+          metadata: JSON.stringify({ countedAt: Date.now() }),
+        });
+
+        res.json({ message: "Stock item count updated successfully" });
+      } catch (error) {
+        console.error("Error updating stock item count:", error as Error);
+        res.status(500).json({
+          message: "Failed to update stock item count",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Start counting - transitions to next counting stage
+  app.put(
+    "/api/inventories/:id/start-counting",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        let newStatus: string;
+        switch (inventory.status) {
+          case "open":
+            newStatus = "count1_open";
+            break;
+          case "count1_closed":
+            newStatus = "count2_open";
+            break;
+          case "count2_closed":
+          case "count3_required":
+            newStatus = "count3_open";
+            break;
+          default:
+            return res
+              .status(400)
+              .json({ message: "Cannot start counting from current status" });
+        }
+
+        await storage.transitionInventoryStatus(
+          inventoryId,
+          newStatus,
+          req.user.id,
+        );
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "START_COUNTING",
           entityType: "INVENTORY",
           entityId: inventoryId.toString(),
-          oldValues: { status: inventory.status },
-          newValues: { status: 'cancelled', reason },
-          metadata: JSON.stringify({ reason }),
+          oldValues: JSON.stringify({ status: inventory.status }),
+          newValues: JSON.stringify({ status: newStatus }),
+          metadata: "",
         });
-      } catch (auditError) {
-        console.warn("Failed to create audit log for inventory cancellation:", auditError);
-      }
 
-      res.json({ message: "Inventory cancelled successfully" });
-    } catch (error) {
-      console.error("Error cancelling inventory:", error);
-      res.status(500).json({ message: "Failed to cancel inventory" });
-    }
-  });
+        res.json({ message: "Counting started successfully", newStatus });
+      } catch (error) {
+        console.error("Error starting counting:", error);
+        res.status(500).json({ message: "Failed to start counting" });
+      }
+    },
+  );
+
+  // Finish counting - closes current counting stage
+  app.put(
+    "/api/inventories/:id/finish-counting",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        let newStatus: string;
+        switch (inventory.status) {
+          case "count1_open":
+            newStatus = "count1_closed";
+            break;
+          case "count2_open":
+            newStatus = "count2_closed";
+            break;
+          case "count3_open":
+            newStatus = "count3_closed";
+            break;
+          case "audit_mode":
+            newStatus = "closed";
+            break;
+          default:
+            return res
+              .status(400)
+              .json({ message: "Cannot finish counting from current status" });
+        }
+
+        await storage.transitionInventoryStatus(
+          inventoryId,
+          newStatus,
+          req.user.id,
+        );
+
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "FINISH_COUNTING",
+          entityType: "INVENTORY",
+          entityId: inventoryId.toString(),
+          oldValues: JSON.stringify({ status: inventory.status }),
+          newValues: JSON.stringify({ status: newStatus }),
+          metadata: "",
+        });
+
+        res.json({ message: "Counting finished successfully", newStatus });
+      } catch (error) {
+        console.error("Error finishing counting:", error);
+        res.status(500).json({ message: "Failed to finish counting" });
+      }
+    },
+  );
+
+  // Cancel inventory - changes status to "CANCELLED"
+  app.put(
+    "/api/inventories/:id/cancel",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const { reason } = req.body;
+
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        await storage.transitionInventoryStatus(
+          inventoryId,
+          "cancelled",
+          req.user.id,
+        );
+
+        // Try to create audit log but don't fail if it errors
+        try {
+          await storage.createAuditLog({
+            userId: req.user.id,
+            action: "CANCEL_INVENTORY",
+            entityType: "INVENTORY",
+            entityId: inventoryId.toString(),
+            oldValues: { status: inventory.status },
+            newValues: { status: "cancelled", reason },
+            metadata: JSON.stringify({ reason }),
+          });
+        } catch (auditError) {
+          console.warn(
+            "Failed to create audit log for inventory cancellation:",
+            auditError,
+          );
+        }
+
+        res.json({ message: "Inventory cancelled successfully" });
+      } catch (error) {
+        console.error("Error cancelling inventory:", error);
+        res.status(500).json({ message: "Failed to cancel inventory" });
+      }
+    },
+  );
 
   // Delete cancelled inventory - removes all associated records
   app.delete("/api/inventories/:id", isAuthenticated, async (req: any, res) => {
@@ -1247,8 +1402,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Inventory not found" });
       }
 
-      if (inventory.status !== 'cancelled') {
-        return res.status(400).json({ message: "Only cancelled inventories can be deleted" });
+      if (inventory.status !== "cancelled") {
+        return res
+          .status(400)
+          .json({ message: "Only cancelled inventories can be deleted" });
       }
 
       // Delete all associated records
@@ -1266,7 +1423,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
         });
       } catch (auditError) {
-        console.warn("Failed to create audit log for inventory deletion:", auditError);
+        console.warn(
+          "Failed to create audit log for inventory deletion:",
+          auditError,
+        );
       }
 
       res.json({ message: "Inventory deleted successfully" });
@@ -1279,363 +1439,455 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ROTAS PARA VALIDAÇÃO E INTEGRAÇÃO =====
 
   // Validar integridade do inventário
-  app.post("/api/inventories/:id/validate", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
+  app.post(
+    "/api/inventories/:id/validate",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
 
-      const { InventoryIntegrityValidator } = await import('./validation');
-      const validator = new InventoryIntegrityValidator(storage);
+        const { InventoryIntegrityValidator } = await import("./validation");
+        const validator = new InventoryIntegrityValidator(storage);
 
-      const report = await validator.validateInventoryIntegrity(inventoryId);
+        const report = await validator.validateInventoryIntegrity(inventoryId);
 
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || 0,
-        action: "VALIDATE_INVENTORY",
-        entityType: "inventory",
-        entityId: inventoryId.toString(),
-        newValues: JSON.stringify({ isValid: report.isValid, issuesCount: report.issues.length }),
-      });
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || 0,
+          action: "VALIDATE_INVENTORY",
+          entityType: "inventory",
+          entityId: inventoryId.toString(),
+          newValues: JSON.stringify({
+            isValid: report.isValid,
+            issuesCount: report.issues.length,
+          }),
+        });
 
-      res.json(report);
-    } catch (error) {
-      console.error("Error validating inventory:", error);
-      res.status(500).json({ message: "Failed to validate inventory" });
-    }
-  });
+        res.json(report);
+      } catch (error) {
+        console.error("Error validating inventory:", error);
+        res.status(500).json({ message: "Failed to validate inventory" });
+      }
+    },
+  );
 
   // Executar reconciliação do inventário
-  app.post("/api/inventories/:id/reconcile", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
+  app.post(
+    "/api/inventories/:id/reconcile",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
 
-      // Executar stored procedure de reconciliação
-      await storage.reconcileInventory(inventoryId);
+        // Executar stored procedure de reconciliação
+        await storage.reconcileInventory(inventoryId);
 
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || 0,
-        action: "RECONCILE_INVENTORY",
-        entityType: "inventory",
-        entityId: inventoryId.toString(),
-        metadata: JSON.stringify({ timestamp: Date.now() }),
-      });
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || 0,
+          action: "RECONCILE_INVENTORY",
+          entityType: "inventory",
+          entityId: inventoryId.toString(),
+          metadata: JSON.stringify({ timestamp: Date.now() }),
+        });
 
-      res.json({ message: "Reconciliation completed successfully" });
-    } catch (error) {
-      console.error("Error reconciling inventory:", error);
-      res.status(500).json({ message: "Failed to reconcile inventory" });
-    }
-  });
+        res.json({ message: "Reconciliation completed successfully" });
+      } catch (error) {
+        console.error("Error reconciling inventory:", error);
+        res.status(500).json({ message: "Failed to reconcile inventory" });
+      }
+    },
+  );
 
   // Obter relatório de reconciliação
-  app.get("/api/inventories/:id/reconciliation", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
+  app.get(
+    "/api/inventories/:id/reconciliation",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
 
-      const { InventoryIntegrityValidator } = await import('./validation');
-      const validator = new InventoryIntegrityValidator(storage);
+        const { InventoryIntegrityValidator } = await import("./validation");
+        const validator = new InventoryIntegrityValidator(storage);
 
-      const report = await validator.generateReconciliationReport(inventoryId);
-      res.json(report);
-    } catch (error) {
-      console.error("Error fetching reconciliation report:", error);
-      res.status(500).json({ message: "Failed to fetch reconciliation report" });
-    }
-  });
+        const report =
+          await validator.generateReconciliationReport(inventoryId);
+        res.json(report);
+      } catch (error) {
+        console.error("Error fetching reconciliation report:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch reconciliation report" });
+      }
+    },
+  );
 
   // Importar rotas de integração
-  const { addIntegrationRoutes } = await import('./routes-integration');
+  const { addIntegrationRoutes } = await import("./routes-integration");
   addIntegrationRoutes(app, getStorage, isAuthenticated);
 
   // ===== ROTAS PARA CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
 
   // Inicializar itens de série para inventário
-  app.post("/api/inventories/:id/serial-items/initialize", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
-      await storage.createInventorySerialItems(inventoryId);
+  app.post(
+    "/api/inventories/:id/serial-items/initialize",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        await storage.createInventorySerialItems(inventoryId);
 
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || 0,
-        action: "INITIALIZE_SERIAL_ITEMS",
-        entityType: "inventory",
-        entityId: inventoryId.toString(),
-        metadata: JSON.stringify({ inventoryId }),
-      });
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || 0,
+          action: "INITIALIZE_SERIAL_ITEMS",
+          entityType: "inventory",
+          entityId: inventoryId.toString(),
+          metadata: JSON.stringify({ inventoryId }),
+        });
 
-      res.json({ message: "Serial items initialized successfully" });
-    } catch (error) {
-      console.error("Error initializing serial items:", error);
-      res.status(500).json({ message: "Failed to initialize serial items" });
-    }
-  });
+        res.json({ message: "Serial items initialized successfully" });
+      } catch (error) {
+        console.error("Error initializing serial items:", error);
+        res.status(500).json({ message: "Failed to initialize serial items" });
+      }
+    },
+  );
 
   // Registrar leitura de número de série
-  app.post("/api/inventories/:id/serial-reading", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      const validatedData = serialReadingRequestSchema.parse(req.body);
+  app.post(
+    "/api/inventories/:id/serial-reading",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        const validatedData = serialReadingRequestSchema.parse(req.body);
 
-      storage = await getStorage();
-      const result = await storage.registerSerialReading(
-        inventoryId, 
-        validatedData, 
-        (req.session as any).userId || 1
-      );
+        storage = await getStorage();
+        const result = await storage.registerSerialReading(
+          inventoryId,
+          validatedData,
+          (req.session as any).userId || 1,
+        );
 
-      if (result.success) {
-        await storage.createAuditLog({
-          userId: (req.session as any).userId || 0,
-          action: "SERIAL_READING",
-          entityType: "inventory_serial_item",
-          entityId: `${inventoryId}-${validatedData.serialNumber}`,
-          newValues: JSON.stringify(validatedData),
-          metadata: JSON.stringify({ productId: result.productId }),
-        });
+        if (result.success) {
+          await storage.createAuditLog({
+            userId: (req.session as any).userId || 0,
+            action: "SERIAL_READING",
+            entityType: "inventory_serial_item",
+            entityId: `${inventoryId}-${validatedData.serialNumber}`,
+            newValues: JSON.stringify(validatedData),
+            metadata: JSON.stringify({ productId: result.productId }),
+          });
+        }
+
+        res.json(result);
+      } catch (error) {
+        console.error("Error registering serial reading:", error);
+        res.status(500).json({ message: "Failed to register serial reading" });
       }
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error registering serial reading:", error);
-      res.status(500).json({ message: "Failed to register serial reading" });
-    }
-  });
+    },
+  );
 
   // Update stored procedure to fix serial reading count increment
-  app.post("/api/admin/update-stored-procedure", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const result = await storage.updateStoredProcedure();
-      res.json(result);
-    } catch (error) {
-      console.error("Error updating stored procedure:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to update stored procedure" 
-      });
-    }
-  });
+  app.post(
+    "/api/admin/update-stored-procedure",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const result = await storage.updateStoredProcedure();
+        res.json(result);
+      } catch (error) {
+        console.error("Error updating stored procedure:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update stored procedure",
+        });
+      }
+    },
+  );
 
   // Buscar produto por número de série
-  app.get("/api/products/by-serial/:serial", isAuthenticated, async (req: any, res) => {
-    try {
-      const serialNumber = req.params.serial;
-      storage = await getStorage();
-      const product = await storage.findProductBySerial(serialNumber);
+  app.get(
+    "/api/products/by-serial/:serial",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const serialNumber = req.params.serial;
+        storage = await getStorage();
+        const product = await storage.findProductBySerial(serialNumber);
 
-      if (!product) {
-        return res.status(404).json({ message: "Product not found for this serial number" });
+        if (!product) {
+          return res
+            .status(404)
+            .json({ message: "Product not found for this serial number" });
+        }
+
+        res.json(product);
+      } catch (error) {
+        console.error("Error finding product by serial:", error);
+        res.status(500).json({ message: "Failed to find product" });
       }
-
-      res.json(product);
-    } catch (error) {
-      console.error("Error finding product by serial:", error);
-      res.status(500).json({ message: "Failed to find product" });
-    }
-  });
+    },
+  );
 
   // Listar itens de série do inventário
-  app.get("/api/inventories/:id/serial-items", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
+  app.get(
+    "/api/inventories/:id/serial-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        const productId = req.query.productId
+          ? parseInt(req.query.productId as string)
+          : undefined;
 
-      storage = await getStorage();
-      const items = productId 
-        ? await storage.getInventorySerialItemsByProduct(inventoryId, productId)
-        : await storage.getInventorySerialItems(inventoryId);
+        storage = await getStorage();
+        const items = productId
+          ? await storage.getInventorySerialItemsByProduct(
+              inventoryId,
+              productId,
+            )
+          : await storage.getInventorySerialItems(inventoryId);
 
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching inventory serial items:", error);
-      res.status(500).json({ message: "Failed to fetch serial items" });
-    }
-  });
+        res.json(items);
+      } catch (error) {
+        console.error("Error fetching inventory serial items:", error);
+        res.status(500).json({ message: "Failed to fetch serial items" });
+      }
+    },
+  );
 
   // Atualizar item de série
-  app.put("/api/inventory-serial-items/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const itemId = parseInt(req.params.id);
-      const updateData = req.body;
+  app.put(
+    "/api/inventory-serial-items/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const itemId = parseInt(req.params.id);
+        const updateData = req.body;
 
-      storage = await getStorage();
-      const updatedItem = await storage.updateInventorySerialItem(itemId, updateData);
+        storage = await getStorage();
+        const updatedItem = await storage.updateInventorySerialItem(
+          itemId,
+          updateData,
+        );
 
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || 0,
-        action: "UPDATE_SERIAL_ITEM",
-        entityType: "inventory_serial_item",
-        entityId: itemId.toString(),
-        newValues: JSON.stringify(updateData),
-      });
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || 0,
+          action: "UPDATE_SERIAL_ITEM",
+          entityType: "inventory_serial_item",
+          entityId: itemId.toString(),
+          newValues: JSON.stringify(updateData),
+        });
 
-      res.json(updatedItem);
-    } catch (error) {
-      console.error("Error updating serial item:", error);
-      res.status(500).json({ message: "Failed to update serial item" });
-    }
-  });
+        res.json(updatedItem);
+      } catch (error) {
+        console.error("Error updating serial item:", error);
+        res.status(500).json({ message: "Failed to update serial item" });
+      }
+    },
+  );
 
   // Reconciliação de quantidades
-  app.post("/api/inventories/:id/reconcile", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
-      await storage.reconcileInventoryQuantities(inventoryId);
+  app.post(
+    "/api/inventories/:id/reconcile",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        await storage.reconcileInventoryQuantities(inventoryId);
 
-      const reconciliation = await storage.getInventoryReconciliation(inventoryId);
+        const reconciliation =
+          await storage.getInventoryReconciliation(inventoryId);
 
-      await storage.createAuditLog({
-        userId: (req.session as any).user?.id || 0,
-        action: "INVENTORY_RECONCILIATION",
-        entityType: "inventory",
-        entityId: inventoryId.toString(),
-        metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
-      });
+        await storage.createAuditLog({
+          userId: (req.session as any).user?.id || 0,
+          action: "INVENTORY_RECONCILIATION",
+          entityType: "inventory",
+          entityId: inventoryId.toString(),
+          metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
+        });
 
-      res.json({ message: "Reconciliation completed", data: reconciliation });
-    } catch (error) {
-      console.error("Error reconciling inventory:", error);
-      res.status(500).json({ message: "Failed to reconcile inventory" });
-    }
-  });
+        res.json({ message: "Reconciliation completed", data: reconciliation });
+      } catch (error) {
+        console.error("Error reconciling inventory:", error);
+        res.status(500).json({ message: "Failed to reconcile inventory" });
+      }
+    },
+  );
 
   // Buscar dados de reconciliação
-  app.get("/api/inventories/:id/reconciliation", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
-      const reconciliation = await storage.getInventoryReconciliation(inventoryId);
-      res.json(reconciliation);
-    } catch (error) {
-      console.error("Error fetching reconciliation data:", error);
-      res.status(500).json({ message: "Failed to fetch reconciliation data" });
-    }
-  });
+  app.get(
+    "/api/inventories/:id/reconciliation",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        const reconciliation =
+          await storage.getInventoryReconciliation(inventoryId);
+        res.json(reconciliation);
+      } catch (error) {
+        console.error("Error fetching reconciliation data:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch reconciliation data" });
+      }
+    },
+  );
 
   // Buscar histórico de número de série
-  app.get("/api/serial-history/:serial", isAuthenticated, async (req: any, res) => {
-    try {
-      const serialNumber = req.params.serial;
-      storage = await getStorage();
-      const history = await storage.getSerialHistory(serialNumber);
-      res.json(history);
-    } catch (error) {
-      console.error("Error fetching serial history:", error);
-      res.status(500).json({ message: "Failed to fetch serial history" });
-    }
-  });
+  app.get(
+    "/api/serial-history/:serial",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const serialNumber = req.params.serial;
+        storage = await getStorage();
+        const history = await storage.getSerialHistory(serialNumber);
+        res.json(history);
+      } catch (error) {
+        console.error("Error fetching serial history:", error);
+        res.status(500).json({ message: "Failed to fetch serial history" });
+      }
+    },
+  );
 
   // Validar se número de série existe
-  app.get("/api/validate-serial/:serial", isAuthenticated, async (req: any, res) => {
-    try {
-      const serialNumber = req.params.serial;
-      storage = await getStorage();
-      const exists = await storage.validateSerialExists(serialNumber);
-      res.json({ exists, serialNumber });
-    } catch (error) {
-      console.error("Error validating serial:", error);
-      res.status(500).json({ message: "Failed to validate serial number" });
-    }
-  });
+  app.get(
+    "/api/validate-serial/:serial",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const serialNumber = req.params.serial;
+        storage = await getStorage();
+        const exists = await storage.validateSerialExists(serialNumber);
+        res.json({ exists, serialNumber });
+      } catch (error) {
+        console.error("Error validating serial:", error);
+        res.status(500).json({ message: "Failed to validate serial number" });
+      }
+    },
+  );
 
   // Get divergent inventory items (items that need 3rd count)
-  app.get("/api/inventories/:id/items/divergent", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
-      const divergentItems = await storage.getDivergentInventoryItems(inventoryId);
-      res.json(divergentItems);
-    } catch (error) {
-      console.error("Error fetching divergent inventory items:", error);
-      res.status(500).json({ message: "Failed to fetch divergent inventory items" });
-    }
-  });
+  app.get(
+    "/api/inventories/:id/items/divergent",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        const divergentItems =
+          await storage.getDivergentInventoryItems(inventoryId);
+        res.json(divergentItems);
+      } catch (error) {
+        console.error("Error fetching divergent inventory items:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch divergent inventory items" });
+      }
+    },
+  );
 
   // Validate inventory can transition from audit_mode to closed
-  app.post("/api/inventories/:id/validate-closure", hasAuditModeAccess, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
+  app.post(
+    "/api/inventories/:id/validate-closure",
+    hasAuditModeAccess,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
 
-      const inventory = await storage.getInventory(inventoryId);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        if (inventory.status !== "audit_mode") {
+          return res.status(400).json({
+            message: "Inventory must be in audit mode to validate closure",
+          });
+        }
+
+        // Check if all items have finalQuantity defined
+        const items = await storage.getInventoryItemsByInventory(inventoryId);
+        const itemsWithoutFinalQuantity = items.filter(
+          (item) =>
+            item.finalQuantity === null || item.finalQuantity === undefined,
+        );
+
+        const canClose = itemsWithoutFinalQuantity.length === 0;
+
+        res.json({
+          canClose,
+          itemsWithoutFinalQuantity: itemsWithoutFinalQuantity.length,
+          totalItems: items.length,
+          message: canClose
+            ? "Inventory is ready to be closed"
+            : `${itemsWithoutFinalQuantity.length} items still need final quantity validation`,
+        });
+      } catch (error) {
+        console.error("Error validating inventory closure:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to validate inventory closure" });
       }
-
-      if (inventory.status !== 'audit_mode') {
-        return res.status(400).json({ message: "Inventory must be in audit mode to validate closure" });
-      }
-
-      // Check if all items have finalQuantity defined
-      const items = await storage.getInventoryItemsByInventory(inventoryId);
-      const itemsWithoutFinalQuantity = items.filter(item => 
-        item.finalQuantity === null || item.finalQuantity === undefined
-      );
-
-      const canClose = itemsWithoutFinalQuantity.length === 0;
-
-      res.json({
-        canClose,
-        itemsWithoutFinalQuantity: itemsWithoutFinalQuantity.length,
-        totalItems: items.length,
-        message: canClose ? 
-          "Inventory is ready to be closed" : 
-          `${itemsWithoutFinalQuantity.length} items still need final quantity validation`
-      });
-    } catch (error) {
-      console.error("Error validating inventory closure:", error);
-      res.status(500).json({ message: "Failed to validate inventory closure" });
-    }
-  });
+    },
+  );
 
   // ================= TEST ROUTES =================
 
   // Create test inventory with predefined scenarios
-  app.post("/api/test/create-inventory", isAuthenticated, async (req: any, res) => {
-    try {
-      const { scenarioId } = req.body;
-      storage = await getStorage();
+  app.post(
+    "/api/test/create-inventory",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { scenarioId } = req.body;
+        storage = await getStorage();
 
-      // Create test inventory based on scenario
-      const testInventory = await storage.createInventory({
-        code: `TEST-${scenarioId.toUpperCase()}-${Date.now()}`,
-        description: `Inventário de teste para ${scenarioId}`,
-        typeId: 1, // Default type
-        status: 'open',
-        userId: req.user.id,
-        selectedLocationIds: [1, 2], // Test locations
-        selectedCategoryIds: [1, 2], // Test categories
-        predictedEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
-      });
-
-      // Create test inventory items with different scenarios
-      const products = await storage.getProducts();
-      const testProducts = products.slice(0, 5); // Use first 5 products for testing
-
-      for (let i = 0; i < testProducts.length; i++) {
-        const product = testProducts[i];
-        await storage.createInventoryItem({
-          inventoryId: testInventory.id,
-          productId: product.id,
-          locationId: 1, // Default location
-          expectedQuantity: 10 + i, // Different expected quantities
+        // Create test inventory based on scenario
+        const testInventory = await storage.createInventory({
+          code: `TEST-${scenarioId.toUpperCase()}-${Date.now()}`,
+          description: `Inventário de teste para ${scenarioId}`,
+          typeId: 1, // Default type
+          status: "open",
+          userId: req.user.id,
+          selectedLocationIds: [1, 2], // Test locations
+          selectedCategoryIds: [1, 2], // Test categories
+          predictedEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
         });
-      }
 
-      res.json({ 
-        id: testInventory.id,
-        code: testInventory.code,
-        message: "Test inventory created successfully" 
-      });
-    } catch (error) {
-      console.error("Error creating test inventory:", error);
-      res.status(500).json({ message: "Failed to create test inventory" });
-    }
-  });
+        // Create test inventory items with different scenarios
+        const products = await storage.getProducts();
+        const testProducts = products.slice(0, 5); // Use first 5 products for testing
+
+        for (let i = 0; i < testProducts.length; i++) {
+          const product = testProducts[i];
+          await storage.createInventoryItem({
+            inventoryId: testInventory.id,
+            productId: product.id,
+            locationId: 1, // Default location
+            expectedQuantity: 10 + i, // Different expected quantities
+          });
+        }
+
+        res.json({
+          id: testInventory.id,
+          code: testInventory.code,
+          message: "Test inventory created successfully",
+        });
+      } catch (error) {
+        console.error("Error creating test inventory:", error);
+        res.status(500).json({ message: "Failed to create test inventory" });
+      }
+    },
+  );
 
   // Run specific test scenario
   app.post("/api/test/run-scenario", isAuthenticated, async (req: any, res) => {
@@ -1643,28 +1895,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { scenarioId, inventoryId } = req.body;
       storage = await getStorage();
 
-      let result = { scenarioId, passed: false, message: "Test not implemented" };
+      let result = {
+        scenarioId,
+        passed: false,
+        message: "Test not implemented",
+      };
 
       switch (scenarioId) {
-        case 'scenario_1':
+        case "scenario_1":
           result = await runScenario1(storage, inventoryId, req.user.id);
           break;
-        case 'scenario_2':
+        case "scenario_2":
           result = await runScenario2(storage, inventoryId, req.user.id);
           break;
-        case 'scenario_3':
+        case "scenario_3":
           result = await runScenario3(storage, inventoryId, req.user.id);
           break;
-        case 'scenario_4':
+        case "scenario_4":
           result = await runScenario4(storage, inventoryId, req.user.id);
           break;
-        case 'validation_1':
+        case "validation_1":
           result = await validateStatusTransitions(storage, inventoryId);
           break;
-        case 'validation_2':
+        case "validation_2":
           result = await validateAuditMode(storage, inventoryId);
           break;
-        case 'validation_3':
+        case "validation_3":
           result = await validateFinalQuantityUpdate(storage, inventoryId);
           break;
         default:
@@ -1674,103 +1930,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error(`Error running scenario ${req.body.scenarioId}:`, error);
-      res.status(500).json({ 
+      res.status(500).json({
         scenarioId: req.body.scenarioId,
         passed: false,
-        message: `Test failed with error: ${error.message}` 
+        message: `Test failed with error: ${error.message}`,
       });
     }
   });
 
   // Validate permissions for different user roles
-  app.post("/api/test/validate-permissions/:inventoryId", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventoryId = parseInt(req.params.id);
-      storage = await getStorage();
+  app.post(
+    "/api/test/validate-permissions/:inventoryId",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
 
-      const results = [
-        await validateNormalUserPermissions(storage, inventoryId),
-        await validateAuditModePermissions(storage, inventoryId)
-      ];
+        const results = [
+          await validateNormalUserPermissions(storage, inventoryId),
+          await validateAuditModePermissions(storage, inventoryId),
+        ];
 
-      res.json(results);
-    } catch (error) {
-      console.error("Error validating permissions:", error);
-      res.status(500).json({ message: "Failed to validate permissions" });
-    }
-  });
+        res.json(results);
+      } catch (error) {
+        console.error("Error validating permissions:", error);
+        res.status(500).json({ message: "Failed to validate permissions" });
+      }
+    },
+  );
 
   // Testing and Validation Routes
-  app.post("/api/test/run-scenario/:scenarioId", isAuthenticated, async (req, res) => {
-    try {
-      const { scenarioId } = req.params;
-      const startTime = Date.now();
+  app.post(
+    "/api/test/run-scenario/:scenarioId",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const { scenarioId } = req.params;
+        const startTime = Date.now();
 
-      let testResults: any[] = [];
-      let success = true;
-      let message = "";
+        let testResults: any[] = [];
+        let success = true;
+        let message = "";
 
-      switch (scenarioId) {
-        case 'scenario-1':
-          // Test C1=C2=Estoque (Auto approval)
-          const result1 = await testScenario1(storage);
-          testResults = result1.results;
-          success = result1.success;
-          message = result1.message;
-          break;
+        switch (scenarioId) {
+          case "scenario-1":
+            // Test C1=C2=Estoque (Auto approval)
+            const result1 = await testScenario1(storage);
+            testResults = result1.results;
+            success = result1.success;
+            message = result1.message;
+            break;
 
-        case 'scenario-2':
-          // Test C1=C2≠Estoque (Consistent discrepancy)
-          const result2 = await testScenario2(storage);
-          testResults = result2.results;
-          success = result2.success;
-          message = result2.message;
-          break;
+          case "scenario-2":
+            // Test C1=C2≠Estoque (Consistent discrepancy)
+            const result2 = await testScenario2(storage);
+            testResults = result2.results;
+            success = result2.success;
+            message = result2.message;
+            break;
 
-        case 'scenario-3':
-          // Test C1≠C2≠Estoque (Third count required)
-          const result3 = await testScenario3(storage);
-          testResults = result3.results;
-          success = result3.success;  
-          message = result3.message;
-          break;
+          case "scenario-3":
+            // Test C1≠C2≠Estoque (Third count required)
+            const result3 = await testScenario3(storage);
+            testResults = result3.results;
+            success = result3.success;
+            message = result3.message;
+            break;
 
-        case 'scenario-4':
-          // Test Audit process (Mesa de Controle)
-          const result4 = await testScenario4(storage, req.user);
-          testResults = result4.results;
-          success = result4.success;
-          message = result4.message;
-          break;
+          case "scenario-4":
+            // Test Audit process (Mesa de Controle)
+            const result4 = await testScenario4(storage, req.user);
+            testResults = result4.results;
+            success = result4.success;
+            message = result4.message;
+            break;
 
-        default:
-          return res.status(400).json({ message: "Invalid scenario ID" });
+          default:
+            return res.status(400).json({ message: "Invalid scenario ID" });
+        }
+
+        const duration = Date.now() - startTime;
+
+        res.json({
+          success,
+          message,
+          results: testResults,
+          duration,
+          scenarioId,
+        });
+      } catch (error) {
+        console.error("Error running test scenario:", error);
+        res.status(500).json({ message: "Failed to run test scenario" });
       }
+    },
+  );
 
-      const duration = Date.now() - startTime;
-
-      res.json({
-        success,
-        message,
-        results: testResults,
-        duration,
-        scenarioId
-      });
-    } catch (error) {
-      console.error("Error running test scenario:", error);
-      res.status(500).json({ message: "Failed to run test scenario" });
-    }
-  });
-
-  app.post("/api/test/validate-permissions", isAuthenticated, async (req, res) => {
-    try {
-      const results = await validatePermissions(storage, req.user);
-      res.json({ results });
-    } catch (error) {
-      console.error("Error validating permissions:", error);
-      res.status(500).json({ message: "Failed to validate permissions" });
-    }
-  });
+  app.post(
+    "/api/test/validate-permissions",
+    isAuthenticated,
+    async (req, res) => {
+      try {
+        const results = await validatePermissions(storage, req.user);
+        res.json({ results });
+      } catch (error) {
+        console.error("Error validating permissions:", error);
+        res.status(500).json({ message: "Failed to validate permissions" });
+      }
+    },
+  );
 
   app.post("/api/test/validate-status", isAuthenticated, async (req, res) => {
     try {
@@ -1778,7 +2046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ results });
     } catch (error) {
       console.error("Error validating status transitions:", error);
-      res.status(500).json({ message: "Failed to validate status transitions" });
+      res
+        .status(500)
+        .json({ message: "Failed to validate status transitions" });
     }
   });
 
@@ -1797,28 +2067,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const statusTransitions = await validateStatusTransitions(storage);
 
       const scenarios = [
-        { id: 'scenario-1', ...scenario1, duration: Date.now() - startTime },
-        { id: 'scenario-2', ...scenario2, duration: Date.now() - startTime },
-        { id: 'scenario-3', ...scenario3, duration: Date.now() - startTime },
-        { id: 'scenario-4', ...scenario4, duration: Date.now() - startTime },
+        { id: "scenario-1", ...scenario1, duration: Date.now() - startTime },
+        { id: "scenario-2", ...scenario2, duration: Date.now() - startTime },
+        { id: "scenario-3", ...scenario3, duration: Date.now() - startTime },
+        { id: "scenario-4", ...scenario4, duration: Date.now() - startTime },
       ];
 
       const allTests = [...scenarios, ...permissions, ...statusTransitions];
-      const passed = allTests.filter(t => t.status === 'passed' || t.success).length;
+      const passed = allTests.filter(
+        (t) => t.status === "passed" || t.success,
+      ).length;
       const total = allTests.length;
 
       res.json({
-        scenarios: scenarios.map(s => ({ 
-          id: s.id, 
-          status: s.success ? 'passed' : 'failed',
+        scenarios: scenarios.map((s) => ({
+          id: s.id,
+          status: s.success ? "passed" : "failed",
           results: s.results,
-          duration: s.duration
+          duration: s.duration,
         })),
         permissions,
         statusTransitions,
         passed,
         total,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       });
     } catch (error) {
       console.error("Error running all tests:", error);
@@ -1841,14 +2113,14 @@ async function testScenario1(storage: any) {
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
-      status: 'open'
+      status: "open",
     });
 
     results.push({
       step: "Criar inventário de teste",
       expected: "Inventário criado com status 'open'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
-      status: testInventory.status === 'open' ? 'passed' : 'failed'
+      status: testInventory.status === "open" ? "passed" : "failed",
     });
 
     // Get test items
@@ -1857,7 +2129,7 @@ async function testScenario1(storage: any) {
       return {
         success: false,
         message: "Nenhum item encontrado no inventário de teste",
-        results
+        results,
       };
     }
 
@@ -1872,52 +2144,56 @@ async function testScenario1(storage: any) {
       step: "Registrar C1 = C2 = Estoque",
       expected: `C1=${expectedQty}, C2=${expectedQty}, Estoque=${expectedQty}`,
       actual: `C1=${expectedQty}, C2=${expectedQty}, Estoque=${expectedQty}`,
-      status: 'passed'
+      status: "passed",
     });
 
     // Check if finalQuantity was set automatically
-    const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
-    const updatedItem = updatedItems.find(item => item.id === testItem.id);
+    const updatedItems = await storage.getInventoryItemsByInventory(
+      testInventory.id,
+    );
+    const updatedItem = updatedItems.find((item) => item.id === testItem.id);
 
     const finalQtyCorrect = updatedItem.finalQuantity === expectedQty;
     results.push({
       step: "Verificar finalQuantity automática",
       expected: `finalQuantity = ${expectedQty}`,
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
-      status: finalQtyCorrect ? 'passed' : 'failed'
+      status: finalQtyCorrect ? "passed" : "failed",
     });
 
     return {
       success: finalQtyCorrect,
-      message: finalQtyCorrect ? "Cenário 1 passou: C1=C2=Estoque → Aprovação automática" : "Cenário 1 falhou",
-      results
+      message: finalQtyCorrect
+        ? "Cenário 1 passou: C1=C2=Estoque → Aprovação automática"
+        : "Cenário 1 falhou",
+      results,
     };
   } catch (error) {
     return {
       success: false,
       message: `Erro no Cenário 1: ${error.message}`,
-      results: []
+      results: [],
     };
   }
 }
 
 async function testScenario2(storage: any) {
   try {
-    // Test C1=C2≠Estoque (Consistent discrepancy)  
+    // Test C1=C2≠Estoque (Consistent discrepancy)
     const results = [];
 
     const inventoryType = await storage.getInventoryTypes();
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
-      status: 'open'
+      status: "open",
     });
 
     results.push({
       step: "Criar inventário de teste",
-      expected: "Inventário criado com status 'open'", 
+      expected: "Inventário criado com status 'open'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
-      status: testInventory.status === 'open' ? 'passed' : 'failed'
+      status: testInventory.status === "open" ? "passed" : "failed",
     });
 
     const items = await storage.getInventoryItemsByInventory(testInventory.id);
@@ -1925,7 +2201,7 @@ async function testScenario2(storage: any) {
       return {
         success: false,
         message: "Nenhum item encontrado no inventário de teste",
-        results
+        results,
       };
     }
 
@@ -1941,31 +2217,35 @@ async function testScenario2(storage: any) {
       step: "Registrar C1 = C2 ≠ Estoque",
       expected: `C1=${countedQty}, C2=${countedQty}, Estoque=${expectedQty}`,
       actual: `C1=${countedQty}, C2=${countedQty}, Estoque=${expectedQty}`,
-      status: 'passed'
+      status: "passed",
     });
 
     // Check if finalQuantity = C2 (not expectedQuantity)
-    const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
-    const updatedItem = updatedItems.find(item => item.id === testItem.id);
+    const updatedItems = await storage.getInventoryItemsByInventory(
+      testInventory.id,
+    );
+    const updatedItem = updatedItems.find((item) => item.id === testItem.id);
 
     const finalQtyCorrect = updatedItem.finalQuantity === countedQty;
     results.push({
       step: "Verificar finalQuantity = C2",
       expected: `finalQuantity = ${countedQty}`,
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
-      status: finalQtyCorrect ? 'passed' : 'failed'
+      status: finalQtyCorrect ? "passed" : "failed",
     });
 
     return {
       success: finalQtyCorrect,
-      message: finalQtyCorrect ? "Cenário 2 passou: C1=C2≠Estoque → finalQuantity=C2" : "Cenário 2 falhou",
-      results
+      message: finalQtyCorrect
+        ? "Cenário 2 passou: C1=C2≠Estoque → finalQuantity=C2"
+        : "Cenário 2 falhou",
+      results,
     };
   } catch (error) {
     return {
       success: false,
       message: `Erro no Cenário 2: ${error.message}`,
-      results: []
+      results: [],
     };
   }
 }
@@ -1979,14 +2259,14 @@ async function testScenario3(storage: any) {
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
-      status: 'open'
+      status: "open",
     });
 
     results.push({
       step: "Criar inventário de teste",
       expected: "Inventário criado com status 'open'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
-      status: testInventory.status === 'open' ? 'passed' : 'failed'
+      status: testInventory.status === "open" ? "passed" : "failed",
     });
 
     const items = await storage.getInventoryItemsByInventory(testInventory.id);
@@ -1994,7 +2274,7 @@ async function testScenario3(storage: any) {
       return {
         success: false,
         message: "Nenhum item encontrado no inventário de teste",
-        results
+        results,
       };
     }
 
@@ -2011,31 +2291,35 @@ async function testScenario3(storage: any) {
       step: "Registrar C1 ≠ C2 ≠ Estoque",
       expected: `C1=${count1Qty}, C2=${count2Qty}, Estoque=${expectedQty}`,
       actual: `C1=${count1Qty}, C2=${count2Qty}, Estoque=${expectedQty}`,
-      status: 'passed'
+      status: "passed",
     });
 
     // Check if finalQuantity is null (needs third count)
-    const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
-    const updatedItem = updatedItems.find(item => item.id === testItem.id);
+    const updatedItems = await storage.getInventoryItemsByInventory(
+      testInventory.id,
+    );
+    const updatedItem = updatedItems.find((item) => item.id === testItem.id);
 
     const finalQtyNull = updatedItem.finalQuantity === null;
     results.push({
       step: "Verificar finalQuantity = null (precisa C3)",
       expected: "finalQuantity = null",
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
-      status: finalQtyNull ? 'passed' : 'failed'
+      status: finalQtyNull ? "passed" : "failed",
     });
 
     return {
       success: finalQtyNull,
-      message: finalQtyNull ? "Cenário 3 passou: C1≠C2≠Estoque → finalQuantity=null" : "Cenário 3 falhou",
-      results
+      message: finalQtyNull
+        ? "Cenário 3 passou: C1≠C2≠Estoque → finalQuantity=null"
+        : "Cenário 3 falhou",
+      results,
     };
   } catch (error) {
     return {
       success: false,
       message: `Erro no Cenário 3: ${error.message}`,
-      results: []
+      results: [],
     };
   }
 }
@@ -2049,29 +2333,33 @@ async function testScenario4(storage: any, user: any) {
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
-      status: 'audit_mode'
+      status: "audit_mode",
     });
 
     results.push({
       step: "Criar inventário em audit_mode",
       expected: "Inventário criado com status 'audit_mode'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
-      status: testInventory.status === 'audit_mode' ? 'passed' : 'failed'
+      status: testInventory.status === "audit_mode" ? "passed" : "failed",
     });
 
     // Check user permissions
     const userRole = user?.role?.toLowerCase();
-    const hasAuditAccess = ['admin', 'gerente', 'supervisor'].includes(userRole);
+    const hasAuditAccess = ["admin", "gerente", "supervisor"].includes(
+      userRole,
+    );
 
     results.push({
       step: "Verificar permissões do usuário",
       expected: "Usuário deve ter acesso de auditoria",
       actual: `Usuário ${user?.username} tem role '${userRole}' - Acesso: ${hasAuditAccess}`,
-      status: hasAuditAccess ? 'passed' : 'failed'
+      status: hasAuditAccess ? "passed" : "failed",
     });
 
     if (hasAuditAccess) {
-      const items = await storage.getInventoryItemsByInventory(testInventory.id);
+      const items = await storage.getInventoryItemsByInventory(
+        testInventory.id,
+      );
       if (items.length > 0) {
         const testItem = items[0];
         const count4Value = 150;
@@ -2079,8 +2367,12 @@ async function testScenario4(storage: any, user: any) {
         // Test count4 update
         await storage.updateCount4(testItem.id, count4Value, user.id);
 
-        const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
-        const updatedItem = updatedItems.find(item => item.id === testItem.id);
+        const updatedItems = await storage.getInventoryItemsByInventory(
+          testInventory.id,
+        );
+        const updatedItem = updatedItems.find(
+          (item) => item.id === testItem.id,
+        );
 
         const count4Updated = updatedItem.count4 === count4Value;
         const finalQtyUpdated = updatedItem.finalQuantity === count4Value;
@@ -2089,21 +2381,23 @@ async function testScenario4(storage: any, user: any) {
           step: "Atualizar count4",
           expected: `count4 = ${count4Value}, finalQuantity = ${count4Value}`,
           actual: `count4 = ${updatedItem.count4}, finalQuantity = ${updatedItem.finalQuantity}`,
-          status: count4Updated && finalQtyUpdated ? 'passed' : 'failed'
+          status: count4Updated && finalQtyUpdated ? "passed" : "failed",
         });
       }
     }
 
     return {
-      success: results.every(r => r.status === 'passed'),
-      message: hasAuditAccess ? "Cenário 4 passou: Auditoria funciona corretamente" : "Cenário 4 falhou: Sem permissão",
-      results
+      success: results.every((r) => r.status === "passed"),
+      message: hasAuditAccess
+        ? "Cenário 4 passou: Auditoria funciona corretamente"
+        : "Cenário 4 falhou: Sem permissão",
+      results,
     };
   } catch (error) {
     return {
       success: false,
       message: `Erro no Cenário 4: ${error.message}`,
-      results: []
+      results: [],
     };
   }
 }
@@ -2113,43 +2407,44 @@ async function validatePermissions(storage: any, user: any) {
 
   try {
     const userRole = user?.role?.toLowerCase();
-    const hasAuditAccess = ['admin', 'gerente', 'supervisor'].includes(userRole);
+    const hasAuditAccess = ["admin", "gerente", "supervisor"].includes(
+      userRole,
+    );
 
     results.push({
-      id: 'perm-1',
-      status: !hasAuditAccess ? 'passed' : 'passed', // Normal users can't access audit_mode
-      message: `Usuário '${userRole}' ${hasAuditAccess ? 'tem' : 'não tem'} acesso a audit_mode`
+      id: "perm-1",
+      status: !hasAuditAccess ? "passed" : "passed", // Normal users can't access audit_mode
+      message: `Usuário '${userRole}' ${hasAuditAccess ? "tem" : "não tem"} acesso a audit_mode`,
     });
 
     results.push({
-      id: 'perm-2',
-      status: userRole === 'admin' ? 'passed' : 'pending',
-      message: `Admin ${userRole === 'admin' ? 'pode' : 'não pode'} alterar count4`
+      id: "perm-2",
+      status: userRole === "admin" ? "passed" : "pending",
+      message: `Admin ${userRole === "admin" ? "pode" : "não pode"} alterar count4`,
     });
 
     results.push({
-      id: 'perm-3', 
-      status: userRole === 'gerente' ? 'passed' : 'pending',
-      message: `Gerente ${userRole === 'gerente' ? 'pode' : 'não pode'} alterar count4`
+      id: "perm-3",
+      status: userRole === "gerente" ? "passed" : "pending",
+      message: `Gerente ${userRole === "gerente" ? "pode" : "não pode"} alterar count4`,
     });
 
     results.push({
-      id: 'perm-4',
-      status: userRole === 'supervisor' ? 'passed' : 'pending', 
-      message: `Supervisor ${userRole === 'supervisor' ? 'pode' : 'não pode'} alterar count4`
+      id: "perm-4",
+      status: userRole === "supervisor" ? "passed" : "pending",
+      message: `Supervisor ${userRole === "supervisor" ? "pode" : "não pode"} alterar count4`,
     });
 
     results.push({
-      id: 'perm-5',
-      status: 'passed',
-      message: 'count4 atualiza automaticamente finalQuantity (implementado)'
+      id: "perm-5",
+      status: "passed",
+      message: "count4 atualiza automaticamente finalQuantity (implementado)",
     });
-
   } catch (error) {
     results.push({
-      id: 'perm-error',
-      status: 'failed',
-      message: `Erro na validação de permissões: ${error.message}`
+      id: "perm-error",
+      status: "failed",
+      message: `Erro na validação de permissões: ${error.message}`,
     });
   }
 
@@ -2161,34 +2456,36 @@ async function validateStatusTransitions(storage: any) {
 
   try {
     results.push({
-      id: 'status-1',
-      status: 'passed',
-      message: 'count2_closed → count2_completed quando todos têm finalQuantity (implementado)'
+      id: "status-1",
+      status: "passed",
+      message:
+        "count2_closed → count2_completed quando todos têm finalQuantity (implementado)",
     });
 
     results.push({
-      id: 'status-2', 
-      status: 'passed',
-      message: 'count2_closed → count3_required quando há itens sem finalQuantity (implementado)'
+      id: "status-2",
+      status: "passed",
+      message:
+        "count2_closed → count3_required quando há itens sem finalQuantity (implementado)",
     });
 
     results.push({
-      id: 'status-3',
-      status: 'passed', 
-      message: 'count3_closed → audit_mode automaticamente (implementado)'
+      id: "status-3",
+      status: "passed",
+      message: "count3_closed → audit_mode automaticamente (implementado)",
     });
 
     results.push({
-      id: 'status-4',
-      status: 'passed',
-      message: 'audit_mode → closed quando todos têm finalQuantity (implementado)'
+      id: "status-4",
+      status: "passed",
+      message:
+        "audit_mode → closed quando todos têm finalQuantity (implementado)",
     });
-
   } catch (error) {
     results.push({
-      id: 'status-error',
-      status: 'failed',
-      message: `Erro na validação de transições: ${error.message}`
+      id: "status-error",
+      status: "failed",
+      message: `Erro na validação de transições: ${error.message}`,
     });
   }
 
@@ -2205,11 +2502,15 @@ async function runScenario1(storage: any, inventoryId: number, userId: number) {
     const inventory = await storage.getInventory(inventoryId);
 
     if (!inventory || items.length === 0) {
-      return { scenarioId: 'scenario_1', passed: false, message: "Inventory or items not found" };
+      return {
+        scenarioId: "scenario_1",
+        passed: false,
+        message: "Inventory or items not found",
+      };
     }
 
     // Start first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count1_open", userId);
 
     // Set C1 = expected quantity for all items
     for (const item of items) {
@@ -2217,10 +2518,14 @@ async function runScenario1(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count1_closed",
+      userId,
+    );
 
     // Start second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count2_open", userId);
 
     // Set C2 = expected quantity (same as C1)
     for (const item of items) {
@@ -2228,24 +2533,28 @@ async function runScenario1(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count2_closed",
+      userId,
+    );
 
     // Check if inventory automatically transitioned to completed
     const updatedInventory = await storage.getInventory(inventoryId);
-    const shouldBeCompleted = updatedInventory.status === 'count2_completed';
+    const shouldBeCompleted = updatedInventory.status === "count2_completed";
 
     return {
-      scenarioId: 'scenario_1',
+      scenarioId: "scenario_1",
       passed: shouldBeCompleted,
-      message: shouldBeCompleted ? 
-        "Test passed: Inventory automatically completed when C1=C2=Stock" :
-        `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`
+      message: shouldBeCompleted
+        ? "Test passed: Inventory automatically completed when C1=C2=Stock"
+        : `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`,
     };
   } catch (error) {
-    return { 
-      scenarioId: 'scenario_1', 
-      passed: false, 
-      message: `Test failed with error: ${error.message}` 
+    return {
+      scenarioId: "scenario_1",
+      passed: false,
+      message: `Test failed with error: ${error.message}`,
     };
   }
 }
@@ -2257,11 +2566,15 @@ async function runScenario2(storage: any, inventoryId: number, userId: number) {
     const inventory = await storage.getInventory(inventoryId);
 
     if (!inventory || items.length === 0) {
-      return { scenarioId: 'scenario_2', passed: false, message: "Inventory or items not found" };
+      return {
+        scenarioId: "scenario_2",
+        passed: false,
+        message: "Inventory or items not found",
+      };
     }
 
     // Start first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count1_open", userId);
 
     // Set C1 = expected quantity + 5 (different from stock)
     for (const item of items) {
@@ -2269,10 +2582,14 @@ async function runScenario2(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count1_closed",
+      userId,
+    );
 
     // Start second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count2_open", userId);
 
     // Set C2 = same as C1 (consistent discrepancy)
     for (const item of items) {
@@ -2280,24 +2597,28 @@ async function runScenario2(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count2_closed",
+      userId,
+    );
 
     // Check if inventory transitioned to completed (C1=C2 even if different from stock)
     const updatedInventory = await storage.getInventory(inventoryId);
-    const shouldBeCompleted = updatedInventory.status === 'count2_completed';
+    const shouldBeCompleted = updatedInventory.status === "count2_completed";
 
     return {
-      scenarioId: 'scenario_2',
+      scenarioId: "scenario_2",
       passed: shouldBeCompleted,
-      message: shouldBeCompleted ? 
-        "Test passed: Inventory completed when C1=C2 (consistent discrepancy)" :
-        `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`
+      message: shouldBeCompleted
+        ? "Test passed: Inventory completed when C1=C2 (consistent discrepancy)"
+        : `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`,
     };
   } catch (error) {
-    return { 
-      scenarioId: 'scenario_2', 
-      passed: false, 
-      message: `Test failed with error: ${error.message}` 
+    return {
+      scenarioId: "scenario_2",
+      passed: false,
+      message: `Test failed with error: ${error.message}`,
     };
   }
 }
@@ -2309,11 +2630,15 @@ async function runScenario3(storage: any, inventoryId: number, userId: number) {
     const inventory = await storage.getInventory(inventoryId);
 
     if (!inventory || items.length === 0) {
-      return { scenarioId: 'scenario_3', passed: false, message: "Inventory or items not found" };
+      return {
+        scenarioId: "scenario_3",
+        passed: false,
+        message: "Inventory or items not found",
+      };
     }
 
     // Start first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count1_open", userId);
 
     // Set C1 = expected quantity + 3
     for (const item of items) {
@@ -2321,10 +2646,14 @@ async function runScenario3(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close first counting
-    await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count1_closed",
+      userId,
+    );
 
     // Start second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count2_open", userId);
 
     // Set C2 = expected quantity + 7 (different from both C1 and stock)
     for (const item of items) {
@@ -2332,24 +2661,28 @@ async function runScenario3(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close second counting
-    await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count2_closed",
+      userId,
+    );
 
     // Check if inventory requires third count
     const updatedInventory = await storage.getInventory(inventoryId);
-    const requiresThirdCount = updatedInventory.status === 'count3_required';
+    const requiresThirdCount = updatedInventory.status === "count3_required";
 
     return {
-      scenarioId: 'scenario_3',
+      scenarioId: "scenario_3",
       passed: requiresThirdCount,
-      message: requiresThirdCount ? 
-        "Test passed: Third count required when C1≠C2≠Stock" :
-        `Test failed: Expected status 'count3_required', got '${updatedInventory.status}'`
+      message: requiresThirdCount
+        ? "Test passed: Third count required when C1≠C2≠Stock"
+        : `Test failed: Expected status 'count3_required', got '${updatedInventory.status}'`,
     };
   } catch (error) {
-    return { 
-      scenarioId: 'scenario_3', 
-      passed: false, 
-      message: `Test failed with error: ${error.message}` 
+    return {
+      scenarioId: "scenario_3",
+      passed: false,
+      message: `Test failed with error: ${error.message}`,
     };
   }
 }
@@ -2363,7 +2696,7 @@ async function runScenario4(storage: any, inventoryId: number, userId: number) {
     await runScenario3(storage, inventoryId, userId);
 
     // Start third counting
-    await storage.transitionInventoryStatus(inventoryId, 'count3_open', userId);
+    await storage.transitionInventoryStatus(inventoryId, "count3_open", userId);
 
     // Set C3 values
     for (const item of items) {
@@ -2371,17 +2704,21 @@ async function runScenario4(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close third counting
-    await storage.transitionInventoryStatus(inventoryId, 'count3_closed', userId);
+    await storage.transitionInventoryStatus(
+      inventoryId,
+      "count3_closed",
+      userId,
+    );
 
     // Should transition to audit mode
     const auditInventory = await storage.getInventory(inventoryId);
-    const inAuditMode = auditInventory.status === 'audit_mode';
+    const inAuditMode = auditInventory.status === "audit_mode";
 
     if (!inAuditMode) {
       return {
-        scenarioId: 'scenario_4',
+        scenarioId: "scenario_4",
         passed: false,
-        message: `Test failed: Expected 'audit_mode', got '${auditInventory.status}'`
+        message: `Test failed: Expected 'audit_mode', got '${auditInventory.status}'`,
       };
     }
 
@@ -2391,23 +2728,23 @@ async function runScenario4(storage: any, inventoryId: number, userId: number) {
     }
 
     // Close inventory
-    await storage.transitionInventoryStatus(inventoryId, 'closed', userId);
+    await storage.transitionInventoryStatus(inventoryId, "closed", userId);
 
     const finalInventory = await storage.getInventory(inventoryId);
-    const isClosed = finalInventory.status === 'closed';
+    const isClosed = finalInventory.status === "closed";
 
     return {
-      scenarioId: 'scenario_4',
+      scenarioId: "scenario_4",
       passed: isClosed,
-      message: isClosed ? 
-        "Test passed: Complete audit process executed successfully" :
-        `Test failed: Expected status 'closed', got '${finalInventory.status}'`
+      message: isClosed
+        ? "Test passed: Complete audit process executed successfully"
+        : `Test failed: Expected status 'closed', got '${finalInventory.status}'`,
     };
   } catch (error) {
-    return { 
-      scenarioId: 'scenario_4', 
-      passed: false, 
-      message: `Test failed with error: ${error.message}` 
+    return {
+      scenarioId: "scenario_4",
+      passed: false,
+      message: `Test failed with error: ${error.message}`,
     };
   }
 }
@@ -2418,23 +2755,23 @@ async function runScenario4(storage: any, inventoryId: number, userId: number) {
 async function validateAuditMode(storage: any, inventoryId: number) {
   try {
     // Set inventory to audit mode for testing
-    await storage.transitionInventoryStatus(inventoryId, 'audit_mode', 1);
+    await storage.transitionInventoryStatus(inventoryId, "audit_mode", 1);
 
     const inventory = await storage.getInventory(inventoryId);
-    const isInAuditMode = inventory.status === 'audit_mode';
+    const isInAuditMode = inventory.status === "audit_mode";
 
     return {
-      scenarioId: 'validation_2',
+      scenarioId: "validation_2",
       passed: isInAuditMode,
-      message: isInAuditMode ? 
-        "Test passed: Audit mode transition works correctly" :
-        "Test failed: Could not transition to audit mode"
+      message: isInAuditMode
+        ? "Test passed: Audit mode transition works correctly"
+        : "Test failed: Could not transition to audit mode",
     };
   } catch (error) {
-    return { 
-      scenarioId: 'validation_2', 
-      passed: false, 
-      message: `Validation failed: ${error.message}` 
+    return {
+      scenarioId: "validation_2",
+      passed: false,
+      message: `Validation failed: ${error.message}`,
     };
   }
 }
@@ -2445,7 +2782,11 @@ async function validateFinalQuantityUpdate(storage: any, inventoryId: number) {
     const items = await storage.getInventoryItemsByInventory(inventoryId);
 
     if (items.length === 0) {
-      return { scenarioId: 'validation_3', passed: false, message: "No items found" };
+      return {
+        scenarioId: "validation_3",
+        passed: false,
+        message: "No items found",
+      };
     }
 
     const testItem = items[0];
@@ -2455,40 +2796,47 @@ async function validateFinalQuantityUpdate(storage: any, inventoryId: number) {
     await storage.updateCount4(testItem.id, testQuantity, 1);
 
     // Check if finalQuantity was updated
-    const updatedItems = await storage.getInventoryItemsByInventory(inventoryId);
-    const updatedItem = updatedItems.find(item => item.id === testItem.id);
+    const updatedItems =
+      await storage.getInventoryItemsByInventory(inventoryId);
+    const updatedItem = updatedItems.find((item) => item.id === testItem.id);
 
-    const finalQuantityUpdated = updatedItem && updatedItem.finalQuantity === testQuantity;
+    const finalQuantityUpdated =
+      updatedItem && updatedItem.finalQuantity === testQuantity;
 
     return {
-      scenarioId: 'validation_3',
+      scenarioId: "validation_3",
       passed: finalQuantityUpdated,
-      message: finalQuantityUpdated ? 
-        "Test passed: count4 automatically updates finalQuantity" :
-        "Test failed: finalQuantity not updated when count4 changed"
+      message: finalQuantityUpdated
+        ? "Test passed: count4 automatically updates finalQuantity"
+        : "Test failed: finalQuantity not updated when count4 changed",
     };
   } catch (error) {
-    return { 
-      scenarioId: 'validation_3', 
-      passed: false, 
-      message: `Validation failed: ${error.message}` 
+    return {
+      scenarioId: "validation_3",
+      passed: false,
+      message: `Validation failed: ${error.message}`,
     };
   }
 }
 
 // Permission Validations
-async function validateNormalUserPermissions(storage: any, inventoryId: number) {
+async function validateNormalUserPermissions(
+  storage: any,
+  inventoryId: number,
+) {
   return {
-    scenarioId: 'permission_1',
+    scenarioId: "permission_1",
     passed: true,
-    message: "Permission validation: Normal users restricted in audit_mode (to be implemented)"
+    message:
+      "Permission validation: Normal users restricted in audit_mode (to be implemented)",
   };
 }
 
 async function validateAuditModePermissions(storage: any, inventoryId: number) {
   return {
-    scenarioId: 'permission_2',
+    scenarioId: "permission_2",
     passed: true,
-    message: "Permission validation: Mesa de Controle can modify count4 (to be implemented)"
+    message:
+      "Permission validation: Mesa de Controle can modify count4 (to be implemented)",
   };
 }

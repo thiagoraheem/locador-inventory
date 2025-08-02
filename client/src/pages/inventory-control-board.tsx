@@ -913,7 +913,7 @@ export default function InventoryControlBoard() {
                                 <Input
                                   type="number"
                                   min="0"
-                                  step="0.01"
+                                  step="1"
                                   placeholder="Auditoria..."
                                   value={
                                     editingCount4[item.id] ?? item.count4 ?? ""
