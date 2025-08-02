@@ -846,7 +846,6 @@ export default function InventoryControlBoard() {
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
                       <SelectItem value="PENDING">Pendente</SelectItem>
-                      <SelectItem value="IN_PROGRESS">Em Progresso</SelectItem>
                       <SelectItem value="COMPLETED">Concluído</SelectItem>
                       <SelectItem value="DIVERGENT">Divergente</SelectItem>
                     </SelectContent>
@@ -1020,8 +1019,8 @@ export default function InventoryControlBoard() {
                         {
                           filteredItems.filter(
                             (item) =>
-                              item.count1 !== undefined &&
-                              item.count2 !== undefined,
+                              (selectedInventory.status === "count1_open" && item.count1 !== undefined && item.count1 !== null) ||
+                              (selectedInventory.status === "count2_open" && item.count2 !== undefined && item.count2 !== null),
                           ).length
                         }
                       </strong>
@@ -1034,12 +1033,8 @@ export default function InventoryControlBoard() {
                         {
                           filteredItems.filter(
                             (item) =>
-                              item.count1 !== undefined &&
-                              item.count2 !== undefined &&
-                              (Math.abs(item.count1 - item.expectedQuantity) >
-                                0 ||
-                                Math.abs(item.count2 - item.expectedQuantity) >
-                                  0),
+                            (selectedInventory.status === "count1_open" && item.count1 !== undefined && item.count1 !== null && (Math.abs(item.count1 - item.expectedQuantity) > 0)) ||
+                            (selectedInventory.status === "count2_open" && item.count2 !== undefined && item.count2 !== null && (Math.abs(item.count2 - item.expectedQuantity) > 0)),
                           ).length
                         }
                       </strong>
