@@ -216,4 +216,45 @@
   .print\\:max-h-none {
     max-height: none;
   }
+
+  /* Enhanced print styles for inventory final report */
+  .print\\:space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem;
+  }
+
+  .print\\:mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  .print\\:text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  /* Color adjustments for print */
+  .print\\:text-black {
+    color: #000000 !important;
+  }
+
+  .print\\:bg-white {
+    background-color: #ffffff !important;
+  }
+
+  /* Ensure proper page breaks */
+  .print\\:page-break-before {
+    page-break-before: always;
+  }
+
+  .print\\:page-break-after {
+    page-break-after: always;
+  }
+
+  /* Force dark mode elements to be visible in print */
+  .dark .print\\:text-black {
+    color: #000000 !important;
+  }
+
+  .dark .print\\:bg-white {
+    background-color: #ffffff !important;
+  }
 }

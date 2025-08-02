@@ -195,10 +195,49 @@ export interface ControlPanelStats {
 // Final Report interface for comprehensive inventory summary
 export interface InventoryFinalReport {
   inventoryId: number;
+  inventoryCode: string;
   inventoryName: string;
   status: string;
   startDate: number;
   endDate?: number;
+  totalTimeSpent: number; // in hours
+  type: {
+    id: number;
+    name: string;
+  };
+  createdBy: {
+    id: number;
+    name: string;
+  };
+  description?: string;
+  selectedLocations: Array<{
+    id: number;
+    name: string;
+  }>;
+  selectedCategories: Array<{
+    id: number;
+    name: string;
+  }>;
+  kpis: {
+    totalStock: number;
+    accuracyRate: number;
+    totalLossValue: number;
+  };
+  participants: Array<{
+    userId: number;
+    userName: string;
+    itemsCounted: number;
+    count1Items: number;
+    count2Items: number;
+    count3Items: number;
+    count4Items: number;
+  }>;
+  countingSummary: {
+    count1Items: number;
+    count2Items: number;
+    count3Items: number;
+    count4Items: number;
+  };
   totalItems: number;
   completedItems: number;
   accuracy: {
@@ -218,11 +257,10 @@ export interface InventoryFinalReport {
     differenceValue: number;
     impactPercentage: number;
   };
-  countingSummary: {
-    count1Items: number;
-    count2Items: number;
-    count3Items: number;
-    auditItems: number;
+  inventoryValues: {
+    expectedValue: number;
+    finalValue: number;
+    lossValue: number;
   };
   divergentItems: Array<{
     id: number;

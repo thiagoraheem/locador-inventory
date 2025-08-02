@@ -112,6 +112,11 @@ const navigation: NavigationItem[] = [
             href: "/product-listing-report",
             icon: FileText,
           },
+          {
+            name: "Relatório de Inventário Fechado",
+            href: "/inventory-final-report",
+            icon: FileText,
+          },
         ],
       },
       {

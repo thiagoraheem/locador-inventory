@@ -682,6 +682,15 @@ export class MemStorage implements IStorage {
       .sort((a, b) => a.countNumber - b.countNumber);
   }
 
+  async getAllCountsForInventory(inventoryId: number): Promise<(Count & { countedByUser: User })[]> {
+    const inventoryItems = Array.from(this.inventoryItems.values()).filter(item => item.inventoryId === inventoryId);
+    const inventoryItemIds = inventoryItems.map(item => item.id);
+    
+    return Array.from(this.counts.values())
+      .filter(count => inventoryItemIds.includes(count.inventoryItemId))
+      .sort((a, b) => a.countedAt - b.countedAt);
+  }
+
   async createCount(countData: InsertCount): Promise<Count> {
     const user = this.users.get(countData.countedBy);
     if (!user) throw new Error("User not found");

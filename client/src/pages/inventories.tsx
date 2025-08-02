@@ -219,6 +219,14 @@ export default function Inventories() {
             </Button>
           </Link>
 
+          {row.status === "closed" && (
+            <Link href={`/inventory-final-report?inventory=${row.id}`}>
+              <Button variant="ghost" size="sm" title="Relatório Final" className="text-green-600 hover:text-green-700">
+                <FileText className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
+
           {row.status !== "cancelled" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

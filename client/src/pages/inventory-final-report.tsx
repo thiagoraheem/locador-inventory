@@ -1,27 +1,167 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import Header from "@/components/layout/header";
-import { FileText, Download, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Package, DollarSign } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { 
+  Printer, 
+  Download, 
+  FileText, 
+  Users, 
+  Clock, 
+  Target, 
+  TrendingUp, 
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle,
+  DollarSign,
+  Package,
+  BarChart3,
+  MapPin,
+  Tags
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { Inventory, InventoryFinalReport } from "@shared/schema";
+import Header from "@/components/layout/header";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function InventoryFinalReportPage() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const [location] = useLocation();
+
+  // Handle URL parameters to auto-select inventory
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inventoryId = urlParams.get('inventory');
+    if (inventoryId && !selectedInventoryId) {
+      setSelectedInventoryId(parseInt(inventoryId));
+    }
+  }, [location, selectedInventoryId]);
 
   const { data: inventories } = useQuery<Inventory[]>({
     queryKey: ["/api/inventories"],
   });
 
-  const { data: report, isLoading } = useQuery<InventoryFinalReport>({
+  const { data: report, isLoading: isLoadingReport } = useQuery<InventoryFinalReport>({
     queryKey: [`/api/inventories/${selectedInventoryId}/final-report`],
     enabled: !!selectedInventoryId,
+    staleTime: 0,
+    gcTime: 0,
   });
+
+  // Filter inventories to show only closed ones
+  const closedInventories = inventories?.filter(inv => inv.status === 'closed') || [];
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!reportRef.current || !report) {
+      toast({
+        title: "Erro",
+        description: "Relatório não encontrado para gerar PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+
+    try {
+      // Create a clone of the report element for PDF generation
+      const element = reportRef.current;
+      
+      // Temporarily hide non-essential elements for PDF
+      const elementsToHide = element.querySelectorAll('.no-pdf');
+      elementsToHide.forEach(el => {
+        (el as HTMLElement).style.display = 'none';
+      });
+
+      // Generate canvas from HTML
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+      });
+
+      // Restore hidden elements
+      elementsToHide.forEach(el => {
+        (el as HTMLElement).style.display = '';
+      });
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+      
+      // If content is longer than one page, split it
+      if (finalHeight > pdfHeight) {
+        let position = 0;
+        const pageHeight = imgHeight * (pdfWidth / imgWidth);
+        
+        while (position < imgHeight) {
+          const pageCanvas = document.createElement('canvas');
+          const ctx = pageCanvas.getContext('2d');
+          
+          pageCanvas.width = imgWidth;
+          pageCanvas.height = Math.min(pageHeight, imgHeight - position);
+          
+          ctx?.drawImage(canvas, 0, position, imgWidth, pageCanvas.height, 0, 0, imgWidth, pageCanvas.height);
+          
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          
+          if (position > 0) {
+            pdf.addPage();
+          }
+          
+          pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, (pageCanvas.height * pdfWidth) / imgWidth);
+          position += pageHeight;
+        }
+      } else {
+        pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, (pdfHeight - finalHeight) / 2, finalWidth, finalHeight);
+      }
+
+      // Save PDF
+      pdf.save(`relatorio-inventario-${report.inventoryCode}.pdf`);
+
+      toast({
+        title: "PDF Gerado",
+        description: "O relatório foi gerado com sucesso",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Ocorreu um erro ao gerar o PDF. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -31,327 +171,528 @@ export default function InventoryFinalReportPage() {
   };
 
   const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('pt-BR');
+    return format(new Date(timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap = {
-      'closed': { variant: 'default', label: 'Finalizado' },
-      'audit_mode': { variant: 'secondary', label: 'Auditoria' },
-      'count3_closed': { variant: 'outline', label: '3ª Contagem' },
-      'count2_closed': { variant: 'outline', label: '2ª Contagem' },
-      'count1_closed': { variant: 'outline', label: '1ª Contagem' },
-    } as const;
-
-    const config = statusMap[status as keyof typeof statusMap] || { variant: 'outline', label: status };
-    return (
-      <Badge variant={config.variant as any}>
-        {config.label}
-      </Badge>
-    );
+    switch (status) {
+      case "closed":
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Fechado</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Relatório Final de Inventário</h1>
-            <p className="text-muted-foreground">
-              Relatório completo com análise de acurácia e impacto financeiro
-            </p>
-          </div>
-          <FileText className="h-8 w-8 text-muted-foreground" />
-        </div>
+    <div>
+      <Header 
+        title="Relatório de Inventário Fechado" 
+        subtitle="Relatório completo com KPIs, participantes e detalhamento de divergências" 
+      />
 
+      <div className="space-y-6 p-4 md:p-6">
         {/* Inventory Selection */}
-        <Card>
+        <Card className="print:hidden no-pdf">
           <CardHeader>
-            <CardTitle>Selecionar Inventário</CardTitle>
+            <CardTitle>Selecionar Inventário Fechado</CardTitle>
             <CardDescription>
-              Escolha um inventário para gerar o relatório final detalhado
+              Escolha um inventário fechado para gerar o relatório final
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Select onValueChange={(value) => setSelectedInventoryId(parseInt(value))}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Selecione um inventário..." />
-              </SelectTrigger>
-              <SelectContent>
-                {inventories?.map((inventory) => (
-                  <SelectItem key={inventory.id} value={inventory.id.toString()}>
-                    Inventário #{inventory.id} - {formatDate(inventory.startDate)} - {getStatusBadge(inventory.status)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-4 items-end">
+              <div className="flex-1">
+                <Select 
+                  value={selectedInventoryId?.toString() || ""} 
+                  onValueChange={(value) => setSelectedInventoryId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um inventário fechado..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {closedInventories.map((inventory) => (
+                      <SelectItem key={inventory.id} value={inventory.id.toString()}>
+                        {inventory.code} - {inventory.description || 'Sem descrição'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedInventoryId && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handlePrint}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Imprimir
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    onClick={handleGeneratePDF}
+                    disabled={isGeneratingPDF}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isGeneratingPDF ? "Gerando PDF..." : "Gerar PDF"}
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Report Content */}
-        {isLoading && (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Gerando relatório final...</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {report && (
-          <>
+        {selectedInventoryId && report && !isLoadingReport ? (
+          <div ref={reportRef} className="print:space-y-4">
             {/* Report Header */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+            <Card className="mb-6 print:mb-4">
+              <CardHeader className="pb-4">
+                <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {report.inventoryName}
+                    <CardTitle className="text-2xl print:text-xl mb-2">
+                      Relatório Final de Inventário
                     </CardTitle>
-                    <CardDescription>
-                      {formatDate(report.startDate)} {report.endDate && `- ${formatDate(report.endDate)}`}
-                    </CardDescription>
+                    <div className="space-y-1">
+                      <p className="text-lg print:text-base font-semibold">{report.inventoryCode}</p>
+                      <p className="text-muted-foreground">{report.inventoryName}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        {getStatusBadge(report.status)}
+                        <span className="text-sm text-muted-foreground">
+                          Tipo: {report.type.name}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right space-y-1">
-                    {getStatusBadge(report.status)}
-                    <p className="text-sm text-muted-foreground">ID: {report.inventoryId}</p>
+                  <div className="text-right text-sm print:text-xs">
+                    <p className="text-muted-foreground">Criado por: {report.createdBy.name}</p>
+                    <p className="text-muted-foreground">
+                      Data de início: {formatDate(report.startDate)}
+                    </p>
+                    {report.endDate && (
+                      <p className="text-muted-foreground">
+                        Data de término: {formatDate(report.endDate)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardHeader>
             </Card>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total de Itens</p>
-                      <p className="text-2xl font-bold">{report.totalItems}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <Package className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Taxa de Acurácia</p>
-                      <p className="text-2xl font-bold text-green-600">{report.accuracy.accuracyRate}%</p>
+                      <p className="text-sm text-muted-foreground">Estoque Total</p>
+                      <p className="text-xl font-bold">{formatCurrency(report.kpis.totalStock)}</p>
                     </div>
-                    <CheckCircle2 className="h-8 w-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Itens Divergentes</p>
-                      <p className="text-2xl font-bold text-red-600">{report.accuracy.divergentItems}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <Target className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Acuracidade</p>
+                      <p className="text-xl font-bold">{report.kpis.accuracyRate.toFixed(1)}%</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Impacto Financeiro</p>
-                      <p className="text-lg font-bold text-orange-600">{report.financial.impactPercentage}%</p>
-                      <p className="text-xs text-muted-foreground">{formatCurrency(Math.abs(report.financial.differenceValue))}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-orange-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Detailed Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Accuracy Analysis */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Análise de Acurácia</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Itens Corretos</span>
-                      <span className="font-medium">{report.accuracy.accurateItems}</span>
-                    </div>
-                    <Progress value={(report.accuracy.accurateItems / report.accuracy.totalItems) * 100} className="h-2" />
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Total de Itens:</span>
-                      <span className="font-medium">{report.accuracy.totalItems}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Itens Acurados:</span>
-                      <span className="font-medium text-green-600">{report.accuracy.accurateItems}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Itens Divergentes:</span>
-                      <span className="font-medium text-red-600">{report.accuracy.divergentItems}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Financial Impact */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Impacto Financeiro</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Valor Total do Estoque:</span>
-                      <span className="font-medium">{formatCurrency(report.financial.totalValue)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Ajustes Positivos:</span>
-                      <span className="font-medium text-green-600">
-                        <TrendingUp className="inline h-4 w-4 mr-1" />
-                        {formatCurrency(report.differences.positiveAdjustments)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Ajustes Negativos:</span>
-                      <span className="font-medium text-red-600">
-                        <TrendingDown className="inline h-4 w-4 mr-1" />
-                        {formatCurrency(report.differences.negativeAdjustments)}
-                      </span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold">
-                      <span>Diferença Líquida:</span>
-                      <span className={report.financial.differenceValue >= 0 ? "text-green-600" : "text-red-600"}>
-                        {formatCurrency(report.financial.differenceValue)}
-                      </span>
+                      <p className="text-sm text-muted-foreground">Perdas Totais</p>
+                      <p className="text-xl font-bold">{formatCurrency(report.kpis.totalLossValue)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Counting Summary */}
-            <Card>
+            {/* Summary Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Tempo de Processo</h3>
+                  </div>
+                  <p className="text-2xl font-bold">{report.totalTimeSpent}h</p>
+                  <p className="text-sm text-muted-foreground">Tempo total gasto na contagem</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Participantes</h3>
+                  </div>
+                  <p className="text-2xl font-bold">{report.participants.length}</p>
+                  <p className="text-sm text-muted-foreground">Pessoas envolvidas na contagem</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Participants */}
+            <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Resumo das Contagens</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Participantes da Contagem
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">{report.countingSummary.count1Items}</p>
-                    <p className="text-sm text-muted-foreground">1ª Contagem</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="text-center">Total</TableHead>
+                      <TableHead className="text-center">C1</TableHead>
+                      <TableHead className="text-center">C2</TableHead>
+                      <TableHead className="text-center">C3</TableHead>
+                      <TableHead className="text-center">C4</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.participants.map((participant) => (
+                      <TableRow key={participant.userId}>
+                        <TableCell className="font-medium">
+                          {participant.userName}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold">
+                          {participant.itemsCounted}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {participant.count1Items}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {participant.count2Items}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {participant.count3Items}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {participant.count4Items}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Summary Statistics */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Resumo do Inventário
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Counting Summary */}
+                  <div>
+                    <h4 className="font-semibold mb-3">Totais por Contagem</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>1ª Contagem (C1)</span>
+                        <Badge variant="outline">{report.countingSummary.count1Items}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>2ª Contagem (C2)</span>
+                        <Badge variant="outline">{report.countingSummary.count2Items}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>3ª Contagem (C3)</span>
+                        <Badge variant="outline">{report.countingSummary.count3Items}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Auditoria (C4)</span>
+                        <Badge variant="outline">{report.countingSummary.count4Items}</Badge>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{report.countingSummary.count2Items}</p>
-                    <p className="text-sm text-muted-foreground">2ª Contagem</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{report.countingSummary.count3Items}</p>
-                    <p className="text-sm text-muted-foreground">3ª Contagem</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">{report.countingSummary.auditItems}</p>
-                    <p className="text-sm text-muted-foreground">Auditoria (C4)</p>
+
+                  {/* Accuracy Summary */}
+                  <div>
+                    <h4 className="font-semibold mb-3">Detalhamento das Divergências</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          Itens Precisos
+                        </span>
+                        <Badge variant="outline" className="bg-green-50 text-green-700">
+                          {report.accuracy.accurateItems}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                          Itens Divergentes
+                        </span>
+                        <Badge variant="outline" className="bg-red-50 text-red-700">
+                          {report.accuracy.divergentItems}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-blue-600" />
+                          Ajustes Positivos
+                        </span>
+                        <Badge variant="outline">{report.differences.positiveAdjustments}</Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-2">
+                          <TrendingDown className="h-4 w-4 text-orange-600" />
+                          Ajustes Negativos
+                        </span>
+                        <Badge variant="outline">{report.differences.negativeAdjustments}</Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Divergent Items */}
-            {report.divergentItems.length > 0 && (
+            {/* Financial Summary */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Valores dos Bens Inventariados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Esperado</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues.expectedValue)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Final</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues.finalValue)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Diferença</p>
+                    <p className={`text-lg font-semibold ${
+                      report.financial.differenceValue >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(report.financial.differenceValue)}
+                    </p>
+                  </div>
+                </div>
+                {report.financial.impactPercentage !== 0 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Impacto: <span className={`font-semibold ${
+                        report.financial.impactPercentage >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {report.financial.impactPercentage > 0 ? '+' : ''}
+                        {report.financial.impactPercentage.toFixed(2)}%
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Selected Locations and Categories */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Itens com Divergências</CardTitle>
-                  <CardDescription>
-                    Lista detalhada dos {report.divergentItems.length} itens que apresentaram diferenças
-                  </CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <MapPin className="h-4 w-4" />
+                    Locais Selecionados
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-lg border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Produto</TableHead>
-                          <TableHead>SKU</TableHead>
-                          <TableHead>Local</TableHead>
-                          <TableHead className="text-right">Esperado</TableHead>
-                          <TableHead className="text-right">Final</TableHead>
-                          <TableHead className="text-right">Diferença</TableHead>
-                          <TableHead className="text-right">Impacto</TableHead>
+                  {report.selectedLocations.length > 0 ? (
+                    <div className="space-y-1">
+                      {report.selectedLocations.map((location) => (
+                        <Badge key={location.id} variant="outline" className="mr-2 mb-1">
+                          {location.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Nenhum local específico selecionado</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Tags className="h-4 w-4" />
+                    Categorias Selecionadas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {report.selectedCategories.length > 0 ? (
+                    <div className="space-y-1">
+                      {report.selectedCategories.map((category) => (
+                        <Badge key={category.id} variant="outline" className="mr-2 mb-1">
+                          {category.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">Nenhuma categoria específica selecionada</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Divergent Items */}
+            {report.divergentItems.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5" />
+                    Itens com Divergências ({report.divergentItems.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>SKU</TableHead>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Local</TableHead>
+                        <TableHead className="text-center">Esperado</TableHead>
+                        <TableHead className="text-center">Contado</TableHead>
+                        <TableHead className="text-center">Diferença</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {report.divergentItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono text-sm">{item.productSku}</TableCell>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell>{item.locationName}</TableCell>
+                          <TableCell className="text-center">{item.expectedQuantity}</TableCell>
+                          <TableCell className="text-center">{item.finalQuantity}</TableCell>
+                          <TableCell className={`text-center font-semibold ${
+                            item.difference >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {item.difference > 0 ? '+' : ''}{item.difference}
+                          </TableCell>
+                          <TableCell className={`text-right font-semibold ${
+                            item.totalValue >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {formatCurrency(item.totalValue)}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {report.divergentItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.productName}</TableCell>
-                            <TableCell>{item.productSku}</TableCell>
-                            <TableCell>{item.locationName}</TableCell>
-                            <TableCell className="text-right">{item.expectedQuantity}</TableCell>
-                            <TableCell className="text-right font-medium">{item.finalQuantity}</TableCell>
-                            <TableCell className={`text-right font-bold ${item.difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              {item.difference >= 0 ? '+' : ''}{item.difference}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {item.totalImpact ? formatCurrency(Math.abs(item.totalImpact)) : '-'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
 
             {/* Recommendations */}
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Recomendações</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Recomendações
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {report.recommendations.map((recommendation, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
-                      <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm">{recommendation}</p>
+                <div className="space-y-3 text-sm">
+                  {report.kpis.accuracyRate < 90 && (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="font-semibold text-yellow-800">⚠️ Taxa de Acuracidade Baixa</p>
+                      <p className="text-yellow-700">
+                        A taxa de acuracidade ({report.kpis.accuracyRate.toFixed(1)}%) está abaixo do recomendado (90%). 
+                        Considere revisar os processos de contagem e treinamento da equipe.
+                      </p>
                     </div>
-                  ))}
+                  )}
+                  
+                  {report.differences.adjustmentCount > report.totalItems * 0.1 && (
+                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="font-semibold text-orange-800">📊 Alto Número de Divergências</p>
+                      <p className="text-orange-700">
+                        Mais de 10% dos itens apresentaram divergências. Recomenda-se análise dos controles 
+                        de estoque e possível implementação de contagens cíclicas.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {Math.abs(report.financial.impactPercentage) > 5 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="font-semibold text-red-800">💰 Impacto Financeiro Significativo</p>
+                      <p className="text-red-700">
+                        O impacto financeiro ({report.financial.impactPercentage.toFixed(2)}%) é considerável. 
+                        Analise as causas raiz das divergências para evitar perdas futuras.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {report.kpis.accuracyRate >= 95 && report.differences.adjustmentCount <= report.totalItems * 0.05 && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="font-semibold text-green-800">✅ Excelente Performance</p>
+                      <p className="text-green-700">
+                        O inventário apresentou excelentes resultados com alta acuracidade e baixo número de divergências. 
+                        Continue mantendo os controles atuais.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Actions */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex justify-end gap-4">
-                  <Button variant="outline">
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar CSV
-                  </Button>
-                  <Button>
-                    <Download className="h-4 w-4 mr-2" />
-                    Gerar PDF
-                  </Button>
+            {/* Footer */}
+            <div className="text-center text-sm text-muted-foreground print:text-xs border-t pt-4">
+              <p>Relatório gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+              <p>Sistema de Inventário - Módulo Locador</p>
+            </div>
+          </div>
+        ) : selectedInventoryId && isLoadingReport ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="text-base font-medium">Gerando relatório...</div>
+                <div className="text-sm text-muted-foreground">
+                  Processando dados do inventário...
                 </div>
-              </CardContent>
-            </Card>
-          </>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Selecione um Inventário</h3>
+              <p className="text-muted-foreground">
+                Escolha um inventário fechado acima para gerar o relatório final
+              </p>
+              {closedInventories.length === 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Nenhum inventário fechado encontrado
+                </p>
+              )}
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
