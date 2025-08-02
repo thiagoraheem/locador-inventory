@@ -28,7 +28,7 @@ import {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
-  
+
   // Registrar o router de check-ip
   app.use('/api', checkIpRouter);
 
@@ -45,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has appropriate role for audit mode access
       const userRole = req.user.role?.toLowerCase();
       const allowedRoles = ['admin', 'gerente', 'supervisor'];
-      
+
       if (!allowedRoles.includes(userRole)) {
         return res.status(403).json({ 
           message: "Access denied. Only users with Mesa de Controle access can perform audit mode operations." 
@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const inventoryId = parseInt(req.params.id);
         storage = await getStorage();
         const inventory = await storage.getInventory(inventoryId);
-        
+
         if (inventory && inventory.status !== 'audit_mode') {
           return res.status(400).json({ 
             message: "This operation is only allowed when inventory is in audit mode." 
@@ -122,10 +122,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("🔧 Fixing inventory table schema...");
       storage = await getStorage();
-      
+
       // Execute the schema fix using SimpleStorage method
       await storage.fixInventorySchema();
-      
+
       console.log("✅ Inventory schema fixed successfully");
       res.json({ 
         message: "Inventory schema fixed successfully",
@@ -275,17 +275,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
     try {
       const { q, limit = 10 } = req.query;
-      
+
       console.log('🔍 Search request received:', { q, limit });
-      
+
       if (!q || typeof q !== 'string' || q.trim().length < 1) {
         console.log('❌ Search term too short or empty');
         return res.json([]);
       }
-      
+
       storage = await getStorage();
       const products = await storage.searchProducts(q.trim(), parseInt(limit.toString()));
-      
+
       console.log(`✅ Found ${products.length} products for search term: "${q}"`);
       res.json(products);
     } catch (error) {
@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventories", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
-      
+
       // Prepare data with proper formatting and date conversion
       const inventoryData: any = {
         code: req.body.code,
@@ -392,11 +392,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.endDate) {
         inventoryData.endDate = typeof req.body.endDate === 'string' ? new Date(req.body.endDate).getTime() : req.body.endDate;
       }
-      
+
       if (req.body.predictedEndDate) {
         inventoryData.predictedEndDate = typeof req.body.predictedEndDate === 'string' ? new Date(req.body.predictedEndDate).getTime() : req.body.predictedEndDate;
       }
-      
+
       if (req.body.description) {
         inventoryData.description = req.body.description;
       }
@@ -405,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.selectedLocationIds && Array.isArray(req.body.selectedLocationIds)) {
         inventoryData.selectedLocationIds = req.body.selectedLocationIds;
       }
-      
+
       if (req.body.selectedCategoryIds && Array.isArray(req.body.selectedCategoryIds)) {
         inventoryData.selectedCategoryIds = req.body.selectedCategoryIds;
       }
@@ -418,14 +418,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create inventory items if locations and categories are provided
       if (req.body.selectedLocationIds && req.body.selectedCategoryIds) {
         const { selectedLocationIds, selectedCategoryIds } = req.body;
-        
+
         // Get stock data for selected locations and categories
         const stockItems = await storage.getStock();
         const products = await storage.getProducts();
-        
+
         for (const locationId of selectedLocationIds) {
           const locationStock = stockItems.filter((item: any) => item.locationId === locationId);
-          
+
           for (const stockItem of locationStock) {
             const product = products.find((p: any) => p.id === stockItem.productId);
             if (product && selectedCategoryIds.includes(product.categoryId)) {
@@ -528,21 +528,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Inventory items routes
-  app.get("/api/inventories/:id/items",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const inventoryId = parseInt(req.params.id);
-        const items = await storage.getInventoryItems(inventoryId);
-        res.json(items);
-      } catch (error) {
-        console.error("Error fetching inventory items:", error as Error);
-        res.status(500).json({ message: "Failed to fetch inventory items" });
-      }
-    },
-  );
+  // Get inventory items with product and location data
+  app.get("/api/inventories/:id/items", async (req, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const items = await storage.getInventoryItemsWithDetails(inventoryId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+      res.status(500).json({ message: "Failed to fetch inventory items" });
+    }
+  });
 
   // Count routes
   app.get("/api/inventory-items/:id/counts",
@@ -759,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const inventory = await storage.createInventoryWithSelection(validatedData);
-      
+
       await storage.createAuditLog({
         userId: req.user.id,
         action: "CREATE_ADVANCED_INVENTORY",
@@ -810,7 +806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/with-serial-control", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
-      
+
       // Check if the method exists, if not, return all products for now
       if (typeof storage.getProductsWithSerialControl === 'function') {
         const products = await storage.getProductsWithSerialControl();
@@ -853,7 +849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       storage = await getStorage();
       const inventoryId = parseInt(req.params.id);
-      
+
       // Check if method exists in storage, if not return empty array
       if (typeof storage.getInventorySerialItems === 'function') {
         const serialItems = await storage.getInventorySerialItems(inventoryId);
@@ -895,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { count } = req.body;
 
       await storage.updateCount1(itemId, count, req.user.id);
-      
+
       await storage.createAuditLog({
         userId: req.user.id,
         action: "UPDATE_COUNT1",
@@ -923,7 +919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { count } = req.body;
 
       await storage.updateCount2(itemId, count, String(req.user.id));
-      
+
       await storage.createAuditLog({
         userId: req.user.id,
         action: "UPDATE_COUNT2",
@@ -951,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { count } = req.body;
 
       await storage.updateCount3(itemId, count, String(req.user.id));
-      
+
       await storage.createAuditLog({
         userId: req.user.id,
         action: "UPDATE_COUNT3",
@@ -976,16 +972,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
       const itemId = parseInt(req.params.id);
       const { quantity } = req.body;
-      
+
       if (typeof quantity !== 'number') {
         return res.status(400).json({ message: "Quantity must be a number" });
       }
 
       storage = await getStorage();
-      
+
       // Update count4 and automatically update finalQuantity
       await storage.updateCount4(itemId, quantity, req.user.id);
-      
+
       // Create audit log for count4 change
       await storage.createAuditLog({
         userId: req.user.id,
@@ -1041,7 +1037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         countBy: req.user.id,
         countType,
       });
-      
+
       await storage.createAuditLog({
         userId: req.user.id,
         action: `UPDATE_STOCK_ITEM_${countType.toUpperCase()}`,
@@ -1234,12 +1230,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
-      
+
       const { InventoryIntegrityValidator } = await import('./validation');
       const validator = new InventoryIntegrityValidator(storage);
-      
+
       const report = await validator.validateInventoryIntegrity(inventoryId);
-      
+
       await storage.createAuditLog({
         userId: (req.session as any).user?.id || 0,
         action: "VALIDATE_INVENTORY",
@@ -1247,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: inventoryId.toString(),
         newValues: JSON.stringify({ isValid: report.isValid, issuesCount: report.issues.length }),
       });
-      
+
       res.json(report);
     } catch (error) {
       console.error("Error validating inventory:", error);
@@ -1260,10 +1256,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
-      
+
       // Executar stored procedure de reconciliação
       await storage.reconcileInventory(inventoryId);
-      
+
       await storage.createAuditLog({
         userId: (req.session as any).user?.id || 0,
         action: "RECONCILE_INVENTORY",
@@ -1271,7 +1267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: inventoryId.toString(),
         metadata: JSON.stringify({ timestamp: Date.now() }),
       });
-      
+
       res.json({ message: "Reconciliation completed successfully" });
     } catch (error) {
       console.error("Error reconciling inventory:", error);
@@ -1284,10 +1280,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
-      
+
       const { InventoryIntegrityValidator } = await import('./validation');
       const validator = new InventoryIntegrityValidator(storage);
-      
+
       const report = await validator.generateReconciliationReport(inventoryId);
       res.json(report);
     } catch (error) {
@@ -1308,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
       await storage.createInventorySerialItems(inventoryId);
-      
+
       await storage.createAuditLog({
         userId: (req.session as any).user?.id || 0,
         action: "INITIALIZE_SERIAL_ITEMS",
@@ -1316,7 +1312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: inventoryId.toString(),
         metadata: JSON.stringify({ inventoryId }),
       });
-      
+
       res.json({ message: "Serial items initialized successfully" });
     } catch (error) {
       console.error("Error initializing serial items:", error);
@@ -1336,7 +1332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData, 
         (req.session as any).userId || 1
       );
-      
+
       if (result.success) {
         await storage.createAuditLog({
           userId: (req.session as any).userId || 0,
@@ -1347,7 +1343,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: JSON.stringify({ productId: result.productId }),
         });
       }
-      
+
       res.json(result);
     } catch (error) {
       console.error("Error registering serial reading:", error);
@@ -1376,11 +1372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const serialNumber = req.params.serial;
       storage = await getStorage();
       const product = await storage.findProductBySerial(serialNumber);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found for this serial number" });
       }
-      
+
       res.json(product);
     } catch (error) {
       console.error("Error finding product by serial:", error);
@@ -1393,12 +1389,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       const productId = req.query.productId ? parseInt(req.query.productId as string) : undefined;
-      
+
       storage = await getStorage();
       const items = productId 
         ? await storage.getInventorySerialItemsByProduct(inventoryId, productId)
         : await storage.getInventorySerialItems(inventoryId);
-        
+
       res.json(items);
     } catch (error) {
       console.error("Error fetching inventory serial items:", error);
@@ -1411,10 +1407,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const itemId = parseInt(req.params.id);
       const updateData = req.body;
-      
+
       storage = await getStorage();
       const updatedItem = await storage.updateInventorySerialItem(itemId, updateData);
-      
+
       await storage.createAuditLog({
         userId: (req.session as any).user?.id || 0,
         action: "UPDATE_SERIAL_ITEM",
@@ -1422,7 +1418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: itemId.toString(),
         newValues: JSON.stringify(updateData),
       });
-      
+
       res.json(updatedItem);
     } catch (error) {
       console.error("Error updating serial item:", error);
@@ -1436,9 +1432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
       await storage.reconcileInventoryQuantities(inventoryId);
-      
+
       const reconciliation = await storage.getInventoryReconciliation(inventoryId);
-      
+
       await storage.createAuditLog({
         userId: (req.session as any).user?.id || 0,
         action: "INVENTORY_RECONCILIATION",
@@ -1446,7 +1442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entityId: inventoryId.toString(),
         metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
       });
-      
+
       res.json({ message: "Reconciliation completed", data: reconciliation });
     } catch (error) {
       console.error("Error reconciling inventory:", error);
@@ -1511,7 +1507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
-      
+
       const inventory = await storage.getInventory(inventoryId);
       if (!inventory) {
         return res.status(404).json({ message: "Inventory not found" });
@@ -1544,13 +1540,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ================= TEST ROUTES =================
-  
+
   // Create test inventory with predefined scenarios
   app.post("/api/test/create-inventory", isAuthenticated, async (req: any, res) => {
     try {
       const { scenarioId } = req.body;
       storage = await getStorage();
-      
+
       // Create test inventory based on scenario
       const testInventory = await storage.createInventory({
         code: `TEST-${scenarioId.toUpperCase()}-${Date.now()}`,
@@ -1566,7 +1562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create test inventory items with different scenarios
       const products = await storage.getProducts();
       const testProducts = products.slice(0, 5); // Use first 5 products for testing
-      
+
       for (let i = 0; i < testProducts.length; i++) {
         const product = testProducts[i];
         await storage.createInventoryItem({
@@ -1593,7 +1589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { scenarioId, inventoryId } = req.body;
       storage = await getStorage();
-      
+
       let result = { scenarioId, passed: false, message: "Test not implemented" };
 
       switch (scenarioId) {
@@ -1638,7 +1634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const inventoryId = parseInt(req.params.id);
       storage = await getStorage();
-      
+
       const results = [
         await validateNormalUserPermissions(storage, inventoryId),
         await validateAuditModePermissions(storage, inventoryId)
@@ -1656,7 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { scenarioId } = req.params;
       const startTime = Date.now();
-      
+
       let testResults: any[] = [];
       let success = true;
       let message = "";
@@ -1669,7 +1665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success = result1.success;
           message = result1.message;
           break;
-          
+
         case 'scenario-2':
           // Test C1=C2≠Estoque (Consistent discrepancy)
           const result2 = await testScenario2(storage);
@@ -1677,7 +1673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success = result2.success;
           message = result2.message;
           break;
-          
+
         case 'scenario-3':
           // Test C1≠C2≠Estoque (Third count required)
           const result3 = await testScenario3(storage);
@@ -1685,7 +1681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success = result3.success;  
           message = result3.message;
           break;
-          
+
         case 'scenario-4':
           // Test Audit process (Mesa de Controle)
           const result4 = await testScenario4(storage, req.user);
@@ -1693,13 +1689,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success = result4.success;
           message = result4.message;
           break;
-          
+
         default:
           return res.status(400).json({ message: "Invalid scenario ID" });
       }
 
       const duration = Date.now() - startTime;
-      
+
       res.json({
         success,
         message,
@@ -1736,28 +1732,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test/run-all", isAuthenticated, async (req, res) => {
     try {
       const startTime = Date.now();
-      
+
       // Run all test scenarios
       const scenario1 = await testScenario1(storage);
       const scenario2 = await testScenario2(storage);
       const scenario3 = await testScenario3(storage);
       const scenario4 = await testScenario4(storage, req.user);
-      
+
       // Run validation tests
       const permissions = await validatePermissions(storage, req.user);
       const statusTransitions = await validateStatusTransitions(storage);
-      
+
       const scenarios = [
         { id: 'scenario-1', ...scenario1, duration: Date.now() - startTime },
         { id: 'scenario-2', ...scenario2, duration: Date.now() - startTime },
         { id: 'scenario-3', ...scenario3, duration: Date.now() - startTime },
         { id: 'scenario-4', ...scenario4, duration: Date.now() - startTime },
       ];
-      
+
       const allTests = [...scenarios, ...permissions, ...statusTransitions];
       const passed = allTests.filter(t => t.status === 'passed' || t.success).length;
       const total = allTests.length;
-      
+
       res.json({
         scenarios: scenarios.map(s => ({ 
           id: s.id, 
@@ -1786,7 +1782,7 @@ async function testScenario1(storage: any) {
   try {
     // Test C1=C2=Estoque (Auto approval)
     const results = [];
-    
+
     // Create test inventory
     const inventoryType = await storage.getInventoryTypes();
     const testInventory = await storage.createInventory({
@@ -1794,14 +1790,14 @@ async function testScenario1(storage: any) {
       startDate: Date.now(),
       status: 'open'
     });
-    
+
     results.push({
       step: "Criar inventário de teste",
       expected: "Inventário criado com status 'open'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
       status: testInventory.status === 'open' ? 'passed' : 'failed'
     });
-    
+
     // Get test items
     const items = await storage.getInventoryItemsByInventory(testInventory.id);
     if (items.length === 0) {
@@ -1811,25 +1807,25 @@ async function testScenario1(storage: any) {
         results
       };
     }
-    
+
     const testItem = items[0];
     const expectedQty = testItem.expectedQuantity || 100;
-    
+
     // Set C1 = C2 = expectedQuantity
     await storage.updateCount1(testItem.id, expectedQty, 1);
     await storage.updateCount2(testItem.id, expectedQty, 1);
-    
+
     results.push({
       step: "Registrar C1 = C2 = Estoque",
       expected: `C1=${expectedQty}, C2=${expectedQty}, Estoque=${expectedQty}`,
       actual: `C1=${expectedQty}, C2=${expectedQty}, Estoque=${expectedQty}`,
       status: 'passed'
     });
-    
+
     // Check if finalQuantity was set automatically
     const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
     const updatedItem = updatedItems.find(item => item.id === testItem.id);
-    
+
     const finalQtyCorrect = updatedItem.finalQuantity === expectedQty;
     results.push({
       step: "Verificar finalQuantity automática",
@@ -1837,7 +1833,7 @@ async function testScenario1(storage: any) {
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
       status: finalQtyCorrect ? 'passed' : 'failed'
     });
-    
+
     return {
       success: finalQtyCorrect,
       message: finalQtyCorrect ? "Cenário 1 passou: C1=C2=Estoque → Aprovação automática" : "Cenário 1 falhou",
@@ -1856,21 +1852,21 @@ async function testScenario2(storage: any) {
   try {
     // Test C1=C2≠Estoque (Consistent discrepancy)  
     const results = [];
-    
+
     const inventoryType = await storage.getInventoryTypes();
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
       status: 'open'
     });
-    
+
     results.push({
       step: "Criar inventário de teste",
       expected: "Inventário criado com status 'open'", 
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
       status: testInventory.status === 'open' ? 'passed' : 'failed'
     });
-    
+
     const items = await storage.getInventoryItemsByInventory(testInventory.id);
     if (items.length === 0) {
       return {
@@ -1879,26 +1875,26 @@ async function testScenario2(storage: any) {
         results
       };
     }
-    
+
     const testItem = items[0];
     const expectedQty = testItem.expectedQuantity || 100;
     const countedQty = expectedQty + 10; // Different from expected
-    
+
     // Set C1 = C2 ≠ expectedQuantity
     await storage.updateCount1(testItem.id, countedQty, 1);
     await storage.updateCount2(testItem.id, countedQty, 1);
-    
+
     results.push({
       step: "Registrar C1 = C2 ≠ Estoque",
       expected: `C1=${countedQty}, C2=${countedQty}, Estoque=${expectedQty}`,
       actual: `C1=${countedQty}, C2=${countedQty}, Estoque=${expectedQty}`,
       status: 'passed'
     });
-    
+
     // Check if finalQuantity = C2 (not expectedQuantity)
     const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
     const updatedItem = updatedItems.find(item => item.id === testItem.id);
-    
+
     const finalQtyCorrect = updatedItem.finalQuantity === countedQty;
     results.push({
       step: "Verificar finalQuantity = C2",
@@ -1906,7 +1902,7 @@ async function testScenario2(storage: any) {
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
       status: finalQtyCorrect ? 'passed' : 'failed'
     });
-    
+
     return {
       success: finalQtyCorrect,
       message: finalQtyCorrect ? "Cenário 2 passou: C1=C2≠Estoque → finalQuantity=C2" : "Cenário 2 falhou",
@@ -1925,21 +1921,21 @@ async function testScenario3(storage: any) {
   try {
     // Test C1≠C2≠Estoque (Third count required)
     const results = [];
-    
+
     const inventoryType = await storage.getInventoryTypes();
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
       status: 'open'
     });
-    
+
     results.push({
       step: "Criar inventário de teste",
       expected: "Inventário criado com status 'open'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
       status: testInventory.status === 'open' ? 'passed' : 'failed'
     });
-    
+
     const items = await storage.getInventoryItemsByInventory(testInventory.id);
     if (items.length === 0) {
       return {
@@ -1948,27 +1944,27 @@ async function testScenario3(storage: any) {
         results
       };
     }
-    
+
     const testItem = items[0];
     const expectedQty = testItem.expectedQuantity || 100;
     const count1Qty = expectedQty + 5;
     const count2Qty = expectedQty + 10;
-    
+
     // Set C1 ≠ C2 ≠ expectedQuantity
     await storage.updateCount1(testItem.id, count1Qty, 1);
     await storage.updateCount2(testItem.id, count2Qty, 1);
-    
+
     results.push({
       step: "Registrar C1 ≠ C2 ≠ Estoque",
       expected: `C1=${count1Qty}, C2=${count2Qty}, Estoque=${expectedQty}`,
       actual: `C1=${count1Qty}, C2=${count2Qty}, Estoque=${expectedQty}`,
       status: 'passed'
     });
-    
+
     // Check if finalQuantity is null (needs third count)
     const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
     const updatedItem = updatedItems.find(item => item.id === testItem.id);
-    
+
     const finalQtyNull = updatedItem.finalQuantity === null;
     results.push({
       step: "Verificar finalQuantity = null (precisa C3)",
@@ -1976,7 +1972,7 @@ async function testScenario3(storage: any) {
       actual: `finalQuantity = ${updatedItem.finalQuantity}`,
       status: finalQtyNull ? 'passed' : 'failed'
     });
-    
+
     return {
       success: finalQtyNull,
       message: finalQtyNull ? "Cenário 3 passou: C1≠C2≠Estoque → finalQuantity=null" : "Cenário 3 falhou",
@@ -1995,47 +1991,47 @@ async function testScenario4(storage: any, user: any) {
   try {
     // Test Audit process (Mesa de Controle)
     const results = [];
-    
+
     const inventoryType = await storage.getInventoryTypes();
     const testInventory = await storage.createInventory({
       inventoryTypeId: inventoryType[0]?.id || 1,
       startDate: Date.now(),
       status: 'audit_mode'
     });
-    
+
     results.push({
       step: "Criar inventário em audit_mode",
       expected: "Inventário criado com status 'audit_mode'",
       actual: `Inventário ${testInventory.id} criado com status '${testInventory.status}'`,
       status: testInventory.status === 'audit_mode' ? 'passed' : 'failed'
     });
-    
+
     // Check user permissions
     const userRole = user?.role?.toLowerCase();
     const hasAuditAccess = ['admin', 'gerente', 'supervisor'].includes(userRole);
-    
+
     results.push({
       step: "Verificar permissões do usuário",
       expected: "Usuário deve ter acesso de auditoria",
       actual: `Usuário ${user?.username} tem role '${userRole}' - Acesso: ${hasAuditAccess}`,
       status: hasAuditAccess ? 'passed' : 'failed'
     });
-    
+
     if (hasAuditAccess) {
       const items = await storage.getInventoryItemsByInventory(testInventory.id);
       if (items.length > 0) {
         const testItem = items[0];
         const count4Value = 150;
-        
+
         // Test count4 update
         await storage.updateCount4(testItem.id, count4Value, user.id);
-        
+
         const updatedItems = await storage.getInventoryItemsByInventory(testInventory.id);
         const updatedItem = updatedItems.find(item => item.id === testItem.id);
-        
+
         const count4Updated = updatedItem.count4 === count4Value;
         const finalQtyUpdated = updatedItem.finalQuantity === count4Value;
-        
+
         results.push({
           step: "Atualizar count4",
           expected: `count4 = ${count4Value}, finalQuantity = ${count4Value}`,
@@ -2044,7 +2040,7 @@ async function testScenario4(storage: any, user: any) {
         });
       }
     }
-    
+
     return {
       success: results.every(r => r.status === 'passed'),
       message: hasAuditAccess ? "Cenário 4 passou: Auditoria funciona corretamente" : "Cenário 4 falhou: Sem permissão",
@@ -2061,41 +2057,41 @@ async function testScenario4(storage: any, user: any) {
 
 async function validatePermissions(storage: any, user: any) {
   const results = [];
-  
+
   try {
     const userRole = user?.role?.toLowerCase();
     const hasAuditAccess = ['admin', 'gerente', 'supervisor'].includes(userRole);
-    
+
     results.push({
       id: 'perm-1',
       status: !hasAuditAccess ? 'passed' : 'passed', // Normal users can't access audit_mode
       message: `Usuário '${userRole}' ${hasAuditAccess ? 'tem' : 'não tem'} acesso a audit_mode`
     });
-    
+
     results.push({
       id: 'perm-2',
       status: userRole === 'admin' ? 'passed' : 'pending',
       message: `Admin ${userRole === 'admin' ? 'pode' : 'não pode'} alterar count4`
     });
-    
+
     results.push({
       id: 'perm-3', 
       status: userRole === 'gerente' ? 'passed' : 'pending',
       message: `Gerente ${userRole === 'gerente' ? 'pode' : 'não pode'} alterar count4`
     });
-    
+
     results.push({
       id: 'perm-4',
       status: userRole === 'supervisor' ? 'passed' : 'pending', 
       message: `Supervisor ${userRole === 'supervisor' ? 'pode' : 'não pode'} alterar count4`
     });
-    
+
     results.push({
       id: 'perm-5',
       status: 'passed',
       message: 'count4 atualiza automaticamente finalQuantity (implementado)'
     });
-    
+
   } catch (error) {
     results.push({
       id: 'perm-error',
@@ -2103,38 +2099,38 @@ async function validatePermissions(storage: any, user: any) {
       message: `Erro na validação de permissões: ${error.message}`
     });
   }
-  
+
   return results;
 }
 
 async function validateStatusTransitions(storage: any) {
   const results = [];
-  
+
   try {
     results.push({
       id: 'status-1',
       status: 'passed',
       message: 'count2_closed → count2_completed quando todos têm finalQuantity (implementado)'
     });
-    
+
     results.push({
       id: 'status-2', 
       status: 'passed',
       message: 'count2_closed → count3_required quando há itens sem finalQuantity (implementado)'
     });
-    
+
     results.push({
       id: 'status-3',
       status: 'passed', 
       message: 'count3_closed → audit_mode automaticamente (implementado)'
     });
-    
+
     results.push({
       id: 'status-4',
       status: 'passed',
       message: 'audit_mode → closed quando todos têm finalQuantity (implementado)'
     });
-    
+
   } catch (error) {
     results.push({
       id: 'status-error',
@@ -2142,7 +2138,7 @@ async function validateStatusTransitions(storage: any) {
       message: `Erro na validação de transições: ${error.message}`
     });
   }
-  
+
   return results;
 }
 
@@ -2154,37 +2150,37 @@ async function runScenario1(storage: any, inventoryId: number, userId: number) {
     // Get inventory items
     const items = await storage.getInventoryItemsByInventory(inventoryId);
     const inventory = await storage.getInventory(inventoryId);
-    
+
     if (!inventory || items.length === 0) {
       return { scenarioId: 'scenario_1', passed: false, message: "Inventory or items not found" };
     }
 
     // Start first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
-    
+
     // Set C1 = expected quantity for all items
     for (const item of items) {
       await storage.updateCount1(item.id, item.expectedQuantity, userId);
     }
-    
+
     // Close first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
-    
+
     // Start second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
-    
+
     // Set C2 = expected quantity (same as C1)
     for (const item of items) {
       await storage.updateCount2(item.id, item.expectedQuantity, userId);
     }
-    
+
     // Close second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
-    
+
     // Check if inventory automatically transitioned to completed
     const updatedInventory = await storage.getInventory(inventoryId);
     const shouldBeCompleted = updatedInventory.status === 'count2_completed';
-    
+
     return {
       scenarioId: 'scenario_1',
       passed: shouldBeCompleted,
@@ -2206,37 +2202,37 @@ async function runScenario2(storage: any, inventoryId: number, userId: number) {
   try {
     const items = await storage.getInventoryItemsByInventory(inventoryId);
     const inventory = await storage.getInventory(inventoryId);
-    
+
     if (!inventory || items.length === 0) {
       return { scenarioId: 'scenario_2', passed: false, message: "Inventory or items not found" };
     }
 
     // Start first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
-    
+
     // Set C1 = expected quantity + 5 (different from stock)
     for (const item of items) {
       await storage.updateCount1(item.id, item.expectedQuantity + 5, userId);
     }
-    
+
     // Close first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
-    
+
     // Start second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
-    
+
     // Set C2 = same as C1 (consistent discrepancy)
     for (const item of items) {
       await storage.updateCount2(item.id, item.expectedQuantity + 5, userId);
     }
-    
+
     // Close second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
-    
+
     // Check if inventory transitioned to completed (C1=C2 even if different from stock)
     const updatedInventory = await storage.getInventory(inventoryId);
     const shouldBeCompleted = updatedInventory.status === 'count2_completed';
-    
+
     return {
       scenarioId: 'scenario_2',
       passed: shouldBeCompleted,
@@ -2258,37 +2254,37 @@ async function runScenario3(storage: any, inventoryId: number, userId: number) {
   try {
     const items = await storage.getInventoryItemsByInventory(inventoryId);
     const inventory = await storage.getInventory(inventoryId);
-    
+
     if (!inventory || items.length === 0) {
       return { scenarioId: 'scenario_3', passed: false, message: "Inventory or items not found" };
     }
 
     // Start first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_open', userId);
-    
+
     // Set C1 = expected quantity + 3
     for (const item of items) {
       await storage.updateCount1(item.id, item.expectedQuantity + 3, userId);
     }
-    
+
     // Close first counting
     await storage.transitionInventoryStatus(inventoryId, 'count1_closed', userId);
-    
+
     // Start second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_open', userId);
-    
+
     // Set C2 = expected quantity + 7 (different from both C1 and stock)
     for (const item of items) {
       await storage.updateCount2(item.id, item.expectedQuantity + 7, userId);
     }
-    
+
     // Close second counting
     await storage.transitionInventoryStatus(inventoryId, 'count2_closed', userId);
-    
+
     // Check if inventory requires third count
     const updatedInventory = await storage.getInventory(inventoryId);
     const requiresThirdCount = updatedInventory.status === 'count3_required';
-    
+
     return {
       scenarioId: 'scenario_3',
       passed: requiresThirdCount,
@@ -2309,25 +2305,25 @@ async function runScenario3(storage: any, inventoryId: number, userId: number) {
 async function runScenario4(storage: any, inventoryId: number, userId: number) {
   try {
     const items = await storage.getInventoryItemsByInventory(inventoryId);
-    
+
     // Run through complete process requiring third count
     await runScenario3(storage, inventoryId, userId);
-    
+
     // Start third counting
     await storage.transitionInventoryStatus(inventoryId, 'count3_open', userId);
-    
+
     // Set C3 values
     for (const item of items) {
       await storage.updateCount3(item.id, item.expectedQuantity + 5, userId);
     }
-    
+
     // Close third counting
     await storage.transitionInventoryStatus(inventoryId, 'count3_closed', userId);
-    
+
     // Should transition to audit mode
     const auditInventory = await storage.getInventory(inventoryId);
     const inAuditMode = auditInventory.status === 'audit_mode';
-    
+
     if (!inAuditMode) {
       return {
         scenarioId: 'scenario_4',
@@ -2335,18 +2331,18 @@ async function runScenario4(storage: any, inventoryId: number, userId: number) {
         message: `Test failed: Expected 'audit_mode', got '${auditInventory.status}'`
       };
     }
-    
+
     // Perform audit (C4) via Mesa de Controle
     for (const item of items) {
       await storage.updateCount4(item.id, item.expectedQuantity + 2, userId);
     }
-    
+
     // Close inventory
     await storage.transitionInventoryStatus(inventoryId, 'closed', userId);
-    
+
     const finalInventory = await storage.getInventory(inventoryId);
     const isClosed = finalInventory.status === 'closed';
-    
+
     return {
       scenarioId: 'scenario_4',
       passed: isClosed,
@@ -2370,10 +2366,10 @@ async function validateAuditMode(storage: any, inventoryId: number) {
   try {
     // Set inventory to audit mode for testing
     await storage.transitionInventoryStatus(inventoryId, 'audit_mode', 1);
-    
+
     const inventory = await storage.getInventory(inventoryId);
     const isInAuditMode = inventory.status === 'audit_mode';
-    
+
     return {
       scenarioId: 'validation_2',
       passed: isInAuditMode,
@@ -2394,23 +2390,23 @@ async function validateAuditMode(storage: any, inventoryId: number) {
 async function validateFinalQuantityUpdate(storage: any, inventoryId: number) {
   try {
     const items = await storage.getInventoryItemsByInventory(inventoryId);
-    
+
     if (items.length === 0) {
       return { scenarioId: 'validation_3', passed: false, message: "No items found" };
     }
-    
+
     const testItem = items[0];
     const testQuantity = 99;
-    
+
     // Update count4 (should update finalQuantity automatically)
     await storage.updateCount4(testItem.id, testQuantity, 1);
-    
+
     // Check if finalQuantity was updated
     const updatedItems = await storage.getInventoryItemsByInventory(inventoryId);
     const updatedItem = updatedItems.find(item => item.id === testItem.id);
-    
+
     const finalQuantityUpdated = updatedItem && updatedItem.finalQuantity === testQuantity;
-    
+
     return {
       scenarioId: 'validation_3',
       passed: finalQuantityUpdated,

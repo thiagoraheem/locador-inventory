@@ -510,8 +510,67 @@ export class SqlServerStorage implements IStorage {
       .query('DELETE FROM inventories WHERE id = @id');
   }
 
-  async getInventoryItems(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
-    throw new Error("Method not implemented.");
+  async getInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
+    const request = this.pool.request();
+    request.input('inventoryId', sql.Int, inventoryId);
+
+    const result = await request.query(`
+      SELECT * FROM InventoryItems 
+      WHERE inventoryId = @inventoryId
+      ORDER BY id
+    `);
+
+    return result.recordset.map(this.mapInventoryItem);
+  }
+
+  async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
+    const request = this.pool.request();
+    request.input('inventoryId', sql.Int, inventoryId);
+
+    const result = await request.query(`
+      SELECT 
+        ii.*,
+        p.id as productId, p.sku, p.name as productName, p.description as productDescription,
+        p.categoryId, p.isActive as productIsActive, p.createdAt as productCreatedAt, p.updatedAt as productUpdatedAt,
+        l.id as locationId, l.code as locationCode, l.name as locationName, l.description as locationDescription,
+        l.isActive as locationIsActive, l.createdAt as locationCreatedAt, l.updatedAt as locationUpdatedAt
+      FROM InventoryItems ii
+      LEFT JOIN Products p ON ii.productId = p.id
+      LEFT JOIN Locations l ON ii.locationId = l.id
+      WHERE ii.inventoryId = @inventoryId
+      ORDER BY ii.id
+    `);
+
+    return result.recordset.map(record => {
+      const item = this.mapInventoryItem(record);
+
+      const product: Product = {
+        id: record.productId || item.productId,
+        sku: record.sku || 'N/A',
+        name: record.productName || 'Produto não encontrado',
+        description: record.productDescription || 'Produto não encontrado no sistema',
+        categoryId: record.categoryId || 0,
+        isActive: record.productIsActive || false,
+        createdAt: record.productCreatedAt || new Date(),
+        updatedAt: record.productUpdatedAt || new Date()
+      };
+
+      const location: Location = {
+        id: record.locationId || item.locationId,
+        code: record.locationCode || 'N/A',
+        name: record.locationName || 'Local não encontrado',
+        description: record.locationDescription || 'Local não encontrado no sistema',
+        isActive: record.locationIsActive || false,
+        createdAt: record.locationCreatedAt || new Date(),
+        updatedAt: record.locationUpdatedAt || new Date()
+      };
+
+      return {
+        ...item,
+        product,
+        location
+      };
+    });
   }
 
   async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {

@@ -71,7 +71,8 @@ export interface IStorage {
   closeInventory(id: number): Promise<void>;
 
   // Inventory item operations
-  getInventoryItems(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]>;
+  getInventoryItems(inventoryId: number): Promise<InventoryItem[]>;
+  getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]>;
   createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
   updateInventoryItem(id: number, item: Partial<InsertInventoryItem>): Promise<InventoryItem>;
 
@@ -619,7 +620,11 @@ export class MemStorage implements IStorage {
   }
 
   // Inventory item operations
-  async getInventoryItems(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
+  async getInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
+    return Array.from(this.inventoryItems.values()).filter(item => item.inventoryId === inventoryId);
+  }
+
+  async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
     return Array.from(this.inventoryItems.values()).filter(item => item.inventoryId === inventoryId);
   }
 

@@ -370,7 +370,7 @@ export class SimpleStorage {
 
     // Debug log para verificar o valor de isToBlockSystem
     console.log("📝 Creating inventory with isToBlockSystem:", inventoryData.isToBlockSystem);
-    
+
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
@@ -508,21 +508,21 @@ export class SimpleStorage {
           ALTER TABLE inventories ADD selectedLocationIds NVARCHAR(MAX) NULL;
           PRINT 'Column selectedLocationIds added to inventories table';
       END
-      
+
       -- Add selectedCategoryIds column if it doesn't exist
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventories') AND name = 'selectedCategoryIds')
       BEGIN
           ALTER TABLE inventories ADD selectedCategoryIds NVARCHAR(MAX) NULL;
           PRINT 'Column selectedCategoryIds added to inventories table';
       END
-      
+
       -- Add predictedEndDate column if it doesn't exist
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventories') AND name = 'predictedEndDate')
       BEGIN
           ALTER TABLE inventories ADD predictedEndDate DATETIME2 NULL;
           PRINT 'Column predictedEndDate added to inventories table';
       END
-      
+
       -- Add isToBlockSystem column if it doesn't exist
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventories') AND name = 'isToBlockSystem')
       BEGIN
@@ -535,9 +535,9 @@ export class SimpleStorage {
     console.log("✅ Inventory schema fixed successfully");
   }
 
-  
 
-  
+
+
 
   async createUser(user: InsertUser): Promise<User> {
     // Check if username already exists
@@ -875,14 +875,14 @@ export class SimpleStorage {
   async determinePostCount2Status(inventoryId: number): Promise<InventoryStatus> {
     // First calculate final quantities
     await this.calculateFinalQuantities(inventoryId);
-    
+
     // Then check if any items still need 3rd count (have null finalQuantity)
     const items = await this.getInventoryItemsByInventory(inventoryId);
-    
+
     const itemsNeedingThirdCount = items.filter(item => 
       item.finalQuantity === null || item.finalQuantity === undefined
     );
-    
+
     return itemsNeedingThirdCount.length > 0 ? 'count3_required' : 'count2_completed';
   }
 
@@ -890,15 +890,15 @@ export class SimpleStorage {
   async calculateFinalQuantities(inventoryId: number): Promise<void> {
     const items = await this.getInventoryItemsByInventory(inventoryId);
     const inventory = await this.getInventory(inventoryId);
-    
+
     for (const item of items) {
       const count1 = item.count1;
       const count2 = item.count2;
       const count3 = item.count3;
       const expected = item.expectedQuantity || 0;
-      
+
       let finalQuantity: number | null = null;
-      
+
       // After 3rd count: finalQuantity = C3
       if (count3 !== null && count3 !== undefined) {
         finalQuantity = count3;
@@ -922,7 +922,7 @@ export class SimpleStorage {
           finalQuantity = null;
         }
       }
-      
+
       // Update finalQuantity in database if calculated
       if (finalQuantity !== null) {
         const request = this.pool.request();
@@ -1200,19 +1200,19 @@ export class SimpleStorage {
 
     // Generate recommendations based on results
     const recommendations: string[] = [];
-    
+
     if (accuracyRate < 95) {
       recommendations.push("Taxa de acurácia abaixo de 95%. Considere revisar processos de contagem.");
     }
-    
+
     if (stats.divergentItems > stats.totalItems * 0.1) {
       recommendations.push("Mais de 10% dos itens apresentam divergências. Recomenda-se auditoria adicional.");
     }
-    
+
     if (Math.abs(differenceValue) > totalValue * 0.05) {
       recommendations.push("Impacto financeiro superior a 5%. Necessária aprovação gerencial para ajustes.");
     }
-    
+
     if (stats.auditItems > 0) {
       recommendations.push(`${stats.auditItems} itens passaram por auditoria manual (C4). Documentar justificativas.`);
     }
@@ -1405,6 +1405,55 @@ export class SimpleStorage {
     }));
   }
 
+  async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
+    const result = await this.pool.request()
+      .input("inventoryId", inventoryId)
+      .query(`
+        SELECT 
+          ii.*,
+          p.sku,
+          p.name as productName,
+          p.description as productDescription,
+          l.code as locationCode,
+          l.name as locationName
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN locations l ON ii.locationId = l.id
+        WHERE ii.inventoryId = @inventoryId
+        ORDER BY p.sku, l.code
+      `);
+
+    return result.recordset.map(item => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      count1At: item.count1At ? new Date(item.count1At).getTime() : undefined,
+      count2At: item.count2At ? new Date(item.count2At).getTime() : undefined,
+      count3At: item.count3At ? new Date(item.count3At).getTime() : undefined,
+      count4At: item.count4At ? new Date(item.count4At).getTime() : undefined,
+      product: {
+        id: item.productId,
+        sku: item.sku || 'N/A',
+        name: item.productName || 'Produto não encontrado',
+        description: item.productDescription || 'Sem descrição',
+        categoryId: 0,
+        costValue: 0,
+        isActive: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      },
+      location: {
+        id: item.locationId,
+        code: item.locationCode || 'N/A',
+        name: item.locationName || 'Local não encontrado',
+        description: '',
+        isActive: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    }));
+  }
+
   // Get dashboard statistics
   async getDashboardStats(): Promise<{
     totalProducts: number;
@@ -1464,7 +1513,7 @@ export class SimpleStorage {
 
       const inventory = inventoryResult.recordset[0];
       let locationFilter = '';
-      
+
       if (inventory && inventory.selectedLocationIds) {
         const selectedLocationIds = JSON.parse(inventory.selectedLocationIds);
         if (selectedLocationIds && selectedLocationIds.length > 0) {
@@ -1489,7 +1538,7 @@ export class SimpleStorage {
           FROM stock_items si
           INNER JOIN inventory_items ii ON si.productId = ii.productId --AND si.locationId = ii.locationId
           WHERE ii.inventoryId = @inventoryId;
-          
+
           -- Update counters in inventory_items
           UPDATE ii
           SET serialItemsCount = (
@@ -1653,7 +1702,7 @@ export class SimpleStorage {
         BEGIN
             DROP PROCEDURE sp_RegisterSerialReading;
         END;
-        
+
         -- Create updated procedure with inventory_items count increment
         EXEC('
         CREATE PROCEDURE sp_RegisterSerialReading
@@ -1667,13 +1716,13 @@ export class SimpleStorage {
             DECLARE @ProductId INT;
             DECLARE @LocationId INT;
             DECLARE @RowsUpdated INT;
-            
+
             -- Verificar se série existe no inventário
             SELECT @ProductId = productId, @LocationId = locationId
             FROM inventory_serial_items 
             WHERE inventoryId = @InventoryId 
             AND serialNumber = @SerialNumber;
-            
+
             IF @ProductId IS NULL
             BEGIN
                 -- Série não encontrada no inventário esperado
@@ -1683,7 +1732,7 @@ export class SimpleStorage {
                 WHERE si.serialNumber = @SerialNumber
                 AND p.hasSerialControl = 1
                 AND si.isActive = 1;
-                
+
                 IF @ProductId IS NOT NULL
                 BEGIN
                     -- Série existe mas não estava no inventário - adicionar como EXTRA
@@ -1704,7 +1753,7 @@ export class SimpleStorage {
                     RETURN;
                 END;
             END;
-            
+
             -- Atualizar inventory_serial_items
             UPDATE inventory_serial_items 
             SET 
@@ -1726,13 +1775,13 @@ export class SimpleStorage {
             AND serialNumber = @SerialNumber;
 
             SET @RowsUpdated = @@ROWCOUNT;
-            
+
             IF @RowsUpdated = 0
             BEGIN
                 RAISERROR(''Número de série não encontrado'', 16, 1);
                 RETURN;
             END;
-            
+
             -- INCREMENTAR CONTAGEM NA TABELA INVENTORY_ITEMS
             DECLARE @SQL NVARCHAR(MAX);
             SET @SQL = N''UPDATE inventory_items 
@@ -1743,14 +1792,14 @@ export class SimpleStorage {
                 WHERE inventoryId = @InventoryId 
                 AND productId = @ProductId 
                 AND (locationId = @LocationId OR (locationId IS NULL AND @LocationId IS NULL))'';
-            
+
             EXEC sp_executesql @SQL, N''@InventoryId INT, @ProductId INT, @LocationId INT'', @InventoryId, @ProductId, @LocationId;
         END
         ')
       `;
 
       await this.pool.request().query(sqlContent);
-      
+
       return {
         success: true,
         message: "Stored procedure atualizada com sucesso! Agora os números de série incrementam a contagem na tabela inventory_items."
@@ -1779,7 +1828,7 @@ export class SimpleStorage {
 
       // Check if item exists before updating, and handle NULL locationId
       const locationCondition = locationId ? 'AND locationId = @locationId' : 'AND locationId IS NULL';
-      
+
       await this.pool.request()
         .input('inventoryId', sql.Int, inventoryId)
         .input('productId', sql.Int, productId)
@@ -2059,7 +2108,7 @@ export class SimpleStorage {
       .query(query);
   }
 
-  
+
 
   async createInventorySerialItems2(inventoryId: number): Promise<void> {
     // Implementação simplificada - criar registros baseados nos stock_items
