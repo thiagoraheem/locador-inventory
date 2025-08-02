@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Search, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,11 +32,11 @@ interface ProductSearchComboboxProps {
   className?: string;
 }
 
-export default function ProductSearchCombobox({ 
-  value, 
-  onSelect, 
+export default function ProductSearchCombobox({
+  value,
+  onSelect,
   placeholder = "Buscar por SKU/Descrição...",
-  className 
+  className,
 }: ProductSearchComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,31 +52,44 @@ export default function ProductSearchCombobox({
   }, [searchTerm]);
 
   // Query to search products
-  const { data: products = [], isLoading, error } = useQuery<Product[]>({
+  const {
+    data: products = [],
+    isLoading,
+    error,
+  } = useQuery<Product[]>({
     queryKey: ["/api/products/search", debouncedTerm],
     queryFn: async () => {
       if (!debouncedTerm || debouncedTerm.length < 1) return [];
-      
-      console.log('🔍 Buscando produtos para:', debouncedTerm);
-      
-      const response = await fetch(`/api/products/search?q=${encodeURIComponent(debouncedTerm)}&limit=10`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
+
+      console.log("🔍 Buscando produtos para:", debouncedTerm);
+
+      const response = await fetch(
+        `/api/products/search?q=${encodeURIComponent(debouncedTerm)}&limit=10`,
+        {
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
       if (!response.ok) {
-        console.error('❌ Erro na busca:', response.status, response.statusText);
+        console.error(
+          "❌ Erro na busca:",
+          response.status,
+          response.statusText,
+        );
         if (response.status === 404) {
           return []; // Return empty array instead of throwing for 404
         }
         const errorText = await response.text();
-        throw new Error(`Search failed: ${response.status} - ${response.statusText}`);
+        throw new Error(
+          `Search failed: ${response.status} - ${response.statusText}`,
+        );
       }
-      
+
       const result = await response.json();
-      console.log('✅ Produtos encontrados:', result.length, result);
+      console.log("✅ Produtos encontrados:", result.length, result);
       return Array.isArray(result) ? result : [];
     },
     enabled: debouncedTerm.length >= 1,
@@ -78,7 +102,7 @@ export default function ProductSearchCombobox({
     setOpen(false);
     setSearchTerm("");
     // Debug: log para verificar se a seleção está funcionando
-    console.log('Produto selecionado:', product);
+    console.log("Produto selecionado:", product);
   };
 
   const handleClear = () => {
@@ -116,19 +140,24 @@ export default function ProductSearchCombobox({
               {isLoading && searchTerm.length >= 2 && (
                 <CommandEmpty>Buscando produtos...</CommandEmpty>
               )}
-              
+
               {error && searchTerm.length >= 2 && (
                 <CommandEmpty className="text-red-600">
                   Erro na busca: {error.message}
                 </CommandEmpty>
               )}
-              
-              {!isLoading && !error && searchTerm.length >= 2 && products.length === 0 && (
-                <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
-              )}
-              
+
+              {!isLoading &&
+                !error &&
+                searchTerm.length >= 2 &&
+                products.length === 0 && (
+                  <CommandEmpty>Nenhum produto encontrado.</CommandEmpty>
+                )}
+
               {searchTerm.length < 2 && (
-                <CommandEmpty>Digite pelo menos 2 caracteres para buscar.</CommandEmpty>
+                <CommandEmpty>
+                  Digite pelo menos 2 caracteres para buscar.
+                </CommandEmpty>
               )}
 
               {products.length > 0 && (
@@ -141,23 +170,12 @@ export default function ProductSearchCombobox({
                       className="flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex flex-col min-w-0 flex-1">
-                        <div className="font-medium truncate">{product.name}</div>
+                        <div className="font-medium truncate">
+                          {product.name}
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           {product.categoryName} • SKU: {product.sku}
                         </div>
-                      </div>
-                      <div className="flex items-center ml-2">
-                        {product.hasSerialControl && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded mr-2">
-                            Série
-                          </span>
-                        )}
-                        <Check
-                          className={cn(
-                            "h-4 w-4",
-                            value?.id === product.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
                       </div>
                     </CommandItem>
                   ))}
@@ -165,7 +183,7 @@ export default function ProductSearchCombobox({
               )}
             </CommandList>
           </Command>
-          
+
           {value && (
             <div className="border-t p-2">
               <Button

@@ -1,24 +1,54 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import ProductSearchAutocomplete from "@/components/product-search-autocomplete";
 import { ArrowLeft, Search, Save, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Inventory, InventoryItem, Product, Location } from "@shared/schema";
+import type {
+  Inventory,
+  InventoryItem,
+  Product,
+  Location,
+} from "@shared/schema";
 
-export default function InventoryCounting({ params }: { params: { id: string } }) {
+export default function InventoryCounting({
+  params,
+}: {
+  params: { id: string };
+}) {
   const [, setLocation] = useLocation();
   const inventoryId = parseInt(params.id);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
-  const [countValues, setCountValues] = useState<{ [itemId: number]: number | string }>({});
+  const [countValues, setCountValues] = useState<{
+    [itemId: number]: number | string;
+  }>({});
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -27,7 +57,9 @@ export default function InventoryCounting({ params }: { params: { id: string } }
     queryKey: [`/api/inventories/${inventoryId}`],
   });
 
-  const { data: inventoryItems, refetch: refetchItems } = useQuery<InventoryItem[]>({
+  const { data: inventoryItems, refetch: refetchItems } = useQuery<
+    InventoryItem[]
+  >({
     queryKey: [`/api/inventories/${inventoryId}/items`],
   });
 
@@ -40,16 +72,27 @@ export default function InventoryCounting({ params }: { params: { id: string } }
   });
 
   const updateCountMutation = useMutation({
-    mutationFn: async ({ itemId, count, countType }: { itemId: number; count: number; countType: string }) => {
-      const response = await fetch(`/api/inventory-items/${itemId}/${countType}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ count }),
-      });
+    mutationFn: async ({
+      itemId,
+      count,
+      countType,
+    }: {
+      itemId: number;
+      count: number;
+      countType: string;
+    }) => {
+      const response = await fetch(
+        `/api/inventory-items/${itemId}/${countType}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ count }),
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update count');
+        throw new Error("Failed to update count");
       }
 
       return response.json();
@@ -71,39 +114,50 @@ export default function InventoryCounting({ params }: { params: { id: string } }
   });
 
   const getCurrentCountStage = () => {
-    if (!inventory) return 'count1';
+    if (!inventory) return "count1";
 
     switch (inventory.status) {
-      case 'count1':
-      case 'open':
-        return 'count1';
-      case 'count2':
-        return 'count2';
-      case 'count3':
-        return 'count3';
-      case 'audit':
-        return 'count4';
+      case "count1_open":
+      case "open":
+        return "count1";
+      case "count2_open":
+        return "count2";
+      case "count3_open":
+      case "count3_required":
+        return "count3";
+      case "audit_mode":
+        return "count4";
       default:
-        return 'count1';
+        return "count1";
     }
   };
 
   const getProductName = (productId: number) => {
-    return products?.find(p => p.id === productId)?.name || `Product ${productId}`;
+    return (
+      products?.find((p) => p.id === productId)?.name || `Product ${productId}`
+    );
   };
 
   const getLocationName = (locationId: number) => {
-    return locations?.find(l => l.id === locationId)?.name || `Location ${locationId}`;
+    return (
+      locations?.find((l) => l.id === locationId)?.name ||
+      `Location ${locationId}`
+    );
   };
 
   const getCurrentCount = (item: InventoryItem) => {
     const stage = getCurrentCountStage();
     switch (stage) {
-      case 'count1': return item.count1;
-      case 'count2': return item.count2;
-      case 'count3': return item.count3;
-      case 'count4': return item.count4;
-      default: return undefined;
+      case "count1":
+        return item.count1;
+      case "count2":
+        return item.count2;
+      case "count3":
+        return item.count3;
+      case "count4":
+        return item.count4;
+      default:
+        return undefined;
     }
   };
 
@@ -115,29 +169,33 @@ export default function InventoryCounting({ params }: { params: { id: string } }
     return "pending";
   };
 
-  const filteredItems = inventoryItems?.filter(item => {
-    const productName = getProductName(item.productId);
-    const locationName = getLocationName(item.locationId);
+  const filteredItems =
+    inventoryItems?.filter((item) => {
+      const productName = getProductName(item.productId);
+      const locationName = getLocationName(item.locationId);
 
-    const matchesSearch = searchTerm === "" || 
-      productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      locationName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch =
+        searchTerm === "" ||
+        productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        locationName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesLocation = locationFilter === "all" || item.locationId.toString() === locationFilter;
+      const matchesLocation =
+        locationFilter === "all" ||
+        item.locationId.toString() === locationFilter;
 
-    return matchesSearch && matchesLocation;
-  }) || [];
+      return matchesSearch && matchesLocation;
+    }) || [];
 
   const handleCountChange = (itemId: number, value: string) => {
-    setCountValues(prev => ({
+    setCountValues((prev) => ({
       ...prev,
-      [itemId]: value
+      [itemId]: value,
     }));
   };
 
   const handleSaveCount = (itemId: number) => {
     const value = countValues[itemId];
-    const count = typeof value === 'string' ? parseInt(value) : value;
+    const count = typeof value === "string" ? parseInt(value) : value;
 
     if (isNaN(count) || count < 0) {
       toast({
@@ -154,16 +212,25 @@ export default function InventoryCounting({ params }: { params: { id: string } }
 
   const getStageLabel = (stage: string) => {
     switch (stage) {
-      case 'count1': return 'Primeira Contagem (C1)';
-      case 'count2': return 'Segunda Contagem (C2)';
-      case 'count3': return 'Terceira Contagem (C3)';
-      case 'count4': return 'Contagem de Auditoria (C4)';
-      default: return 'Contagem';
+      case "count1":
+        return "Primeira Contagem (C1)";
+      case "count2":
+        return "Segunda Contagem (C2)";
+      case "count3":
+        return "Terceira Contagem (C3)";
+      case "count4":
+        return "Contagem de Auditoria (C4)";
+      default:
+        return "Contagem";
     }
   };
 
-  const pendingItems = filteredItems.filter(item => getItemStatus(item) === "pending");
-  const completedItems = filteredItems.filter(item => getItemStatus(item) === "completed");
+  const pendingItems = filteredItems.filter(
+    (item) => getItemStatus(item) === "pending",
+  );
+  const completedItems = filteredItems.filter(
+    (item) => getItemStatus(item) === "completed",
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -240,16 +307,18 @@ export default function InventoryCounting({ params }: { params: { id: string } }
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="mt-4">
-            <ProductSearchAutocomplete 
+            <ProductSearchAutocomplete
               onProductSelect={(product, quantity) => {
                 // Função para adicionar produto diretamente à contagem
-                const inventoryItem = inventoryItems?.find(item => item.productId === product.id);
+                const inventoryItem = inventoryItems?.find(
+                  (item) => item.productId === product.id,
+                );
                 if (inventoryItem) {
-                  setCountValues(prev => ({
+                  setCountValues((prev) => ({
                     ...prev,
-                    [inventoryItem.id]: quantity
+                    [inventoryItem.id]: quantity,
                   }));
                   handleSaveCount(inventoryItem.id);
                 }
@@ -285,7 +354,8 @@ export default function InventoryCounting({ params }: { params: { id: string } }
                 {filteredItems.map((item) => {
                   const currentCount = getCurrentCount(item);
                   const status = getItemStatus(item);
-                  const countValue = countValues[item.id] ?? (currentCount || '');
+                  const countValue =
+                    countValues[item.id] ?? (currentCount || "");
 
                   return (
                     <TableRow key={item.id}>
@@ -293,11 +363,16 @@ export default function InventoryCounting({ params }: { params: { id: string } }
                         {getProductName(item.productId)}
                       </TableCell>
                       <TableCell>{getLocationName(item.locationId)}</TableCell>
-                      <TableCell className="font-bold">{item.expectedQuantity}</TableCell>
+                      <TableCell className="font-bold">
+                        {item.expectedQuantity}
+                      </TableCell>
                       <TableCell>
-                        {status === "completed" && currentCount !== undefined ? (
+                        {status === "completed" &&
+                        currentCount !== undefined ? (
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-green-600">{currentCount}</span>
+                            <span className="font-bold text-green-600">
+                              {currentCount}
+                            </span>
                             <CheckCircle className="h-4 w-4 text-green-600" />
                           </div>
                         ) : (
@@ -305,16 +380,22 @@ export default function InventoryCounting({ params }: { params: { id: string } }
                             type="number"
                             min="0"
                             value={countValue}
-                            onChange={(e) => handleCountChange(item.id, e.target.value)}
+                            onChange={(e) =>
+                              handleCountChange(item.id, e.target.value)
+                            }
                             placeholder="Quantidade"
                             className="w-24"
                           />
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={status === "completed" ? "default" : "outline"}
-                          className={status === "completed" ? "bg-green-500" : ""}
+                        <Badge
+                          variant={
+                            status === "completed" ? "default" : "outline"
+                          }
+                          className={
+                            status === "completed" ? "bg-green-500" : ""
+                          }
                         >
                           {status === "completed" ? "Concluído" : "Pendente"}
                         </Badge>
@@ -324,7 +405,10 @@ export default function InventoryCounting({ params }: { params: { id: string } }
                           <Button
                             size="sm"
                             onClick={() => handleSaveCount(item.id)}
-                            disabled={!countValues[item.id] || countValues[item.id] === ''}
+                            disabled={
+                              !countValues[item.id] ||
+                              countValues[item.id] === ""
+                            }
                           >
                             <Save className="h-4 w-4 mr-2" />
                             Salvar
