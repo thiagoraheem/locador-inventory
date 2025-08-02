@@ -108,6 +108,11 @@ export default function MobileCounting() {
 
   const { toast } = useToast();
 
+  // Fetch current user information
+  const { data: currentUser } = useQuery<any>({
+    queryKey: ["/api/auth/user"],
+  });
+
   // Fetch all active inventories
   const { data: inventories } = useQuery<Inventory[]>({
     queryKey: ["/api/inventories"],
@@ -661,16 +666,19 @@ export default function MobileCounting() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hover:bg-blue-700 dark:hover:bg-blue-800"
-            onClick={() => logoutMutation.mutate()}
-            disabled={logoutMutation.isPending}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            {logoutMutation.isPending ? "Saindo..." : "Sair"}
-          </Button>
+          {/* Botão Sair - apenas para usuários Contador */}
+          {currentUser?.profile === "Contador" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-white/30 hover:bg-blue-700 hover:text-white dark:hover:bg-blue-800"
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {logoutMutation.isPending ? "Saindo..." : "Sair"}
+            </Button>
+          )}
           <div className="flex-1">
             <h1 className="text-2xl font-bold">Contagem Mobile</h1>
             {selectedInventory?.status === "count3_open" && (
