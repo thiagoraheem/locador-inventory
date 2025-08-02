@@ -46,7 +46,12 @@ function Router() {
   }
 
   // Auto-redirect users with "Contador" role to mobile counting screen
-  const isContador = user && (user as any).role === 'contador';
+  const isContador = user && (
+    (user as any).role === 'contador' || 
+    (user as any).role === 'Contador' || 
+    (user as any).profile === 'contador' || 
+    (user as any).profile === 'Contador'
+  );
 
   return (
     <Switch>
@@ -58,14 +63,12 @@ function Router() {
         </>
       ) : isContador ? (
         // Contador users get only the mobile counting interface
-        <div>
+        <>
           <Route path="/" component={MobileCounting} />
+          <Route path="/mobile-counting" component={MobileCounting} />
           <Route path="/inventory-counts-cp" component={MobileCounting} />
-          <Route component={() => <div className="min-h-screen bg-blue-600 p-4 text-white text-center">
-            <h1 className="text-2xl font-bold mt-8">Sistema de Inventário</h1>
-            <p className="mt-4">Você tem acesso apenas à tela de contagem móvel.</p>
-          </div>} />
-        </div>
+          <Route component={MobileCounting} />
+        </>
       ) : (
         <MainLayout>
           <Route path="/" component={Dashboard} />

@@ -667,7 +667,10 @@ export default function MobileCounting() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {/* Botão Sair - apenas para usuários Contador */}
-          {currentUser?.profile === "Contador" && (
+          {(currentUser?.profile === "Contador" || 
+            currentUser?.profile === "contador" || 
+            currentUser?.role === "Contador" || 
+            currentUser?.role === "contador") && (
             <Button
               variant="outline"
               size="sm"
