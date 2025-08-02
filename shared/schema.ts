@@ -201,29 +201,29 @@ export interface InventoryFinalReport {
   startDate: number;
   endDate?: number;
   totalTimeSpent: number; // in hours
-  type: {
+  type?: {
     id: number;
     name: string;
   };
-  createdBy: {
+  createdBy?: {
     id: number;
     name: string;
   };
   description?: string;
-  selectedLocations: Array<{
+  selectedLocations?: Array<{
     id: number;
     name: string;
   }>;
-  selectedCategories: Array<{
+  selectedCategories?: Array<{
     id: number;
     name: string;
   }>;
-  kpis: {
+  kpis?: {
     totalStock: number;
     accuracyRate: number;
     totalLossValue: number;
   };
-  participants: Array<{
+  participants?: Array<{
     userId: number;
     userName: string;
     itemsCounted: number;
@@ -237,6 +237,7 @@ export interface InventoryFinalReport {
     count2Items: number;
     count3Items: number;
     count4Items: number;
+    auditItems: number;
   };
   totalItems: number;
   completedItems: number;
@@ -257,7 +258,7 @@ export interface InventoryFinalReport {
     differenceValue: number;
     impactPercentage: number;
   };
-  inventoryValues: {
+  inventoryValues?: {
     expectedValue: number;
     finalValue: number;
     lossValue: number;
@@ -330,6 +331,9 @@ export interface SerialReadingResponse {
   success: boolean;
   productId?: number;
   productName?: string;
+  productSku?: string;
+  locationId?: number;
+  locationName?: string;
   alreadyRead?: boolean;
   newSerial?: boolean;
   message?: string;

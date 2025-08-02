@@ -1382,11 +1382,13 @@ export class SimpleStorage {
 
     return {
       inventoryId: inventory.id,
+      inventoryCode: inventory.code,
       inventoryName: `${inventory.typeName} - ${new Date(inventory.startDate).toLocaleDateString()}`,
       status: inventory.status,
       startDate: inventory.startDate,
       endDate: inventory.endDate || undefined,
       totalItems: stats.totalItems,
+      totalTimeSpent: stats.totalTimeSpent,
       completedItems: stats.completedItems,
       accuracy: {
         totalItems: stats.totalItems,
@@ -1409,6 +1411,7 @@ export class SimpleStorage {
         count1Items: stats.count1Items,
         count2Items: stats.count2Items,
         count3Items: stats.count3Items,
+        count4Items: stats.count4Items,
         auditItems: stats.auditItems,
       },
       divergentItems: divergentItems.map((item: any) => ({
@@ -1426,12 +1429,6 @@ export class SimpleStorage {
       })),
       recommendations,
     };
-  }
-
-  // Calculate difference and accuracy (simplified - no need to update DB since columns don't exist)
-  private async calculateAndUpdateDifference(itemId: number): Promise<void> {
-    // This method is disabled - columns difference/accuracy don't exist in current schema
-    return;
   }
 
   // Inventory Stock Items methods (for patrimônio)
@@ -1587,6 +1584,44 @@ export class SimpleStorage {
       updatedAt: item.updatedAt
         ? new Date(item.updatedAt).getTime()
         : Date.now(),
+    }));
+  }
+
+  async getAllCountsForInventory(inventoryId: number): Promise<(Count & { countedByUser: User })[]> {
+    // Get all inventory items for this inventory
+    const items = await this.getInventoryItemsByInventory(inventoryId);
+    const itemIds = items.map(item => item.id);
+    
+    if (itemIds.length === 0) {
+      return [];
+    }
+    
+    // Get all counts for these inventory items
+    const result = await this.pool.request()
+      .input('itemIds', sql.VarChar, itemIds.join(','))
+      .query(`
+        SELECT c.*, u.id as userId, u.username, u.firstName, u.lastName, u.email, u.role
+        FROM counts c
+        JOIN users u ON c.countedBy = u.id
+        WHERE c.inventoryItemId IN (SELECT value FROM STRING_SPLIT(@itemIds, ','))
+        ORDER BY c.countedAt
+      `);
+    
+    return result.recordset.map(count => ({
+      ...count,
+      countedAt: count.countedAt ? new Date(count.countedAt).getTime() : Date.now(),
+      countedByUser: {
+        id: count.userId,
+        username: count.username,
+        firstName: count.firstName,
+        lastName: count.lastName,
+        email: count.email,
+        role: count.role,
+        password: '', // Don't expose password
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
     }));
   }
 
