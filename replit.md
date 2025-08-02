@@ -30,6 +30,9 @@ Preferred communication style: Simple, everyday language.
 - **Product Combobox**: Fixed mobile counting page product selection with proper confirmation dialog for new products
 - **Manual Count API**: Enhanced `/api/inventories/:id/manual-count` endpoint to handle product existence validation and confirmation flow
 - **Inventory Details Page**: Created comprehensive inventory details view showing registration info, selected locations, categories, and products with serial numbers
+- **Audit Mode Enhancements (Feb 2025)**: Added support for confirming items with value 0 in audit mode and created bulk confirmation functionality
+- **Bulk Confirmation API**: Created `/api/inventories/:id/confirm-all-items` endpoint to confirm all items with their current final quantities
+- **Audit Mode UI**: Added "Confirmar Todos com Quantidades Atuais" button in audit mode to confirm all items at once
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework

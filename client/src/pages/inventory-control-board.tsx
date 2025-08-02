@@ -406,7 +406,7 @@ export default function InventoryControlBoard() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ userId: user?.id || "audit_user" }),
+          body: JSON.stringify({ userId: (user as any)?.id || "audit_user" }),
         },
       );
 
@@ -431,6 +431,46 @@ export default function InventoryControlBoard() {
     onError: (error) => {
       toast({
         title: "Erro ao finalizar auditoria",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to confirm all items with current final quantities
+  const confirmAllItemsMutation = useMutation({
+    mutationFn: async (inventoryId: number) => {
+      const response = await fetch(
+        `/api/inventories/${inventoryId}/confirm-all-items`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to confirm all items");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Todos os itens confirmados",
+        description: `${data.confirmedItems} itens foram confirmados com suas quantidades finais atuais`,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/inventories/${selectedInventoryId}/items`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao confirmar todos os itens",
         description: error.message,
         variant: "destructive",
       });
@@ -945,7 +985,7 @@ export default function InventoryControlBoard() {
                                   onClick={() => handleCount4Save(item.id)}
                                   disabled={
                                     updateCount4Mutation.isPending ||
-                                    !editingCount4[item.id] ||
+                                    editingCount4[item.id] === undefined ||
                                     editingCount4[item.id] === ""
                                   }
                                   className="px-2"
@@ -1153,7 +1193,7 @@ export default function InventoryControlBoard() {
                                       onClick={() => handleCount4Save(item.id)}
                                       disabled={
                                         updateCount4Mutation.isPending ||
-                                        !editingCount4[item.id] ||
+                                        editingCount4[item.id] === undefined ||
                                         editingCount4[item.id] === ""
                                       }
                                     >
@@ -1191,7 +1231,25 @@ export default function InventoryControlBoard() {
                         </Table>
                       </div>
 
-                      <div className="mt-4 flex justify-end">
+                      <div className="mt-4 flex justify-end gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            selectedInventoryId &&
+                            confirmAllItemsMutation.mutate(selectedInventoryId)
+                          }
+                          disabled={
+                            confirmAllItemsMutation.isPending ||
+                            !inventoryItems?.some(item => 
+                              item.finalQuantity !== null && item.finalQuantity !== undefined
+                            )
+                          }
+                          className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        >
+                          {confirmAllItemsMutation.isPending
+                            ? "Confirmando..."
+                            : "Confirmar Todos com Quantidades Atuais"}
+                        </Button>
                         <Button
                           onClick={() =>
                             selectedInventoryId &&

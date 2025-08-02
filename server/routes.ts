@@ -1003,6 +1003,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk confirm all items with current final quantities
+  app.put("/api/inventories/:id/confirm-all-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      storage = await getStorage();
+
+      const inventory = await storage.getInventory(inventoryId);
+      if (!inventory) {
+        return res.status(404).json({ message: "Inventory not found" });
+      }
+
+      if (inventory.status !== 'audit_mode') {
+        return res.status(400).json({ message: "Inventory must be in audit mode to confirm all items" });
+      }
+
+      const items = await storage.getInventoryItems(inventoryId);
+      const confirmations = [];
+
+      for (const item of items) {
+        if (item.finalQuantity !== null && item.finalQuantity !== undefined) {
+          // Item has a final quantity, confirm it
+          await storage.updateCount4(item.id, item.finalQuantity, req.user.id);
+          confirmations.push({
+            itemId: item.id,
+            productId: item.productId,
+            confirmedQuantity: item.finalQuantity
+          });
+        }
+        // Items with null/undefined finalQuantity remain as "not found" 
+      }
+
+      // Create audit log for bulk confirmation
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "BULK_CONFIRM_ITEMS",
+        entityType: "inventory",
+        entityId: inventoryId.toString(),
+        newValues: JSON.stringify({ confirmedItems: confirmations.length }),
+        metadata: JSON.stringify({ confirmations, timestamp: Date.now() }),
+      });
+
+      res.json({ 
+        message: `${confirmations.length} items confirmed with current final quantities`,
+        confirmedItems: confirmations.length,
+        confirmations
+      });
+    } catch (error) {
+      console.error("Error confirming all items:", error);
+      res.status(500).json({ message: "Failed to confirm all items" });
+    }
+  });
+
   // Get stock items for inventory (patrimônio control)
   app.get("/api/inventories/:id/stock-items", isAuthenticated, async (req: any, res) => {
     try {
