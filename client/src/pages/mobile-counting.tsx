@@ -376,6 +376,12 @@ export default function MobileCounting() {
   const handleConfirmAdd = async () => {
     if (!pendingAddData) return;
 
+    console.log("=== DEBUG: handleConfirmAdd ===");
+    console.log("pendingAddData:", pendingAddData);
+    console.log("selectedInventoryId:", selectedInventoryId);
+    console.log("selectedLocationId:", selectedLocationId);
+    console.log("countStage:", getCurrentCountStage());
+
     setIsLoading(true);
     try {
       const result = await registerManualCount(
@@ -383,6 +389,9 @@ export default function MobileCounting() {
         pendingAddData.quantity,
         true, // confirmAdd = true
       );
+
+      console.log("=== DEBUG: resultado da API ===");
+      console.log("result:", result);
 
       addManualProduct(pendingAddData.product, pendingAddData.quantity);
 
@@ -520,6 +529,18 @@ export default function MobileCounting() {
       throw new Error("Local de estoque obrigatório");
     }
 
+    const requestBody = {
+      productId,
+      locationId: selectedLocationId,
+      quantity,
+      countStage: getCurrentCountStage().toString(),
+      confirmAdd,
+    };
+
+    console.log("=== DEBUG: registerManualCount ===");
+    console.log("URL:", `/api/inventories/${selectedInventoryId}/manual-count`);
+    console.log("Request body:", requestBody);
+
     try {
       const response = await fetch(
         `/api/inventories/${selectedInventoryId}/manual-count`,
@@ -527,13 +548,7 @@ export default function MobileCounting() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            productId,
-            locationId: selectedLocationId,
-            quantity,
-            countStage: getCurrentCountStage().toString(),
-            confirmAdd,
-          }),
+          body: JSON.stringify(requestBody),
         },
       );
 

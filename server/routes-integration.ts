@@ -90,6 +90,11 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const inventoryId = parseInt(req.params.id);
       const { productId, locationId, quantity, countStage, confirmAdd = false } = req.body;
       
+      console.log("=== DEBUG: API manual-count ===");
+      console.log("inventoryId:", inventoryId);
+      console.log("body:", req.body);
+      console.log("confirmAdd:", confirmAdd);
+      
       const storage = await getStorage();
       
       // Buscar item do inventário
