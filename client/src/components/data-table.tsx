@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Column {
   header: string;
@@ -15,14 +22,15 @@ interface DataTableProps {
   columns: Column[];
   searchQuery?: string;
   isLoading?: boolean;
+  defaultItemsPerPage?: number;
 }
 
-export default function DataTable({ data, columns, searchQuery, isLoading }: DataTableProps) {
+export default function DataTable({ data, columns, searchQuery, isLoading, defaultItemsPerPage = 10 }: DataTableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(defaultItemsPerPage);
 
   // Check if screen is mobile
   useEffect(() => {
@@ -133,15 +141,38 @@ export default function DataTable({ data, columns, searchQuery, isLoading }: Dat
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {totalPages > 0 && (
         <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <div className="text-sm text-muted-foreground text-center sm:text-left">
-            Mostrando{" "}
-            <span className="font-medium">{startIndex + 1}</span> a{" "}
-            <span className="font-medium">
-              {Math.min(startIndex + itemsPerPage, sortedData.length)}
-            </span>{" "}
-            de <span className="font-medium">{sortedData.length}</span> itens
+          <div className="flex items-center gap-2 text-sm text-muted-foreground text-center sm:text-left">
+            <div>
+              Mostrando{" "}
+              <span className="font-medium">{startIndex + 1}</span> a{" "}
+              <span className="font-medium">
+                {Math.min(startIndex + itemsPerPage, sortedData.length)}
+              </span>{" "}
+              de <span className="font-medium">{sortedData.length}</span> itens
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">Itens por página:</span>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1); // Reset to first page when changing items per page
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage.toString()} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center justify-center space-x-1 flex-wrap gap-1">
             <Button
