@@ -26,24 +26,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import Header from "@/components/layout/header";
 import {
   Search,
@@ -119,7 +101,9 @@ interface ControlPanelStats {
 
 // Temporary hook - replace with actual implementation
 const useSelectedInventory = () => {
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
+  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(
+    null,
+  );
   return { selectedInventoryId, setSelectedInventoryId };
 };
 
@@ -155,36 +139,6 @@ const CountIndicator = ({
         </div>
       ) : (
         <div className="text-xs text-muted-foreground">Pendente</div>
-      )}
-    </div>
-  );
-};
-
-interface AccuracyIndicatorProps {
-  accuracy?: number;
-  difference?: number;
-}
-
-const AccuracyIndicator = ({
-  accuracy,
-  difference,
-}: AccuracyIndicatorProps) => {
-  if (accuracy === undefined)
-    return <span className="text-muted-foreground">-</span>;
-
-  const getAccuracyColor = (acc: number) => {
-    if (acc >= 95) return "text-green-600";
-    if (acc >= 85) return "text-yellow-600";
-    return "text-red-600";
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <span className={`font-bold ${getAccuracyColor(accuracy)}`}>
-        {accuracy.toFixed(1)}%
-      </span>
-      {difference !== undefined && (
-        <span className="text-xs text-muted-foreground">Δ {difference}</span>
       )}
     </div>
   );
@@ -555,26 +509,14 @@ export default function InventoryControlBoard() {
       return matchesSearch && matchesStatus;
     }) || [];
 
-  const handleExport = () => {
-    console.log("Export functionality to be implemented");
-  };
-
-  const handleCancelInventory = () => {
-    if (selectedInventoryId && cancelReason.trim()) {
-      // cancelInventoryMutation.mutate({ id: selectedInventoryId, reason: cancelReason });
-      setCancelReason("");
-    }
-  };
-
-  const handleDeleteInventory = () => {
-    if (selectedInventoryId) {
-      deleteInventoryMutation.mutate(selectedInventoryId);
-    }
-  };
-
   // Helper functions for counting status
   const canStartCounting = (status: string) => {
-    return ["open", "count1_closed", "count2_closed", "count3_required"].includes(status);
+    return [
+      "open",
+      "count1_closed",
+      "count2_closed",
+      "count3_required",
+    ].includes(status);
   };
 
   const canFinishCounting = (status: string) => {
@@ -723,7 +665,9 @@ export default function InventoryControlBoard() {
                     key={inventory.id}
                     value={inventory.id.toString()}
                   >
-                    {inventory.code} - {inventory.description || "Sem descrição"} ({inventory.status})
+                    {inventory.code} -{" "}
+                    {inventory.description || "Sem descrição"} (
+                    {inventory.status})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -771,15 +715,6 @@ export default function InventoryControlBoard() {
                 <RefreshCw className="h-3 w-3" />
                 Recarregar
               </Button>
-
-              <Button
-                onClick={handleExport}
-                size="sm"
-                className="flex items-center gap-1"
-              >
-                <Download className="h-3 w-3" />
-                Exportar
-              </Button>
             </div>
           )}
         </div>
@@ -793,7 +728,8 @@ export default function InventoryControlBoard() {
                   <div>
                     <p className="text-xs text-muted-foreground">Produtos</p>
                     <p className="text-lg font-bold">
-                      {(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)}
+                      {(stats?.itemsInProgress || 0) +
+                        (stats?.itemsCompleted || 0)}
                     </p>
                   </div>
                   <Package className="h-4 w-4 text-muted-foreground" />
@@ -804,7 +740,9 @@ export default function InventoryControlBoard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Categorias</p>
-                    <p className="text-lg font-bold">{categories?.length || 0}</p>
+                    <p className="text-lg font-bold">
+                      {categories?.length || 0}
+                    </p>
                   </div>
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -814,7 +752,9 @@ export default function InventoryControlBoard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Progresso</p>
-                    <p className="text-lg font-bold">{getInventoriedPercentage().toFixed(1)}%</p>
+                    <p className="text-lg font-bold">
+                      {getInventoriedPercentage().toFixed(1)}%
+                    </p>
                   </div>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </div>
@@ -823,8 +763,12 @@ export default function InventoryControlBoard() {
               <Card className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground">Divergências</p>
-                    <p className="text-lg font-bold text-destructive">{stats?.divergenceCount || 0}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Divergências
+                    </p>
+                    <p className="text-lg font-bold text-destructive">
+                      {stats?.divergenceCount || 0}
+                    </p>
                   </div>
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                 </div>
@@ -844,7 +788,9 @@ export default function InventoryControlBoard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-muted-foreground">Acuracidade</p>
-                    <p className="text-lg font-bold text-success">{stats?.accuracyRate?.toFixed(1) || 0}%</p>
+                    <p className="text-lg font-bold text-success">
+                      {stats?.accuracyRate?.toFixed(1) || 0}%
+                    </p>
                   </div>
                   <BarChart3 className="h-4 w-4 text-success" />
                 </div>
@@ -854,8 +800,14 @@ export default function InventoryControlBoard() {
             {/* Barra de Progresso Simples */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Status: {getCountingStageText(selectedInventory.status)}</span>
-                <span>{stats?.itemsCompleted || 0} de {(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)} itens</span>
+                <span>
+                  Status: {getCountingStageText(selectedInventory.status)}
+                </span>
+                <span>
+                  {stats?.itemsCompleted || 0} de{" "}
+                  {(stats?.itemsInProgress || 0) + (stats?.itemsCompleted || 0)}{" "}
+                  itens
+                </span>
               </div>
               <Progress value={getInventoriedPercentage()} className="h-2" />
             </div>
@@ -903,12 +855,16 @@ export default function InventoryControlBoard() {
                       <TableRow>
                         <TableHead>Produto</TableHead>
                         <TableHead>Local de Estoque</TableHead>
-                        <TableHead className="text-center">Qtd. Estoque</TableHead>
+                        <TableHead className="text-center">
+                          Qtd. Estoque
+                        </TableHead>
                         <TableHead className="text-center">C1</TableHead>
                         <TableHead className="text-center">C2</TableHead>
                         <TableHead className="text-center">C3</TableHead>
                         <TableHead className="text-center">C4</TableHead>
-                        <TableHead className="text-center">Qtd. Final</TableHead>
+                        <TableHead className="text-center">
+                          Qtd. Final
+                        </TableHead>
                         <TableHead className="text-center">Diferença</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                       </TableRow>
@@ -922,7 +878,9 @@ export default function InventoryControlBoard() {
                           <TableCell>
                             {getLocationName(item.locationId)}
                           </TableCell>
-                          <TableCell className="text-center">{item.expectedQuantity}</TableCell>
+                          <TableCell className="text-center">
+                            {item.expectedQuantity}
+                          </TableCell>
                           <TableCell className="text-center">
                             <CountIndicator
                               count={item.count1}
@@ -1042,26 +1000,51 @@ export default function InventoryControlBoard() {
                     </TableBody>
                   </Table>
                 </div>
-                
+
                 <div className="flex justify-between items-center m-4 pt-4 border-t text-sm text-muted-foreground">
                   <div className="flex gap-6">
-                    <span>Total de Itens: <strong className="text-foreground">{filteredItems.length}</strong></span>
-                    <span>Concluídos: <strong className="text-foreground">
-                      {filteredItems.filter(item => 
-                        item.count1 !== undefined && item.count2 !== undefined
-                      ).length}
-                    </strong></span>
+                    <span>
+                      Total de Itens:{" "}
+                      <strong className="text-foreground">
+                        {filteredItems.length}
+                      </strong>
+                    </span>
+                    <span>
+                      Concluídos:{" "}
+                      <strong className="text-foreground">
+                        {
+                          filteredItems.filter(
+                            (item) =>
+                              item.count1 !== undefined &&
+                              item.count2 !== undefined,
+                          ).length
+                        }
+                      </strong>
+                    </span>
                   </div>
                   <div className="flex gap-6">
-                    <span>Divergências: <strong className="text-red-60">
-                      {filteredItems.filter(item =>
-                        item.count1 !== undefined &&
-                        item.count2 !== undefined &&
-                        (Math.abs(item.count1 - item.expectedQuantity) > 0 ||
-                         Math.abs(item.count2 - item.expectedQuantity) > 0)
-                      ).length}
-                    </strong></span>
-                    <span>Acuracidade Média: <strong className="text-foreground">{stats?.accuracyRate?.toFixed(1) || 0}%</strong></span>
+                    <span>
+                      Divergências:{" "}
+                      <strong className="text-red-60">
+                        {
+                          filteredItems.filter(
+                            (item) =>
+                              item.count1 !== undefined &&
+                              item.count2 !== undefined &&
+                              (Math.abs(item.count1 - item.expectedQuantity) >
+                                0 ||
+                                Math.abs(item.count2 - item.expectedQuantity) >
+                                  0),
+                          ).length
+                        }
+                      </strong>
+                    </span>
+                    <span>
+                      Acuracidade Média:{" "}
+                      <strong className="text-foreground">
+                        {stats?.accuracyRate?.toFixed(1) || 0}%
+                      </strong>
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -1203,8 +1186,10 @@ export default function InventoryControlBoard() {
                           }
                           disabled={
                             confirmAllItemsMutation.isPending ||
-                            !inventoryItems?.some(item => 
-                              item.finalQuantity !== null && item.finalQuantity !== undefined
+                            !inventoryItems?.some(
+                              (item) =>
+                                item.finalQuantity !== null &&
+                                item.finalQuantity !== undefined,
                             )
                           }
                           className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
