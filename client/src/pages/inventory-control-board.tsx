@@ -166,7 +166,7 @@ export default function InventoryControlBoard() {
     useQuery<Inventory>({
       queryKey: [`/api/inventories/${selectedInventoryId}`],
       enabled: !!selectedInventoryId,
-      refetchInterval: selectedInventoryId ? 60000 : false, // 1 minute when inventory selected
+      refetchInterval: selectedInventoryId ? 30000 : false, // 30 seconds when inventory selected
     });
 
   const { data: user } = useQuery({
@@ -182,7 +182,7 @@ export default function InventoryControlBoard() {
   const { data: stats, refetch: refetchStats } = useQuery<ControlPanelStats>({
     queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
     enabled: !!selectedInventoryId,
-    refetchInterval: selectedInventoryId ? 60000 : false, // 1 minute when inventory selected
+    refetchInterval: selectedInventoryId ? 30000 : false, // 30 seconds when inventory selected
   });
 
   const { data: inventoryItems, refetch: refetchItems } = useQuery<
@@ -190,7 +190,7 @@ export default function InventoryControlBoard() {
   >({
     queryKey: [`/api/inventories/${selectedInventoryId}/items`],
     enabled: !!selectedInventoryId,
-    refetchInterval: selectedInventoryId ? 60000 : false, // 1 minute when inventory selected
+    refetchInterval: selectedInventoryId ? 30000 : false, // 30 seconds when inventory selected
   });
 
   const { data: products } = useQuery<Product[]>({
