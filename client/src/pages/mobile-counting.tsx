@@ -667,19 +667,21 @@ export default function MobileCounting() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           {/* Botão Sair - apenas para usuários Contador */}
-          {(currentUser?.profile === "Contador" || 
-            currentUser?.profile === "contador" || 
-            currentUser?.role === "Contador" || 
+          {(currentUser?.profile === "Contador" ||
+            currentUser?.profile === "contador" ||
+            currentUser?.role === "Contador" ||
             currentUser?.role === "contador") && (
             <Button
               variant="outline"
               size="sm"
-              className="text-white border-white/30 hover:bg-blue-700 hover:text-white dark:hover:bg-blue-800"
+              className="text-white border-white/50 bg-transparent hover:bg-white/20 hover:border-white hover:text-white focus:text-white"
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              {logoutMutation.isPending ? "Saindo..." : "Sair"}
+              <LogOut className="h-4 w-4 mr-2 text-white" />
+              <span className="text-white">
+                {logoutMutation.isPending ? "Saindo..." : "Sair"}
+              </span>
             </Button>
           )}
           <div className="flex-1">
