@@ -372,7 +372,9 @@ export default function InventoryControlBoard() {
       );
 
       if (!validateResponse.ok) {
-        throw new Error("Failed to validate inventory closure");
+        throw new Error(
+          `Failed to validate inventory closure. ${JSON.stringify(validateResponse) || ""}`,
+        );
       }
 
       const validation = await validateResponse.json();
