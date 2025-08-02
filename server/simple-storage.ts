@@ -838,10 +838,21 @@ export class SimpleStorage {
 
   // Transition inventory status
   async transitionInventoryStatus(inventoryId: number, newStatus: InventoryStatus, userId: number): Promise<void> {
-    // If closing count2, determine if it should be completed or require count3
+    // If closing count2, check if 3rd count is needed
     if (newStatus === 'count2_closed') {
-      const smartStatus = await this.determinePostCount2Status(inventoryId);
-      newStatus = smartStatus;
+      await this.calculateFinalQuantities(inventoryId);
+      
+      // Check if any items still need 3rd count (have null finalQuantity)
+      const items = await this.getInventoryItemsByInventory(inventoryId);
+      const itemsNeedingThirdCount = items.filter(item => 
+        item.finalQuantity === null || item.finalQuantity === undefined
+      );
+      
+      // If items need 3rd count, keep count2_closed status to allow 3rd count start
+      // If no items need 3rd count, move to completed
+      if (itemsNeedingThirdCount.length === 0) {
+        newStatus = 'count2_completed';
+      }
     }
     // If closing count3, automatically move to audit mode
     else if (newStatus === 'count3_closed') {
@@ -876,14 +887,14 @@ export class SimpleStorage {
     // First calculate final quantities
     await this.calculateFinalQuantities(inventoryId);
 
-    // Then check if any items still need 3rdcount (have null finalQuantity)
+    // Then check if any items still need 3rd count (have null finalQuantity)
     const items = await this.getInventoryItemsByInventory(inventoryId);
 
     const itemsNeedingThirdCount = items.filter(item => 
       item.finalQuantity === null || item.finalQuantity === undefined
     );
 
-    return itemsNeedingThirdCount.length > 0 ? 'count3_required' : 'count2_completed';
+    return itemsNeedingThirdCount.length > 0 ? 'count2_closed' : 'count2_completed';
   }
 
   // Calculate final quantities based on business rules
