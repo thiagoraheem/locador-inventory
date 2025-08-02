@@ -1797,6 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Validate inventory can transition from audit_mode to closed
   app.post(
     "/api/inventories/:id/validate-closure",
+    isAuthenticated,
     hasAuditModeAccess,
     async (req: any, res) => {
       try {
