@@ -91,9 +91,9 @@ export default function InventoryDetails() {
 
   // Filter items based on search
   const filteredItems = inventoryItems.filter(item =>
-    item.product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.location.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (item.product?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.product?.sku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.location?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Group serial items by product
@@ -489,18 +489,18 @@ export default function InventoryDetails() {
                           <TableRow key={item.id}>
                             <TableCell>
                               <div>
-                                <p className="font-medium">{item.product.name}</p>
+                                <p className="font-medium">{item.product?.name || 'Produto não encontrado'}</p>
                                 <p className="text-sm text-muted-foreground">
-                                  {item.product.description}
+                                  {item.product?.description || 'Sem descrição'}
                                 </p>
                               </div>
                             </TableCell>
                             <TableCell className="font-mono text-sm">
-                              {item.product.sku}
+                              {item.product?.sku || 'N/A'}
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-xs">
-                                {item.location.name}
+                                {item.location?.name || 'Local não encontrado'}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center">
