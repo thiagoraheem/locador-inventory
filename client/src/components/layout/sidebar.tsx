@@ -27,6 +27,7 @@ import {
   Users,
   FolderOpen,
   TestTube,
+  Globe,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -127,6 +128,7 @@ const navigation: NavigationItem[] = [
     ],
   },
   { name: "Logs de Auditoria", href: "/audit-logs", icon: History },
+  { name: "Testes API", href: "/api-tests", icon: Globe, adminOnly: true },
 ];
 
 export default function Sidebar({
