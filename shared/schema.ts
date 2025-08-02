@@ -61,21 +61,24 @@ export interface InventoryType {
   isActive: boolean;
 }
 
-// Inventory status enum - expanded for multi-stage counting process
-export type InventoryStatus = 
-  | "planning"         // Planejamento inicial
-  | "open"            // Aberto para contagem
-  | "count1_open"     // 1ª contagem aberta
-  | "count1_closed"   // 1ª contagem fechada
-  | "count2_open"     // 2ª contagem aberta
-  | "count2_closed"   // 2ª contagem fechada
-  | "count2_completed" // 2ª contagem concluída (C1=C2)
-  | "count3_required" // 3ª contagem necessária (C1≠C2)
-  | "count3_open"     // 3ª contagem aberta
-  | "count3_closed"   // 3ª contagem fechada
-  | "audit_mode"      // Modo auditoria (Mesa de Controle)
-  | "closed"          // Fechado/Concluído
-  | "cancelled";      // Cancelado
+// Inventory status values - expanded for multi-stage counting process
+export const inventoryStatusValues = [
+  "planning", // Planejamento inicial
+  "open", // Aberto para contagem
+  "count1_open", // 1ª contagem aberta
+  "count1_closed", // 1ª contagem fechada
+  "count2_open", // 2ª contagem aberta
+  "count2_closed", // 2ª contagem fechada
+  "count2_completed", // 2ª contagem concluída (C1=C2)
+  "count3_required", // 3ª contagem necessária (C1≠C2)
+  "count3_open", // 3ª contagem aberta
+  "count3_closed", // 3ª contagem fechada
+  "audit_mode", // Modo auditoria (Mesa de Controle)
+  "closed", // Fechado/Concluído
+  "cancelled", // Cancelado
+] as const;
+
+export type InventoryStatus = (typeof inventoryStatusValues)[number];
 
 export interface Inventory {
   id: number;
@@ -385,10 +388,7 @@ export const insertInventoryTypeSchema = z.object({
 });
 
 // Inventory status validation
-export const inventoryStatusSchema = z.enum([
-  "planning", "open", "count1_open", "count1_closed", "count2_open", "count2_closed", 
-  "count3_open", "count3_closed", "audit", "divergence", "closed", "cancelled"
-]);
+export const inventoryStatusSchema = z.enum(inventoryStatusValues);
 
 export const insertInventorySchema = z.object({
   code: z.string().optional(),
