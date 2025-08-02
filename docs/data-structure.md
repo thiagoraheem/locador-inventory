@@ -89,17 +89,29 @@ export interface InventoryType {
 ## <mcsymbol name="InventoryStatus" filename="schema.ts" path="c:\Projetos\Locador\locador-inventory\shared\schema.ts" startline="56" type="class"></mcsymbol>
 Define os possíveis status de um inventário.
 ```typescript
-export type InventoryStatus = 
-  | "planning"      // Planejamento inicial
-  | "open"         // Aberto para contagem
-  | "count1"       // 1ª contagem em andamento
-  | "count2"       // 2ª contagem em andamento
-  | "count3"       // 3ª contagem em andamento
-  | "audit"        // Em auditoria
-  | "divergence"   // Divergência identificada
-  | "closed"       // Fechado/Concluído
-  | "cancelled";   // Cancelado
+export type InventoryStatus =
+  | "planning"        // Planejamento inicial
+  | "open"           // Aberto para contagem
+  | "count1_open"    // 1ª contagem aberta
+  | "count1_closed"  // 1ª contagem fechada
+  | "count2_open"    // 2ª contagem aberta
+  | "count2_closed"  // 2ª contagem fechada
+  | "count2_completed" // 2ª contagem concluída (C1=C2)
+  | "count3_required" // 3ª contagem necessária (C1≠C2)
+  | "count3_open"    // 3ª contagem aberta
+  | "count3_closed"  // 3ª contagem fechada
+  | "audit_mode"     // Modo auditoria (Mesa de Controle)
+  | "closed"         // Fechado/Concluído
+  | "cancelled";     // Cancelado
 ```
+
+Os status adicionais controlam cada etapa das contagens e da auditoria:
+- `count1_open`/`count1_closed`: abertura e fechamento da 1ª contagem.
+- `count2_open`/`count2_closed`: abertura e fechamento da 2ª contagem.
+- `count2_completed`: indica que a 2ª contagem foi concluída sem divergências.
+- `count3_required`: sinaliza necessidade de uma 3ª contagem devido a divergências.
+- `count3_open`/`count3_closed`: abertura e fechamento da 3ª contagem.
+- `audit_mode`: inventário em auditoria pela mesa de controle.
 
 ## <mcsymbol name="Inventory" filename="schema.ts" path="c:\Projetos\Locador\locador-inventory\shared\schema.ts" startline="67" type="class"></mcsymbol>
 Representa um inventário.
