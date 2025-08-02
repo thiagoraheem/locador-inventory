@@ -93,7 +93,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const storage = await getStorage();
       
       // Buscar item do inventário
-      const items = await storage.getInventoryItems(inventoryId);
+      const items = await storage.getInventoryItemsWithDetails(inventoryId);
       const item = items.find(i => i.productId === productId && i.locationId === locationId);
       
       if (!item) {
@@ -128,31 +128,29 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
             });
           }
 
-          // Criar novo item no inventário
-          const newItem = await storage.createInventoryItem({
+          // Preparar dados para criação do item
+          const itemData: any = {
             inventoryId,
             productId,
             locationId,
             expectedQuantity: 0,
-            count1: countStage === '1' ? quantity : null,
-            count2: countStage === '2' ? quantity : null,
-            count3: countStage === '3' ? quantity : null,
-            count4: countStage === '4' ? quantity : null,
-            count1By: countStage === '1' ? req.user?.id : null,
-            count2By: countStage === '2' ? req.user?.id : null,
-            count3By: countStage === '3' ? req.user?.id : null,
-            count4By: countStage === '4' ? req.user?.id : null,
-            count1At: countStage === '1' ? Date.now() : null,
-            count2At: countStage === '2' ? Date.now() : null,
-            count3At: countStage === '3' ? Date.now() : null,
-            count4At: countStage === '4' ? Date.now() : null,
-          });
+            status: 'pending'
+          };
+
+          // Adicionar contagem baseada no estágio
+          itemData[`count${countStage}`] = quantity;
+          itemData[`count${countStage}By`] = req.user?.id;
+          itemData[`count${countStage}At`] = Date.now();
+
+          // Criar novo item no inventário
+          const newItem = await storage.createInventoryItem(itemData);
 
           await storage.createAuditLog({
-            userId: req.user?.id || "system",
+            userId: req.user?.id || 0,
             action: "CREATE_INVENTORY_ITEM",
             entityType: "inventory_item",
             entityId: newItem.id.toString(),
+            oldValues: "",
             newValues: JSON.stringify({
               inventoryId,
               productId,
@@ -160,6 +158,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
               [`count${countStage}`]: quantity,
               added: true
             }),
+            metadata: ""
           });
 
           return res.json({ 
@@ -178,27 +177,55 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       }
       
       // Item existe, atualizar contagem baseada no estágio
-      const updateData: any = {};
-      updateData[`count${countStage}`] = quantity;
-      updateData[`count${countStage}By`] = req.user?.id || "system";
-      updateData[`count${countStage}At`] = Date.now();
-      
-      // Atualizar o item existente (implementação simplificada para agora)
-      await storage.createAuditLog({
-        userId: req.user?.id || "system",
-        action: "MANUAL_COUNT",
-        entityType: "inventory_item",
-        entityId: item.id.toString(),
-        newValues: JSON.stringify(updateData),
-      });
-      
-      res.json({ 
-        message: "Contagem registrada com sucesso",
-        itemId: item.id,
-        quantity,
-        countStage,
-        updated: true
-      });
+      try {
+        let result;
+        const userId = req.user?.id || 0;
+
+        // Chamar o método correto baseado no estágio de contagem
+        switch (countStage) {
+          case '1':
+            result = await storage.updateCount1(item.id, quantity, userId);
+            break;
+          case '2':
+            result = await storage.updateCount2(item.id, quantity, String(userId));
+            break;
+          case '3':
+            result = await storage.updateCount3(item.id, quantity, String(userId));
+            break;
+          case '4':
+            result = await storage.updateCount4(item.id, quantity, userId);
+            break;
+          default:
+            throw new Error(`Estágio de contagem inválido: ${countStage}`);
+        }
+
+        await storage.createAuditLog({
+          userId: userId,
+          action: `UPDATE_COUNT${countStage}`,
+          entityType: "inventory_item",
+          entityId: item.id.toString(),
+          oldValues: "",
+          newValues: JSON.stringify({
+            [`count${countStage}`]: quantity,
+            countedBy: userId,
+            countedAt: Date.now()
+          }),
+          metadata: ""
+        });
+        
+        res.json({ 
+          message: "Contagem registrada com sucesso",
+          itemId: item.id,
+          quantity,
+          countStage,
+          updated: true
+        });
+      } catch (error) {
+        console.error("Error updating inventory count:", error);
+        res.status(500).json({ 
+          message: "Falha ao atualizar contagem no inventário" 
+        });
+      }
     } catch (error) {
       console.error("Error registering manual count:", error);
       res.status(500).json({ message: "Failed to register manual count" });

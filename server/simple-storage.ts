@@ -876,7 +876,7 @@ export class SimpleStorage {
     // First calculate final quantities
     await this.calculateFinalQuantities(inventoryId);
 
-    // Then check if any items still need 3rd count (have null finalQuantity)
+    // Then check if any items still need 3rdcount (have null finalQuantity)
     const items = await this.getInventoryItemsByInventory(inventoryId);
 
     const itemsNeedingThirdCount = items.filter(item => 
