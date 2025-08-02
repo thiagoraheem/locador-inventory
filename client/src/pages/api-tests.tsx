@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertCircle, CheckCircle2, Copy, Play } from "lucide-react";
+import { API_BASE_URL } from "@/lib/config";
 
 interface ApiResponse {
   status: number;
@@ -18,13 +19,21 @@ interface ApiResponse {
 }
 
 export default function ApiTests() {
-  const [apiUrl, setApiUrl] = useState<string>("http://54.232.194.197:5001/api/Estoque/verificar-congelamento");
+  const [baseUrl, setBaseUrl] = useState<string>(API_BASE_URL);
+  const [apiUrl, setApiUrl] = useState<string>(`${baseUrl}/api/Estoque/verificar-congelamento`);
   const [method, setMethod] = useState<string>("GET");
   const [headers, setHeaders] = useState<string>("");
   const [body, setBody] = useState<string>("");
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [authToken, setAuthToken] = useState<string>("");
+  
+  // Função para atualizar a URL base e ajustar a URL atual
+  const updateBaseUrl = (newBaseUrl: string) => {
+    const path = apiUrl.replace(baseUrl, "");
+    setBaseUrl(newBaseUrl);
+    setApiUrl(newBaseUrl + path);
+  };
 
   const handleApiCall = async () => {
     setIsLoading(true);
@@ -81,6 +90,21 @@ export default function ApiTests() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Testes de API</h1>
+        <div className="flex items-center space-x-2">
+          <Input 
+            className="w-64" 
+            placeholder="URL Base da API" 
+            value={baseUrl} 
+            onChange={(e) => updateBaseUrl(e.target.value)} 
+          />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => updateBaseUrl(API_BASE_URL)}
+          >
+            Restaurar Padrão
+          </Button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -256,7 +280,7 @@ export default function ApiTests() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="p-4 border rounded-md hover:bg-accent cursor-pointer" 
                   onClick={() => {
-                    setApiUrl("http://54.232.194.197:5001/api/Estoque/verificar-congelamento");
+                    setApiUrl(`${baseUrl}/api/Estoque/verificar-congelamento`);
                     setMethod("GET");
                     setBody("");
                   }}>
@@ -269,7 +293,7 @@ export default function ApiTests() {
                 
                 <div className="p-4 border rounded-md hover:bg-accent cursor-pointer" 
                   onClick={() => {
-                    setApiUrl("http://54.232.194.197:5001/api/Estoque/congelar");
+                    setApiUrl(`${baseUrl}/api/Estoque/congelar`);
                     setMethod("PATCH");
                     setBody("true"); // ou "false" para descongelar
                   }}>
@@ -283,7 +307,7 @@ export default function ApiTests() {
                 
                 <div className="p-4 border rounded-md hover:bg-accent cursor-pointer" 
                   onClick={() => {
-                    setApiUrl("http://54.232.194.197:5001/api/Estoque/atualizar");
+                    setApiUrl(`${baseUrl}/api/Estoque/atualizar`);
                     setMethod("PATCH");
                     setBody(JSON.stringify({
                       "codProduto": "PROD123",
@@ -302,7 +326,7 @@ export default function ApiTests() {
                 
                 <div className="p-4 border rounded-md hover:bg-accent cursor-pointer" 
                   onClick={() => {
-                    setApiUrl("http://54.232.194.197:5001/api/Estoque/atualizar-lista");
+                    setApiUrl(`${baseUrl}/api/Estoque/atualizar-lista`);
                     setMethod("PATCH");
                     setBody(JSON.stringify([
                       {
@@ -325,6 +349,23 @@ export default function ApiTests() {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">/api/Estoque/atualizar-lista</p>
                   <p className="text-xs text-muted-foreground mt-1">Body: Array de AtualizarEstoqueRequest</p>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-medium">Configuração</h3>
+              <Separator className="my-2" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 border rounded-md">
+                  <h4 className="font-medium mb-2">URL Base da API</h4>
+                  <div className="text-sm">
+                    <p className="mb-2">A URL base da API é configurada através da variável de ambiente:</p>
+                    <pre className="text-xs bg-muted p-2 rounded-md mt-1 overflow-auto">
+{`VITE_API_BASE_URL=http://54.232.194.197:5001`}
+                    </pre>
+                    <p className="mt-2 text-xs text-muted-foreground">Você pode alterar temporariamente a URL base usando o campo no topo da página.</p>
+                  </div>
                 </div>
               </div>
             </div>
