@@ -30,6 +30,7 @@ import ParametersRules from "@/pages/parameters-rules";
 import InventoryTestSuite from "@/pages/inventory-test-suite";
 import InventoryFinalReport from "@/pages/inventory-final-report";
 import InventoryTestValidation from "@/pages/inventory-test-validation";
+import InventoryDetails from "@/pages/inventory-details";
 import MainLayout from "@/components/layout/main-layout";
 
 function Router() {
@@ -72,6 +73,7 @@ function Router() {
           <Route path="/locations" component={Locations} />
           <Route path="/stock" component={Stock} />
           <Route path="/inventories" component={Inventories} />
+          <Route path="/inventories/:id/details" component={InventoryDetails} />
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-control-board-cp" component={InventoryControlBoardCP} />
           <Route path="/product-listing-report" component={ProductListingReport} />

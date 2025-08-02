@@ -535,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         storage = await getStorage();
         const inventoryId = parseInt(req.params.id);
-        const items = await storage.getInventoryItemsByInventory(inventoryId);
+        const items = await storage.getInventoryItems(inventoryId);
         res.json(items);
       } catch (error) {
         console.error("Error fetching inventory items:", error as Error);
@@ -843,6 +843,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching inventory stats:", error as Error);
       res.status(500).json({
         message: "Failed to fetch inventory statistics",
+        details: (error as Error).message,
+      });
+    }
+  });
+
+  // Get serial items for inventory
+  app.get("/api/inventories/:id/serial-items", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      
+      // Check if method exists in storage, if not return empty array
+      if (typeof storage.getInventorySerialItems === 'function') {
+        const serialItems = await storage.getInventorySerialItems(inventoryId);
+        res.json(serialItems);
+      } else {
+        // Return empty array for now if method doesn't exist
+        res.json([]);
+      }
+    } catch (error) {
+      console.error("Error fetching inventory serial items:", error as Error);
+      res.status(500).json({
+        message: "Failed to fetch inventory serial items",
         details: (error as Error).message,
       });
     }

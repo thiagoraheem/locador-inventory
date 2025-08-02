@@ -39,6 +39,7 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { Link } from "wouter";
 import type { Inventory } from "@shared/schema";
@@ -202,6 +203,12 @@ export default function Inventories() {
       accessorKey: "actions",
       cell: (value: any, row: any) => (
         <div className="flex items-center space-x-2">
+          <Link href={`/inventories/${row.id}/details`}>
+            <Button variant="ghost" size="sm" title="Ver detalhes">
+              <FileText className="h-4 w-4" />
+            </Button>
+          </Link>
+          
           <Link href={`/inventory-counting/${row.id}`}>
             <Button variant="ghost" size="sm" title="Abrir contagem">
               {row.status === "open" ? (
