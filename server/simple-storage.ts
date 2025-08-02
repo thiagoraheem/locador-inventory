@@ -954,14 +954,28 @@ export class SimpleStorage {
     }
 
     const request = this.pool.request();
-    await request
-      .input("id", inventoryId)
-      .input("status", newStatus)
-      .input("updatedAt", new Date()).query(`
-        UPDATE inventories 
-        SET status = @status, updatedAt = @updatedAt
-        WHERE id = @id
-      `);
+
+    // If transitioning to closed status, set endDate
+    if (newStatus === "closed") {
+      await request
+        .input("id", inventoryId)
+        .input("status", newStatus)
+        .input("endDate", new Date())
+        .input("updatedAt", new Date()).query(`
+          UPDATE inventories 
+          SET status = @status, endDate = @endDate, updatedAt = @updatedAt
+          WHERE id = @id
+        `);
+    } else {
+      await request
+        .input("id", inventoryId)
+        .input("status", newStatus)
+        .input("updatedAt", new Date()).query(`
+          UPDATE inventories 
+          SET status = @status, updatedAt = @updatedAt
+          WHERE id = @id
+        `);
+    }
 
     // Log the status transition
     await this.createAuditLog({
@@ -969,7 +983,7 @@ export class SimpleStorage {
       action: "INVENTORY_STATUS_CHANGE",
       entityType: "inventory",
       entityId: inventoryId.toString(),
-      newValues: JSON.stringify({ status: newStatus }),
+      newValues: JSON.stringify({ status: newStatus, endDate: newStatus === "closed" ? new Date().toISOString() : undefined }),
       metadata: JSON.stringify({ timestamp: Date.now() }),
     });
   }

@@ -1311,9 +1311,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case "count3_open":
             newStatus = "count3_closed";
             break;
-          /*case "audit_mode":
+          case "audit_mode":
             newStatus = "closed";
-            break;*/
+            break;
           default:
             return res
               .status(400)
