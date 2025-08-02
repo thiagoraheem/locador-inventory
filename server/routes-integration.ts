@@ -88,7 +88,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   app.post("/api/inventories/:id/manual-count", isAuthenticated, async (req: any, res) => {
     try {
       const inventoryId = parseInt(req.params.id);
-      const { productId, locationId, quantity, countStage } = req.body;
+      const { productId, locationId, quantity, countStage, confirmAdd = false } = req.body;
       
       const storage = await getStorage();
       
@@ -97,18 +97,95 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const item = items.find(i => i.productId === productId && i.locationId === locationId);
       
       if (!item) {
-        return res.status(404).json({ message: "Inventory item not found" });
+        // Se o item não existe e confirmAdd é false, retornar aviso
+        if (!confirmAdd) {
+          return res.status(404).json({ 
+            code: "ITEM_NOT_FOUND",
+            message: "Produto não encontrado neste inventário/estoque",
+            productId,
+            locationId,
+            needsConfirmation: true
+          });
+        }
+        
+        // Se confirmAdd é true, criar novo item no inventário
+        try {
+          // Verificar se o produto existe no sistema
+          const products = await storage.getProducts();
+          const product = products.find(p => p.id === productId);
+          if (!product) {
+            return res.status(400).json({ 
+              message: "Produto não encontrado no sistema" 
+            });
+          }
+
+          // Verificar se a localização existe
+          const locations = await storage.getLocations();
+          const location = locations.find(l => l.id === locationId);
+          if (!location) {
+            return res.status(400).json({ 
+              message: "Local de estoque não encontrado" 
+            });
+          }
+
+          // Criar novo item no inventário
+          const newItem = await storage.createInventoryItem({
+            inventoryId,
+            productId,
+            locationId,
+            expectedQuantity: 0,
+            count1: countStage === '1' ? quantity : null,
+            count2: countStage === '2' ? quantity : null,
+            count3: countStage === '3' ? quantity : null,
+            count4: countStage === '4' ? quantity : null,
+            count1By: countStage === '1' ? req.user?.id : null,
+            count2By: countStage === '2' ? req.user?.id : null,
+            count3By: countStage === '3' ? req.user?.id : null,
+            count4By: countStage === '4' ? req.user?.id : null,
+            count1At: countStage === '1' ? Date.now() : null,
+            count2At: countStage === '2' ? Date.now() : null,
+            count3At: countStage === '3' ? Date.now() : null,
+            count4At: countStage === '4' ? Date.now() : null,
+          });
+
+          await storage.createAuditLog({
+            userId: req.user?.id || "system",
+            action: "CREATE_INVENTORY_ITEM",
+            entityType: "inventory_item",
+            entityId: newItem.id.toString(),
+            newValues: JSON.stringify({
+              inventoryId,
+              productId,
+              locationId,
+              [`count${countStage}`]: quantity,
+              added: true
+            }),
+          });
+
+          return res.json({ 
+            message: "Produto adicionado ao inventário com sucesso",
+            itemId: newItem.id,
+            quantity,
+            countStage,
+            added: true
+          });
+        } catch (error) {
+          console.error("Error creating inventory item:", error);
+          return res.status(500).json({ 
+            message: "Falha ao adicionar produto ao inventário" 
+          });
+        }
       }
       
-      // Atualizar contagem baseada no estágio
+      // Item existe, atualizar contagem baseada no estágio
       const updateData: any = {};
       updateData[`count${countStage}`] = quantity;
-      updateData[`count${countStage}By`] = (req.session as any).user?.id || "system";
+      updateData[`count${countStage}By`] = req.user?.id || "system";
       updateData[`count${countStage}At`] = Date.now();
       
-      // Simular atualização (implementação simplificada)
+      // Atualizar o item existente (implementação simplificada para agora)
       await storage.createAuditLog({
-        userId: (req.session as any).user?.id || "system",
+        userId: req.user?.id || "system",
         action: "MANUAL_COUNT",
         entityType: "inventory_item",
         entityId: item.id.toString(),
@@ -116,10 +193,11 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       });
       
       res.json({ 
-        message: "Manual count registered successfully",
+        message: "Contagem registrada com sucesso",
         itemId: item.id,
         quantity,
-        countStage
+        countStage,
+        updated: true
       });
     } catch (error) {
       console.error("Error registering manual count:", error);

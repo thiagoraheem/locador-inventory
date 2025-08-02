@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus, Search, Filter, Package, Clock, CheckCircle, Target, Scan, ArrowLeft, AlertTriangle, Barcode, Loader2, Trash2, RefreshCcw, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
@@ -50,6 +51,12 @@ export default function MobileCounting() {
   const [isLoading, setIsLoading] = useState(false);
   const [recentScans, setRecentScans] = useState<string[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingAddData, setPendingAddData] = useState<{
+    product: SearchedProduct;
+    quantity: number;
+    locationId: number;
+  } | null>(null);
 
   const { toast } = useToast();
 
@@ -245,12 +252,25 @@ export default function MobileCounting() {
       }
 
       // Registrar contagem manual
-      await registerManualCount(selectedProduct.id, quantityInput);
+      const result = await registerManualCount(selectedProduct.id, quantityInput);
 
+      // Se precisa de confirmação, mostrar diálogo
+      if (result.needsConfirmation) {
+        setPendingAddData({
+          product: selectedProduct,
+          quantity: quantityInput,
+          locationId: selectedLocationId
+        });
+        setShowConfirmDialog(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Sucesso - adicionar à lista local e mostrar toast
       addManualProduct(selectedProduct, quantityInput);
 
       toast({
-        title: "Produto adicionado",
+        title: result.added ? "Produto adicionado ao inventário" : "Contagem registrada",
         description: `${selectedProduct.name} - Qtd: ${quantityInput}`,
       });
 
@@ -262,12 +282,55 @@ export default function MobileCounting() {
       console.error('Erro ao adicionar produto:', error);
       toast({
         title: "Erro ao adicionar",
-        description: "Falha ao adicionar produto",
+        description: error instanceof Error ? error.message : "Falha ao adicionar produto",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Função para confirmar adição de produto não encontrado
+  const handleConfirmAdd = async () => {
+    if (!pendingAddData) return;
+
+    setIsLoading(true);
+    try {
+      const result = await registerManualCount(
+        pendingAddData.product.id, 
+        pendingAddData.quantity, 
+        true // confirmAdd = true
+      );
+
+      addManualProduct(pendingAddData.product, pendingAddData.quantity);
+
+      toast({
+        title: "Produto adicionado ao inventário",
+        description: `${pendingAddData.product.name} - Qtd: ${pendingAddData.quantity}`,
+      });
+
+      // Limpar campos após sucesso
+      setSelectedProduct(null);
+      setQuantityInput(1);
+      setShowConfirmDialog(false);
+      setPendingAddData(null);
+
+    } catch (error) {
+      console.error('Erro ao confirmar adição:', error);
+      toast({
+        title: "Erro ao adicionar",
+        description: error instanceof Error ? error.message : "Falha ao adicionar produto",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para cancelar adição
+  const handleCancelAdd = () => {
+    setShowConfirmDialog(false);
+    setPendingAddData(null);
   };
 
   // Função para adicionar produto por série à lista
@@ -334,11 +397,15 @@ export default function MobileCounting() {
   };
 
   // Função para registrar contagem manual (tradicional)
-  const registerManualCount = async (productId: number, quantity: number) => {
+  const registerManualCount = async (productId: number, quantity: number, confirmAdd: boolean = false) => {
     // Verificar se o inventário está em status de contagem aberta
     const selectedInv = inventories?.find(inv => inv.id === selectedInventoryId);
     if (!selectedInv || !canPerformCounting(selectedInv.status)) {
       throw new Error('Contagem não permitida. O inventário deve estar em status de contagem aberta (1ª, 2ª, 3ª ou 4ª contagem).');
+    }
+
+    if (!selectedLocationId) {
+      throw new Error('Local de estoque obrigatório');
     }
 
     try {
@@ -348,13 +415,27 @@ export default function MobileCounting() {
         credentials: 'include',
         body: JSON.stringify({
           productId,
+          locationId: selectedLocationId,
           quantity,
-          countStage: `count${getCurrentCountStage()}`
+          countStage: getCurrentCountStage().toString(),
+          confirmAdd
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json();
+        
+        // Se o produto não foi encontrado e precisa de confirmação
+        if (response.status === 404 && errorData.code === 'ITEM_NOT_FOUND' && errorData.needsConfirmation) {
+          return {
+            needsConfirmation: true,
+            message: errorData.message,
+            productId: errorData.productId,
+            locationId: errorData.locationId
+          };
+        }
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -613,7 +694,7 @@ export default function MobileCounting() {
                     disabled={!selectedProduct || !quantityInput || isLoading || !selectedLocationId}
                     className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 flex-1"
                   >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adicionar'}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Registrar'}
                   </Button>
                 </div>
 
@@ -757,6 +838,40 @@ export default function MobileCounting() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diálogo de Confirmação */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Produto não encontrado no inventário
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O produto <strong>{pendingAddData?.product.name}</strong> (SKU: {pendingAddData?.product.sku}) 
+              não foi encontrado neste inventário para o local selecionado.
+              <br /><br />
+              Deseja confirmar a inclusão deste produto no inventário com quantidade <strong>{pendingAddData?.quantity}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={handleCancelAdd}
+              disabled={isLoading}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmAdd}
+              disabled={isLoading}
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Confirmar Inclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

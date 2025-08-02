@@ -27,6 +27,8 @@ Preferred communication style: Simple, everyday language.
 - **Mesa de Controle CP**: Added refresh button with same functionality as main control board
 - **Stored Procedure**: Identified and created fix for `sp_RegisterSerialReading` to increment `inventory_items` counts
 - **API Endpoint**: Created `/api/admin/update-stored-procedure` endpoint to apply stored procedure fix
+- **Product Combobox**: Fixed mobile counting page product selection with proper confirmation dialog for new products
+- **Manual Count API**: Enhanced `/api/inventories/:id/manual-count` endpoint to handle product existence validation and confirmation flow
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework
