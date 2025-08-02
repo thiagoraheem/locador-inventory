@@ -95,6 +95,10 @@ export interface Inventory {
   createdAt: number;
   updatedAt: number;
   isToBlockSystem?: boolean;  // Field to block stock movement
+  // ERP Migration fields
+  erpMigrated?: boolean;
+  erpMigratedAt?: number;
+  erpMigratedBy?: number;
 }
 
 export interface InventoryItem {
@@ -651,3 +655,62 @@ export const insertStockItemSchema = z.object({
 
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type InsertStockItem = z.infer<typeof insertStockItemSchema>;
+
+// ERP Integration interfaces and schemas
+export interface ERPStockUpdateRequest {
+  codProduto: string;
+  quantidade: number;
+  localEstoque: number;
+  codInventario: string;
+}
+
+export interface ERPMigrationRequest {
+  inventoryId: number;
+  items: ERPStockUpdateRequest[];
+}
+
+export interface ERPMigrationResponse {
+  success: boolean;
+  message: string;
+  migratedItems: number;
+  failedItems?: Array<{
+    codProduto: string;
+    error: string;
+  }>;
+}
+
+export interface ERPMigrationStatus {
+  inventoryId: number;
+  canMigrate: boolean;
+  reason?: string;
+  itemsToMigrate: number;
+  totalAdjustmentValue?: number;
+}
+
+// ERP Migration validation schemas
+export const erpStockUpdateRequestSchema = z.object({
+  codProduto: z.string().min(1),
+  quantidade: z.number(),
+  localEstoque: z.number(),
+  codInventario: z.string().min(1),
+});
+
+export const erpMigrationRequestSchema = z.object({
+  inventoryId: z.number(),
+  items: z.array(erpStockUpdateRequestSchema),
+});
+
+export const erpMigrationResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+  migratedItems: z.number(),
+  failedItems: z.array(z.object({
+    codProduto: z.string(),
+    error: z.string(),
+  })).optional(),
+});
+
+// Type inference for ERP schemas
+export type ERPStockUpdateRequestData = z.infer<typeof erpStockUpdateRequestSchema>;
+export type ERPMigrationRequestData = z.infer<typeof erpMigrationRequestSchema>;
+export type ERPMigrationResponseData = z.infer<typeof erpMigrationResponseSchema>;

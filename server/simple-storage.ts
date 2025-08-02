@@ -2448,6 +2448,54 @@ export class SimpleStorage {
       .query(query);
   }
 
+  // Get inventory items with divergences for ERP migration
+  async getInventoryItemsWithDivergences(inventoryId: number): Promise<any[]> {
+    const result = await this.pool.request().input("inventoryId", inventoryId)
+      .query(`
+        SELECT 
+          ii.*,
+          p.sku,
+          p.name as productName,
+          p.description as productDescription,
+          p.costValue,
+          l.code as locationCode,
+          l.name as locationName
+        FROM inventory_items ii
+        LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN locations l ON ii.locationId = l.id
+        WHERE ii.inventoryId = @inventoryId
+          AND ii.finalQuantity IS NOT NULL
+          AND ii.finalQuantity != ii.expectedQuantity
+        ORDER BY p.sku, l.code
+      `);
+
+    return result.recordset.map((item) => ({
+      ...item,
+      createdAt: item.createdAt ? new Date(item.createdAt).getTime() : Date.now(),
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : Date.now(),
+      product: {
+        id: item.productId,
+        sku: item.sku || "N/A",
+        name: item.productName || "Produto não encontrado",
+        description: item.productDescription || "Sem descrição",
+        costValue: item.costValue || 0,
+        categoryId: 0,
+        isActive: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+      location: {
+        id: item.locationId,
+        code: item.locationCode || "N/A",
+        name: item.locationName || "Local não encontrado",
+        description: "",
+        isActive: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    }));
+  }
+
   async createAuditLog(
     auditLog: Omit<AuditLog, "id" | "timestamp">,
   ): Promise<AuditLog> {

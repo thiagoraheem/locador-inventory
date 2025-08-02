@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,10 +23,14 @@ import {
   Package,
   BarChart3,
   MapPin,
-  Tags
+  Tags,
+  Upload,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Inventory, InventoryFinalReport } from "@shared/schema";
+import type { Inventory, InventoryFinalReport, ERPMigrationStatus, ERPMigrationResponse } from "@shared/schema";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/layout/header";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -36,9 +40,11 @@ import html2canvas from "html2canvas";
 export default function InventoryFinalReportPage() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [location] = useLocation();
+  const queryClient = useQueryClient();
 
   // Handle URL parameters to auto-select inventory
   useEffect(() => {
@@ -60,8 +66,89 @@ export default function InventoryFinalReportPage() {
     gcTime: 0,
   });
 
+  // Query para verificar status ERP
+  const { data: erpStatus, refetch: refetchERPStatus } = useQuery<ERPMigrationStatus>({
+    queryKey: [`/api/inventories/${selectedInventoryId}/erp-status`],
+    enabled: !!selectedInventoryId,
+    staleTime: 0,
+  });
+
+  // Mutation para migração ERP
+  const migrationMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedInventoryId) throw new Error("Nenhum inventário selecionado");
+      return apiRequest(`/api/inventories/${selectedInventoryId}/migrate-to-erp`, {
+        method: "POST",
+      });
+    },
+    onSuccess: (data: ERPMigrationResponse) => {
+      toast({
+        title: "Migração realizada",
+        description: data.message,
+      });
+      setShowMigrationDialog(false);
+      refetchERPStatus();
+      queryClient.invalidateQueries({ queryKey: [`/api/inventories/${selectedInventoryId}/erp-status`] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro na migração",
+        description: error.message || "Falha ao migrar inventário para ERP",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter inventories to show only closed ones
   const closedInventories = inventories?.filter(inv => inv.status === 'closed') || [];
+
+  const handleMigrateToERP = () => {
+    if (!erpStatus?.canMigrate) {
+      toast({
+        title: "Migração não permitida",
+        description: erpStatus?.reason || "Inventário não pode ser migrado",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowMigrationDialog(true);
+  };
+
+  const confirmMigration = () => {
+    migrationMutation.mutate();
+  };
+
+  const renderERPMigrationButton = () => {
+    if (!erpStatus) return null;
+
+    if (erpStatus.canMigrate) {
+      return (
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={handleMigrateToERP}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Migrar Resultados para o Estoque
+        </Button>
+      );
+    } else if (erpStatus.reason?.includes("migrado")) {
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Migrado para ERP
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Não elegível para migração
+        </Badge>
+      );
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -220,7 +307,8 @@ export default function InventoryFinalReportPage() {
               </div>
 
               {selectedInventoryId && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {renderERPMigrationButton()}
                   <Button variant="outline" size="sm" onClick={handlePrint}>
                     <Printer className="h-4 w-4 mr-2" />
                     Imprimir
@@ -695,6 +783,74 @@ export default function InventoryFinalReportPage() {
           </Card>
         )}
       </div>
+
+      {/* Modal de Confirmação de Migração ERP */}
+      <Dialog open={showMigrationDialog} onOpenChange={setShowMigrationDialog}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Migrar Resultados para o ERP</DialogTitle>
+            <DialogDescription>
+              Confirme a migração dos resultados do inventário para o sistema ERP.
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {erpStatus && (
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2">Resumo da Migração:</h4>
+                <div className="space-y-1 text-sm">
+                  <p>• <strong>Itens para migração:</strong> {erpStatus.itemsToMigrate}</p>
+                  {erpStatus.totalAdjustmentValue !== undefined && (
+                    <p>• <strong>Valor total de ajuste:</strong> {formatCurrency(erpStatus.totalAdjustmentValue)}</p>
+                  )}
+                  <p>• <strong>Inventário:</strong> {report?.inventoryCode}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-800">Atenção:</p>
+                  <p className="text-yellow-700">
+                    Após confirmar, os resultados serão enviados para o ERP e o inventário
+                    será marcado como migrado. Esta ação é irreversível.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowMigrationDialog(false)}
+                disabled={migrationMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={confirmMigration}
+                disabled={migrationMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {migrationMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Migrando...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Confirmar Migração
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

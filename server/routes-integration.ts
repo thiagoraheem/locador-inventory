@@ -329,4 +329,151 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       res.status(500).json({ message: "Failed to export inventory data" });
     }
   });
+
+  // ===== ENDPOINTS ERP INTEGRATION =====
+
+  // Endpoint individual para atualizar estoque no ERP
+  app.post("/api/Estoque/atualizar", isAuthenticated, async (req: any, res) => {
+    try {
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      const { erpStockUpdateRequestSchema } = await import('../shared/schema');
+      const requestData = erpStockUpdateRequestSchema.parse(req.body);
+      
+      const result = await erpService.updateStock(requestData);
+      
+      if (result) {
+        res.json({ 
+          success: true, 
+          message: "Estoque atualizado com sucesso no ERP" 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Falha ao atualizar estoque no ERP" 
+        });
+      }
+    } catch (error) {
+      console.error("Error updating ERP stock:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Erro interno ao atualizar estoque" 
+      });
+    }
+  });
+
+  // Endpoint para atualizar lista de itens no estoque ERP
+  app.post("/api/Estoque/atualizar-lista", isAuthenticated, async (req: any, res) => {
+    try {
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      const { z } = await import('zod');
+      const { erpStockUpdateRequestSchema } = await import('../shared/schema');
+      
+      const requestSchema = z.object({
+        items: z.array(erpStockUpdateRequestSchema)
+      });
+      
+      const { items } = requestSchema.parse(req.body);
+      
+      const result = await erpService.updateStockList(items);
+      
+      if (result) {
+        res.json({ 
+          success: true, 
+          message: `${items.length} itens atualizados com sucesso no ERP`,
+          processedItems: items.length
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Falha ao atualizar lista de estoque no ERP" 
+        });
+      }
+    } catch (error) {
+      console.error("Error updating ERP stock list:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Erro interno ao atualizar lista de estoque" 
+      });
+    }
+  });
+
+  // Verificar status de migração ERP do inventário
+  app.get("/api/inventories/:id/erp-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const userId = req.user?.id || 0;
+      
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      const status = await erpService.validateInventoryForMigration(inventoryId, userId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error checking ERP status:", error);
+      res.status(500).json({ 
+        inventoryId: parseInt(req.params.id),
+        canMigrate: false,
+        reason: "Erro interno ao verificar status",
+        itemsToMigrate: 0
+      });
+    }
+  });
+
+  // Migrar inventário completo para ERP
+  app.post("/api/inventories/:id/migrate-to-erp", isAuthenticated, async (req: any, res) => {
+    try {
+      const inventoryId = parseInt(req.params.id);
+      const userId = req.user?.id || 0;
+      
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      const result = await erpService.migrateInventoryToERP(inventoryId, userId);
+      
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error("Error migrating inventory to ERP:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Erro interno durante migração para ERP",
+        migratedItems: 0
+      });
+    }
+  });
+
+  // Validar conexão com ERP
+  app.get("/api/erp/validate-connection", isAuthenticated, async (req: any, res) => {
+    try {
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      const isConnected = await erpService.validateERPConnection();
+      
+      res.json({
+        connected: isConnected,
+        message: isConnected ? "Conexão ERP estabelecida" : "Falha na conexão ERP",
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error("Error validating ERP connection:", error);
+      res.status(500).json({
+        connected: false,
+        message: "Erro ao validar conexão ERP",
+        timestamp: Date.now()
+      });
+    }
+  });
 }

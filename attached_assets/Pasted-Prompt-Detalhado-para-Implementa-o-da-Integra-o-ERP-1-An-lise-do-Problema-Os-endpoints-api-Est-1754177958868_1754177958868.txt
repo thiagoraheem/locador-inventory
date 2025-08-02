@@ -1,0 +1,132 @@
+Prompt Detalhado para Implementação da Integração ERP
+1. Análise do Problema
+Os endpoints /api/Estoque/atualizar e /api/Estoque/atualizar-lista não existem no sistema atual
+O sistema tem autenticação JWT mas alguns endpoints não estão protegidos
+Precisa adicionar controle de migração ERP na base de dados
+Precisa criar interface para "migrar resultados para o estoque"
+2. Alterações Necessárias no Backend
+2.1 Atualizar Schema do Banco de Dados
+-- Adicionar campo para controlar se inventário foi migrado para ERP
+ALTER TABLE inventories ADD erpMigrated BIT DEFAULT 0;
+ALTER TABLE inventories ADD erpMigratedAt DATETIME NULL;
+ALTER TABLE inventories ADD erpMigratedBy INT NULL;
+2.2 Criar Novos Endpoints Protegidos
+Precisa criar os seguintes endpoints em server/routes.ts:
+
+POST /api/Estoque/atualizar - Atualizar item individual no ERP
+POST /api/Estoque/atualizar-lista - Atualizar múltiplos itens no ERP
+POST /api/inventories/:id/migrate-to-erp - Migrar inventário completo para ERP
+GET /api/inventories/:id/erp-status - Verificar status de migração ERP
+2.3 Adicionar Validações
+Apenas inventários com status "closed" podem ser migrados
+Usuário deve ter permissão adequada (admin/gerente)
+Inventário não pode ser migrado duas vezes
+Todos os itens devem ter finalQuantity definida
+3. Alterações no Frontend
+3.1 Atualizar Interface do Relatório Final
+Na página inventory-final-report.tsx, adicionar:
+
+Botão "Migrar para ERP" quando inventário estiver fechado e não migrado
+Status visual de migração (badge/indicador)
+Confirmação de migração com resumo dos dados
+3.2 Criar Modal de Confirmação
+Componente para confirmar migração com:
+
+Resumo dos itens a serem migrados
+Valores totais de ajuste
+Lista de divergências principais
+Botões "Confirmar Migração" e "Cancelar"
+4. Estrutura de Dados para Migração
+interface MigrationRequest {
+  inventoryId: number;
+  items: Array<{
+    codProduto: string;
+    quantidade: number;
+    localEstoque: number;
+    codInventario: string;
+  }>;
+}
+interface MigrationResponse {
+  success: boolean;
+  message: string;
+  migratedItems: number;
+  failedItems?: Array<{
+    codProduto: string;
+    error: string;
+  }>;
+}
+5. Implementação da Lógica de Negócio
+5.1 Validação de Migração
+async validateInventoryForMigration(inventoryId: number) {
+  // Verificar se inventário está fechado
+  // Verificar se não foi migrado anteriormente  
+  // Verificar se todos itens têm finalQuantity
+  // Verificar permissões do usuário
+}
+5.2 Processo de Migração
+async migrateInventoryToERP(inventoryId: number, userId: number) {
+  // 1. Validar inventário
+  // 2. Buscar itens com divergências
+  // 3. Preparar dados no formato ERP
+  // 4. Enviar para endpoints /api/Estoque/*
+  // 5. Marcar inventário como migrado
+  // 6. Criar log de auditoria
+}
+6. Segurança e Autenticação
+6.1 Proteger Endpoints
+Todos os novos endpoints devem usar middleware isAuthenticated:
+
+app.post("/api/Estoque/atualizar", isAuthenticated, async (req, res) => {
+  // Implementação
+});
+6.2 Validação de Permissões
+Apenas usuários com roles específicos podem migrar:
+
+const hasERPPermission = (userRole: string) => {
+  return ['admin', 'gerente', 'supervisor'].includes(userRole.toLowerCase());
+};
+7. Interface do Usuário
+7.1 Localização do Botão
+O botão "Migrar Resultados para o Estoque" deve aparecer:
+
+Na página de relatório final do inventário
+Apenas quando o inventário estiver com status "closed"
+Apenas para usuários com permissão adequada
+Desabilitado se já foi migrado
+7.2 Estados Visuais
+Não migrado: Botão azul "Migrar para ERP"
+Migrando: Botão desabilitado com spinner "Migrando..."
+Migrado: Badge verde "Migrado em DD/MM/YYYY"
+Erro na migração: Badge vermelho "Erro na migração" + botão "Tentar novamente"
+8. Implementação Técnica Detalhada
+8.1 Atualizar Schema TypeScript
+interface Inventory {
+  // campos existentes...
+  erpMigrated?: boolean;
+  erpMigratedAt?: number;
+  erpMigratedBy?: number;
+}
+8.2 Criar Service de Integração ERP
+class ERPIntegrationService {
+  async updateStock(item: AtualizarEstoqueRequest): Promise<boolean>
+  async updateStockList(items: AtualizarEstoqueRequest[]): Promise<boolean>
+  async validateERPConnection(): Promise<boolean>
+}
+9. Fluxo Completo do Usuário
+Usuário acessa relatório final de inventário fechado
+Sistema verifica se inventário pode ser migrado
+Usuário clica em "Migrar Resultados para o Estoque"
+Modal de confirmação mostra resumo da migração
+Usuário confirma a migração
+Sistema processa itens com divergências
+Sistema chama endpoints /api/Estoque/atualizar-lista
+Sistema marca inventário como migrado
+Interface atualiza para mostrar status "Migrado"
+10. Logs e Auditoria
+Cada migração deve gerar logs detalhados:
+
+Timestamp da migração
+Usuário responsável
+Número de itens migrados
+Valores totais de ajuste
+Eventuais erros ou falhas
