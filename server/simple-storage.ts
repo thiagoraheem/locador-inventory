@@ -481,16 +481,48 @@ export class SimpleStorage {
   }
 
   async closeInventory(id: number): Promise<void> {
-    await this.pool
-      .request()
-      .input("id", id)
-      .input("status", "CLOSED")
-      .input("endDate", new Date())
-      .input("updatedAt", new Date()).query(`
+    const request = this.pool.request();
+    await request
+      .input('id', sql.Int, id)
+      .input('endDate', sql.BigInt, Date.now())
+      .query(`
+        UPDATE inventories 
+        SET status = 'CLOSED', endDate = @endDate
+        WHERE id = @id
+      `);
+  }
+
+  async closeInventoryWithEndDate(inventoryId: number, userId: number): Promise<void> {
+    const request = this.pool.request();
+    const endDate = Date.now();
+
+    await request
+      .input('id', sql.Int, inventoryId)
+      .input('status', sql.NVarChar, 'closed')
+      .input('endDate', sql.BigInt, endDate)
+      .input('updatedAt', sql.DateTime, new Date())
+      .query(`
         UPDATE inventories 
         SET status = @status, endDate = @endDate, updatedAt = @updatedAt
         WHERE id = @id
       `);
+
+    // Log the inventory closure
+    await this.createAuditLog({
+      userId,
+      action: "INVENTORY_CLOSED",
+      entityType: "inventory",
+      entityId: inventoryId.toString(),
+      newValues: JSON.stringify({ 
+        status: 'closed', 
+        endDate: endDate,
+        closedAt: new Date().toISOString()
+      }),
+      metadata: JSON.stringify({ 
+        timestamp: Date.now(),
+        closedBy: userId
+      }),
+    });
   }
 
   // Inventory Types
@@ -895,8 +927,7 @@ export class SimpleStorage {
     newStatus: InventoryStatus,
     userId: number,
   ): Promise<void> {
-    // If closing count2, check if 3rd count is needed
-    if (newStatus === "count2_closed") {
+    // If closing count2, check if 3rd count is needed    if (newStatus === "count2_closed") {
       await this.calculateFinalQuantities(inventoryId);
 
       // Check if any items still need 3rd count (have null finalQuantity)
@@ -1740,7 +1771,7 @@ export class SimpleStorage {
       count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
       count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
     }));
-  }
+    }
 
   // Buscar itens de série por produto
   async getInventorySerialItemsByProduct(
