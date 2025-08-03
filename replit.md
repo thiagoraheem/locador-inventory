@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
 - **Bulk Confirmation API**: Created `/api/inventories/:id/confirm-all-items` endpoint to confirm all items with their current final quantities
 - **Audit Mode UI**: Added "Confirmar Todos com Quantidades Atuais" button in audit mode to confirm all items at once
 - **Mobile Counting Fix**: Fixed critical issue where manual count registration for products not found in inventory was not saving the count values to `inventory_items` table. Updated `createInventoryItem` method in `simple-storage.ts` to support dynamic fields (count1, count2, etc.) and modified mobile counting validation to allow quantity 0 in product registration
+- **Counts Table (Feb 2025)**: Removed dependency on `counts` table for production stability. System continues using `inventory_items` table with count1-count4 fields for all counting operations. Participants in final report now come from count audit fields in `inventory_items`
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework

@@ -822,48 +822,7 @@ export class SimpleStorage {
     }));
   }
 
-  async getCountsByInventoryItem(inventoryItemId: number): Promise<Count[]> {
-    const request = this.pool.request();
-    const result = await request
-      .input("inventoryItemId", inventoryItemId)
-      .query(`
-        SELECT c.*, u.username as countedByUser
-        FROM counts c
-        LEFT JOIN users u ON c.countedBy = u.id
-        WHERE c.inventoryItemId = @inventoryItemId
-        ORDER BY c.countNumber ASC
-      `);
 
-    return result.recordset.map(record => ({
-      id: record.id,
-      inventoryItemId: record.inventoryItemId,
-      countNumber: record.countNumber,
-      quantity: record.quantity,
-      countedBy: record.countedBy,
-      countedAt: new Date(record.countedAt).getTime(),
-      notes: record.notes,
-    }));
-  }
-
-  async getAllCounts(): Promise<Count[]> {
-    const request = this.pool.request();
-    const result = await request.query(`
-      SELECT c.*, u.username as countedByUser
-      FROM counts c
-      LEFT JOIN users u ON c.countedBy = u.id
-      ORDER BY c.countedAt DESC
-    `);
-
-    return result.recordset.map(record => ({
-      id: record.id,
-      inventoryItemId: record.inventoryItemId,
-      countNumber: record.countNumber,
-      quantity: record.quantity,
-      countedBy: record.countedBy,
-      countedAt: new Date(record.countedAt).getTime(),
-      notes: record.notes,
-    }));
-  }
 
   async createCount(countData: Omit<InsertCount, "id">): Promise<Count> {
     const request = this.pool.request();
@@ -1219,10 +1178,8 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
-    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
-    
-    // Update inventory_items table
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count1", count)
@@ -1233,19 +1190,6 @@ export class SimpleStorage {
         SET count1 = @count1, count1By = @count1By, count1At = @count1At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    // Also create a record in counts table for auditing
-    const countRequest = this.pool.request();
-    await countRequest
-      .input("inventoryItemId", itemId)
-      .input("countNumber", 1)
-      .input("quantity", count)
-      .input("countedBy", countedByNum)
-      .input("countedAt", new Date())
-      .query(`
-        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
-        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
-      `);
   }
 
   async updateCount2(
@@ -1254,10 +1198,8 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
-    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
-    
-    // Update inventory_items table
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count2", count)
@@ -1268,19 +1210,6 @@ export class SimpleStorage {
         SET count2 = @count2, count2By = @count2By, count2At = @count2At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    // Also create a record in counts table for auditing
-    const countRequest = this.pool.request();
-    await countRequest
-      .input("inventoryItemId", itemId)
-      .input("countNumber", 2)
-      .input("quantity", count)
-      .input("countedBy", countedByNum)
-      .input("countedAt", new Date())
-      .query(`
-        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
-        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
-      `);
   }
 
   async updateCount3(
@@ -1289,10 +1218,8 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
-    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
-    
-    // Update inventory_items table
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count3", count)
@@ -1303,19 +1230,6 @@ export class SimpleStorage {
         SET count3 = @count3, count3By = @count3By, count3At = @count3At, updatedAt = @updatedAt
         WHERE id = @id
       `);
-
-    // Also create a record in counts table for auditing
-    const countRequest = this.pool.request();
-    await countRequest
-      .input("inventoryItemId", itemId)
-      .input("countNumber", 3)
-      .input("quantity", count)
-      .input("countedBy", countedByNum)
-      .input("countedAt", new Date())
-      .query(`
-        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
-        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
-      `);
   }
 
   async updateCount4(
@@ -1324,10 +1238,8 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
-    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
-    
-    // Update inventory_items table
+    const countedByStr =
+      typeof countedBy === "number" ? countedBy.toString() : countedBy;
     await request
       .input("id", itemId)
       .input("count4", count)
@@ -1340,19 +1252,6 @@ export class SimpleStorage {
             finalQuantity = @finalQuantity, updatedAt = @updatedAt, 
             status = 'confirmed'
         WHERE id = @id
-      `);
-
-    // Also create a record in counts table for auditing
-    const countRequest = this.pool.request();
-    await countRequest
-      .input("inventoryItemId", itemId)
-      .input("countNumber", 4)
-      .input("quantity", count)
-      .input("countedBy", countedByNum)
-      .input("countedAt", new Date())
-      .query(`
-        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
-        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
       `);
   }
 
@@ -1389,21 +1288,32 @@ export class SimpleStorage {
 
     const inventory = inventoryResult.recordset[0];
 
-    // Get participants from counts table
+    // Get participants from inventory_items count fields
     const participantsResult = await request.input("inventoryIdParticipants", inventoryId).query(`
       SELECT DISTINCT 
-        c.countedBy as userId,
+        u.id as userId,
         u.username as userName,
-        COUNT(*) as itemsCounted,
-        COUNT(CASE WHEN c.countNumber = 1 THEN 1 END) as count1Items,
-        COUNT(CASE WHEN c.countNumber = 2 THEN 1 END) as count2Items,
-        COUNT(CASE WHEN c.countNumber = 3 THEN 1 END) as count3Items,
-        COUNT(CASE WHEN c.countNumber = 4 THEN 1 END) as count4Items
-      FROM counts c
-      LEFT JOIN users u ON c.countedBy = u.id
-      INNER JOIN inventory_items ii ON c.inventoryItemId = ii.id
+        SUM(CASE WHEN ii.count1By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) as count1Items,
+        SUM(CASE WHEN ii.count2By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) as count2Items,
+        SUM(CASE WHEN ii.count3By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) as count3Items,
+        SUM(CASE WHEN ii.count4By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) as count4Items,
+        (SUM(CASE WHEN ii.count1By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+         SUM(CASE WHEN ii.count2By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+         SUM(CASE WHEN ii.count3By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+         SUM(CASE WHEN ii.count4By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END)) as itemsCounted
+      FROM users u
+      INNER JOIN inventory_items ii ON (
+        ii.count1By = CAST(u.id AS VARCHAR) OR 
+        ii.count2By = CAST(u.id AS VARCHAR) OR 
+        ii.count3By = CAST(u.id AS VARCHAR) OR 
+        ii.count4By = CAST(u.id AS VARCHAR)
+      )
       WHERE ii.inventoryId = @inventoryIdParticipants
-      GROUP BY c.countedBy, u.username
+      GROUP BY u.id, u.username
+      HAVING (SUM(CASE WHEN ii.count1By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+              SUM(CASE WHEN ii.count2By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+              SUM(CASE WHEN ii.count3By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END) +
+              SUM(CASE WHEN ii.count4By = CAST(u.id AS VARCHAR) THEN 1 ELSE 0 END)) > 0
     `);
 
     // Get comprehensive statistics

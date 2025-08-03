@@ -568,8 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         storage = await getStorage();
-        const itemId = parseInt(req.params.id);
-        const counts = await storage.getCountsByInventoryItem(itemId);
+        const counts = await storage.getCounts();
         res.json(counts);
       } catch (error) {
         console.error("Error fetching counts:", error as Error);
@@ -577,18 +576,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
   );
-
-  // Get all counts for debugging
-  app.get("/api/counts/all", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const counts = await storage.getAllCounts();
-      res.json(counts);
-    } catch (error) {
-      console.error("Error fetching all counts:", error as Error);
-      res.status(500).json({ message: "Failed to fetch all counts" });
-    }
-  });
 
   app.post("/api/counts", isAuthenticated, async (req: any, res) => {
     try {
