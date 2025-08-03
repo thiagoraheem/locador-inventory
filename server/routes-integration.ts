@@ -374,19 +374,27 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const { z } = await import('zod');
       const { erpStockUpdateRequestSchema } = await import('../shared/schema');
       
-      const requestSchema = z.object({
-        items: z.array(erpStockUpdateRequestSchema)
-      });
+      // Aceitar tanto 'items' quanto 'itens'
+      const requestData = req.body;
+      const items = requestData.items || requestData.itens;
       
-      const { items } = requestSchema.parse(req.body);
+      if (!items || !Array.isArray(items)) {
+        return res.status(400).json({
+          success: false,
+          message: "Campo 'items' ou 'itens' é obrigatório e deve ser um array"
+        });
+      }
       
-      const result = await erpService.updateStockList(items);
+      // Validar cada item individualmente
+      const validatedItems = items.map((item: any) => erpStockUpdateRequestSchema.parse(item));
+      
+      const result = await erpService.updateStockList(validatedItems);
       
       if (result) {
         res.json({ 
           success: true, 
-          message: `${items.length} itens atualizados com sucesso no ERP`,
-          processedItems: items.length
+          message: `${validatedItems.length} itens atualizados com sucesso no ERP`,
+          processedItems: validatedItems.length
         });
       } else {
         res.status(500).json({ 
@@ -473,6 +481,28 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         connected: false,
         message: "Erro ao validar conexão ERP",
         timestamp: Date.now()
+      });
+    }
+  });
+
+  // Endpoint para verificar e corrigir schema ERP
+  app.post("/api/admin/fix-erp-schema", isAuthenticated, async (req: any, res) => {
+    try {
+      const storage = await getStorage();
+      
+      // Forçar verificação e correção das colunas ERP
+      await storage.ensureERPColumns();
+      
+      res.json({
+        success: true,
+        message: "Schema ERP verificado e corrigido com sucesso"
+      });
+    } catch (error) {
+      console.error("Error fixing ERP schema:", error);
+      res.status(500).json({
+        success: false,
+        message: "Erro ao corrigir schema ERP",
+        details: error instanceof Error ? error.message : "Erro desconhecido"
       });
     }
   });

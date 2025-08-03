@@ -2853,4 +2853,76 @@ export class SimpleStorage {
       };
     }
   }
+
+  // ===== ERP INTEGRATION METHODS =====
+
+  // Garantir que colunas ERP existem na tabela inventories
+  async ensureERPColumns(): Promise<void> {
+    try {
+      // Verificar se as colunas ERP existem
+      const checkQuery = `
+        SELECT 
+          COLUMN_NAME 
+        FROM 
+          INFORMATION_SCHEMA.COLUMNS 
+        WHERE 
+          TABLE_NAME = 'inventories' 
+          AND COLUMN_NAME IN ('erpMigrated', 'erpMigratedAt', 'erpMigratedBy')
+      `;
+      
+      const result = await this.pool.request().query(checkQuery);
+      const existingColumns = result.recordset.map(row => row.COLUMN_NAME);
+      
+      // Adicionar colunas se não existirem
+      if (!existingColumns.includes('erpMigrated')) {
+        await this.pool.request().query('ALTER TABLE inventories ADD erpMigrated BIT DEFAULT 0');
+        console.log('✅ Coluna erpMigrated adicionada à tabela inventories');
+      }
+      
+      if (!existingColumns.includes('erpMigratedAt')) {
+        await this.pool.request().query('ALTER TABLE inventories ADD erpMigratedAt DATETIME2 NULL');
+        console.log('✅ Coluna erpMigratedAt adicionada à tabela inventories');
+      }
+      
+      if (!existingColumns.includes('erpMigratedBy')) {
+        await this.pool.request().query('ALTER TABLE inventories ADD erpMigratedBy INT NULL');
+        console.log('✅ Coluna erpMigratedBy adicionada à tabela inventories');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao verificar/criar colunas ERP:', error);
+      throw error;
+    }
+  }
+
+  // Marcar inventário como migrado para ERP
+  async markInventoryAsMigrated(inventoryId: number, userId: number): Promise<void> {
+    try {
+      const now = new Date();
+      
+      const updateQuery = `
+        UPDATE inventories 
+        SET 
+          erpMigrated = 1,
+          erpMigratedAt = @migratedAt,
+          erpMigratedBy = @migratedBy,
+          updatedAt = @updatedAt
+        WHERE id = @inventoryId
+      `;
+      
+      await this.pool
+        .request()
+        .input('inventoryId', inventoryId)
+        .input('migratedAt', now)
+        .input('migratedBy', userId)
+        .input('updatedAt', now)
+        .query(updateQuery);
+        
+      console.log(`✅ Inventário ${inventoryId} marcado como migrado para ERP`);
+      
+    } catch (error) {
+      console.error('❌ Erro ao marcar inventário como migrado:', error);
+      throw error;
+    }
+  }
 }
