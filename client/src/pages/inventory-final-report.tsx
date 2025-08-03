@@ -77,7 +77,7 @@ export default function InventoryFinalReportPage() {
   const migrationMutation = useMutation({
     mutationFn: async (): Promise<ERPMigrationResponse> => {
       if (!selectedInventoryId) throw new Error("Nenhum inventário selecionado");
-      return await apiRequest(`/api/inventories/${selectedInventoryId}/migrate-to-erp`, "POST") as unknown as ERPMigrationResponse;
+      return await apiRequest(`/api/inventories/${selectedInventoryId}/migrate-to-erp`, "POST", {}) as unknown as ERPMigrationResponse;
     },
     onSuccess: (data: ERPMigrationResponse) => {
       toast({
