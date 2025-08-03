@@ -1315,7 +1315,7 @@ export class SimpleStorage {
           ii.expectedQuantity,
           ii.finalQuantity,
           (ii.finalQuantity - ii.expectedQuantity) as difference,
-          p.costValue
+          CAST(ISNULL(p.costValue, 0) as DECIMAL(10,2)) as costValue
         FROM inventory_items ii
         LEFT JOIN products p ON ii.productId = p.id
         LEFT JOIN locations l ON ii.locationId = l.id
@@ -1414,19 +1414,32 @@ export class SimpleStorage {
         count4Items: stats.count4Items,
         auditItems: stats.auditItems,
       },
-      divergentItems: divergentItems.map((item: any) => ({
-        id: item.id,
-        productName: item.productName,
-        productSku: item.productSku,
-        locationName: item.locationName,
-        expectedQuantity: item.expectedQuantity,
-        finalQuantity: item.finalQuantity,
-        difference: item.difference,
-        costValue: item.costValue,
-        totalImpact: item.costValue
-          ? item.difference * item.costValue
-          : undefined,
-      })),
+      divergentItems: divergentItems.map((item: any) => {
+        const costValue = parseFloat(item.costValue) || 0;
+        const difference = item.difference || 0;
+        const totalImpact = costValue > 0 ? difference * costValue : 0;
+        
+        console.log('Divergent item processed:', {
+          id: item.id,
+          productSku: item.productSku,
+          rawCostValue: item.costValue,
+          parsedCostValue: costValue,
+          difference: difference,
+          totalImpact: totalImpact
+        });
+        
+        return {
+          id: item.id,
+          productName: item.productName,
+          productSku: item.productSku,
+          locationName: item.locationName,
+          expectedQuantity: item.expectedQuantity,
+          finalQuantity: item.finalQuantity,
+          difference: difference,
+          costValue: costValue,
+          totalImpact: totalImpact,
+        };
+      }),
       recommendations,
     };
   }
