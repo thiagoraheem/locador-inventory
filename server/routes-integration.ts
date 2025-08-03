@@ -506,4 +506,37 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       });
     }
   });
+
+  // Congelar/descongelar estoque no ERP (endpoint /api/Estoque/congelar)
+  app.patch("/api/Estoque/congelar", isAuthenticated, async (req: any, res) => {
+    try {
+      const { ERPIntegrationService } = await import('./erp-integration');
+      const storage = await getStorage();
+      const erpService = new ERPIntegrationService(storage);
+      
+      // Obter parâmetro freeze da query string
+      const freeze = req.query.freeze === 'true';
+      
+      const result = await erpService.freezeStock(freeze);
+      
+      if (result) {
+        res.json({ 
+          success: true, 
+          message: freeze ? "Estoque congelado com sucesso no ERP" : "Estoque descongelado com sucesso no ERP",
+          frozen: freeze
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: freeze ? "Falha ao congelar estoque no ERP" : "Falha ao descongelar estoque no ERP"
+        });
+      }
+    } catch (error) {
+      console.error("Error freezing/unfreezing ERP stock:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Erro interno ao congelar/descongelar estoque" 
+      });
+    }
+  });
 }

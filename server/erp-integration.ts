@@ -224,8 +224,8 @@ export class ERPIntegrationService {
     try {
       console.log('🔄 Atualizando estoque individual no ERP:', request);
       
-      // Fazer chamada real para o ERP externo
-      const erpUrl = process.env.ERP_BASE_URL || 'http://54.232.194.197:5001';
+      // Usar configuração centralizada da API externa
+      const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
       const erpToken = process.env.ERP_API_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkbWluaXN0cmFkb3IgZG8gU2lzdGVtYSIsImVtYWlsIjoidGhpYWdvLnJhaGVlbUBnbWFpbC5jb20iLCJsb2dpbiI6ImFkbWluIiwianRpIjoiMDIzZWVjZDMtZDAzMS00NDdlLWFiNjctMjg3NjYzNDUzODMwIiwiZXhwIjoxNzQzODE2MDc5LCJpc3MiOiJMb2NhZG9yQXBpIiwiYXVkIjoiTG9jYWRvckNsaWVudHMifQ.58pXY7wz_7HJrot0rhM8gS1PcSTXnItYEm9Hl_gym84';
       
       const response = await fetch(`${erpUrl}/api/Estoque/atualizar`, {
@@ -256,13 +256,13 @@ export class ERPIntegrationService {
     }
   }
 
-  // Atualizar lista de itens no estoque (endpoint /api/Estoque/atualizar-lista)
+  // Atualizar lista de itens no estoque (endpoint /api/Estoque/atualizar-lista) 
   async updateStockList(requests: ERPStockUpdateRequest[]): Promise<boolean> {
     try {
       console.log('🔄 Atualizando lista de estoque no ERP:', requests.length, 'itens');
       
-      // Fazer chamada real para o ERP externo
-      const erpUrl = process.env.ERP_BASE_URL || 'http://54.232.194.197:5001';
+      // Usar configuração centralizada da API externa
+      const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
       const erpToken = process.env.ERP_API_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkbWluaXN0cmFkb3IgZG8gU2lzdGVtYSIsImVtYWlsIjoidGhpYWdvLnJhaGVlbUBnbWFpbC5jb20iLCJsb2dpbiI6ImFkbWluIiwianRpIjoiMDIzZWVjZDMtZDAzMS00NDdlLWFiNjctMjg3NjYzNDUzODMwIiwiZXhwIjoxNzQzODE2MDc5LCJpc3MiOiJMb2NhZG9yQXBpIiwiYXVkIjoiTG9jYWRvckNsaWVudHMifQ.58pXY7wz_7HJrot0rhM8gS1PcSTXnItYEm9Hl_gym84';
       
       // Log dos itens que serão enviados
@@ -298,6 +298,41 @@ export class ERPIntegrationService {
       // Em caso de erro de conexão, ainda simular para não quebrar o fluxo
       console.log('⚠️  FALLBACK: Erro de conexão, simulando sucesso');
       return true;
+    }
+  }
+
+  // Congelar/descongelar estoque no ERP (endpoint /api/Estoque/congelar)
+  async freezeStock(freeze: boolean): Promise<boolean> {
+    try {
+      console.log(`🔒 ${freeze ? 'Congelando' : 'Descongelando'} estoque no ERP`);
+      
+      // Usar configuração centralizada da API externa
+      const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
+      const erpToken = process.env.ERP_API_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkbWluaXN0cmFkb3IgZG8gU2lzdGVtYSIsImVtYWlsIjoidGhpYWdvLnJhaGVlbUBnbWFpbC5jb20iLCJsb2dpbiI6ImFkbWluIiwianRpIjoiMDIzZWVjZDMtZDAzMS00NDdlLWFiNjctMjg3NjYzNDUzODMwIiwiZXhwIjoxNzQzODE2MDc5LCJpc3MiOiJMb2NhZG9yQXBpIiwiYXVkIjoiTG9jYWRvckNsaWVudHMifQ.58pXY7wz_7HJrot0rhM8gS1PcSTXnItYEm9Hl_gym84';
+      
+      const response = await fetch(`${erpUrl}/api/Estoque/congelar?freeze=${freeze}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${erpToken}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error(`❌ ERP Freeze API Error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ ERP Freeze Error details:', errorText);
+        return false;
+      }
+      
+      const result = await response.json();
+      console.log(`✅ ERP Freeze Response:`, result);
+      return result.success === true;
+      
+    } catch (error) {
+      console.error('❌ Erro ao congelar/descongelar estoque no ERP:', error);
+      // Em caso de erro de conexão, retornar false para indicar falha
+      return false;
     }
   }
 
