@@ -75,11 +75,9 @@ export default function InventoryFinalReportPage() {
 
   // Mutation para migração ERP
   const migrationMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<ERPMigrationResponse> => {
       if (!selectedInventoryId) throw new Error("Nenhum inventário selecionado");
-      return apiRequest(`/api/inventories/${selectedInventoryId}/migrate-to-erp`, {
-        method: "POST",
-      });
+      return await apiRequest(`/api/inventories/${selectedInventoryId}/migrate-to-erp`, "POST") as unknown as ERPMigrationResponse;
     },
     onSuccess: (data: ERPMigrationResponse) => {
       toast({
@@ -345,13 +343,13 @@ export default function InventoryFinalReportPage() {
                       <div className="flex items-center gap-4 mt-2">
                         {getStatusBadge(report.status)}
                         <span className="text-sm text-muted-foreground">
-                          Tipo: {report.type.name}
+                          Tipo: {report.type?.name || 'N/A'}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right text-sm print:text-xs">
-                    <p className="text-muted-foreground">Criado por: {report.createdBy.name}</p>
+                    <p className="text-muted-foreground">Criado por: {report.createdBy?.name || 'N/A'}</p>
                     <p className="text-muted-foreground">
                       Data de início: {formatDate(report.startDate)}
                     </p>
@@ -375,7 +373,7 @@ export default function InventoryFinalReportPage() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Estoque Total</p>
-                      <p className="text-xl font-bold">{formatCurrency(report.kpis.totalStock)}</p>
+                      <p className="text-xl font-bold">{formatCurrency(report.kpis?.totalStock || 0)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -389,7 +387,7 @@ export default function InventoryFinalReportPage() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Acuracidade</p>
-                      <p className="text-xl font-bold">{report.kpis.accuracyRate.toFixed(1)}%</p>
+                      <p className="text-xl font-bold">{(report.kpis?.accuracyRate || 0).toFixed(1)}%</p>
                     </div>
                   </div>
                 </CardContent>
@@ -403,7 +401,7 @@ export default function InventoryFinalReportPage() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Perdas Totais</p>
-                      <p className="text-xl font-bold">{formatCurrency(report.kpis.totalLossValue)}</p>
+                      <p className="text-xl font-bold">{formatCurrency(report.kpis?.totalLossValue || 0)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -429,7 +427,7 @@ export default function InventoryFinalReportPage() {
                     <Users className="h-5 w-5 text-muted-foreground" />
                     <h3 className="font-semibold">Participantes</h3>
                   </div>
-                  <p className="text-2xl font-bold">{report.participants.length}</p>
+                  <p className="text-2xl font-bold">{report.participants?.length || 0}</p>
                   <p className="text-sm text-muted-foreground">Pessoas envolvidas na contagem</p>
                 </CardContent>
               </Card>
@@ -456,7 +454,7 @@ export default function InventoryFinalReportPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {report.participants.map((participant) => (
+                    {report.participants?.map((participant) => (
                       <TableRow key={participant.userId}>
                         <TableCell className="font-medium">
                           {participant.userName}
@@ -570,11 +568,11 @@ export default function InventoryFinalReportPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-1">Valor Esperado</p>
-                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues.expectedValue)}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.expectedValue || 0)}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-1">Valor Final</p>
-                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues.finalValue)}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.finalValue || 0)}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-1">Diferença</p>
@@ -600,6 +598,106 @@ export default function InventoryFinalReportPage() {
               </CardContent>
             </Card>
 
+            {/* Divergent Items Detail */}
+            {report.accuracy.divergentItems > 0 && (
+              <Card className="mb-6 border-orange-200 bg-orange-50/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-orange-800">
+                    <AlertTriangle className="h-5 w-5" />
+                    Itens com Divergência - Análise Detalhada
+                  </CardTitle>
+                  <CardDescription className="text-orange-700">
+                    Lista completa dos itens que apresentaram diferenças entre o estoque esperado e o contado
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>SKU</TableHead>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="text-center">Esperado</TableHead>
+                          <TableHead className="text-center">Contado</TableHead>
+                          <TableHead className="text-center">Diferença</TableHead>
+                          <TableHead className="text-right">Custo Unit.</TableHead>
+                          <TableHead className="text-right">Impacto Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.divergentItems?.map((item) => {
+                          const difference = item.difference || ((item.finalQuantity || 0) - (item.expectedQuantity || 0));
+                          const totalImpact = item.totalImpact || (difference * (item.costValue || 0));
+                          
+                          return (
+                            <TableRow key={item.id} className="hover:bg-orange-50">
+                              <TableCell className="font-mono text-sm">
+                                {item.productSku}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {item.productName}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item.expectedQuantity || 0}
+                              </TableCell>
+                              <TableCell className="text-center font-semibold">
+                                {item.finalQuantity || 0}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge 
+                                  variant="outline" 
+                                  className={difference > 0 
+                                    ? "bg-green-50 text-green-700 border-green-200" 
+                                    : difference < 0 
+                                    ? "bg-red-50 text-red-700 border-red-200"
+                                    : "bg-gray-50 text-gray-700 border-gray-200"
+                                  }
+                                >
+                                  {difference > 0 ? '+' : ''}{difference}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-sm">
+                                {item.costValue ? formatCurrency(item.costValue) : 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                <span className={
+                                  totalImpact > 0 
+                                    ? "text-green-600" 
+                                    : totalImpact < 0 
+                                    ? "text-red-600"
+                                    : "text-gray-600"
+                                }>
+                                  {item.costValue ? formatCurrency(totalImpact) : 'N/A'}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {/* Summary of divergent items */}
+                  <div className="mt-4 pt-4 border-t border-orange-200">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                      <div className="p-3 bg-white rounded-lg border border-orange-200">
+                        <p className="text-sm text-orange-600 mb-1">Total de Itens Divergentes</p>
+                        <p className="text-lg font-bold text-orange-800">{report.accuracy.divergentItems}</p>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg border border-orange-200">
+                        <p className="text-sm text-orange-600 mb-1">Ajustes Positivos</p>
+                        <p className="text-lg font-bold text-green-600">+{report.differences.positiveAdjustments}</p>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg border border-orange-200">
+                        <p className="text-sm text-orange-600 mb-1">Ajustes Negativos</p>
+                        <p className="text-lg font-bold text-red-600">{report.differences.negativeAdjustments}</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Selected Locations and Categories */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <Card>
@@ -610,9 +708,9 @@ export default function InventoryFinalReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {report.selectedLocations.length > 0 ? (
+                  {report.selectedLocations && report.selectedLocations.length > 0 ? (
                     <div className="space-y-1">
-                      {report.selectedLocations.map((location) => (
+                      {report.selectedLocations?.map((location) => (
                         <Badge key={location.id} variant="outline" className="mr-2 mb-1">
                           {location.name}
                         </Badge>
@@ -632,9 +730,9 @@ export default function InventoryFinalReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {report.selectedCategories.length > 0 ? (
+                  {report.selectedCategories && report.selectedCategories.length > 0 ? (
                     <div className="space-y-1">
-                      {report.selectedCategories.map((category) => (
+                      {report.selectedCategories?.map((category) => (
                         <Badge key={category.id} variant="outline" className="mr-2 mb-1">
                           {category.name}
                         </Badge>
@@ -683,9 +781,9 @@ export default function InventoryFinalReportPage() {
                             {item.difference > 0 ? '+' : ''}{item.difference}
                           </TableCell>
                           <TableCell className={`text-right font-semibold ${
-                            item.totalValue >= 0 ? 'text-green-600' : 'text-red-600'
+                            (item.totalImpact || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
-                            {formatCurrency(item.totalValue)}
+                            {formatCurrency(item.totalImpact || 0)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -705,11 +803,11 @@ export default function InventoryFinalReportPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
-                  {report.kpis.accuracyRate < 90 && (
+                  {(report.kpis?.accuracyRate || 0) < 90 && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <p className="font-semibold text-yellow-800">⚠️ Taxa de Acuracidade Baixa</p>
                       <p className="text-yellow-700">
-                        A taxa de acuracidade ({report.kpis.accuracyRate.toFixed(1)}%) está abaixo do recomendado (90%). 
+                        A taxa de acuracidade ({(report.kpis?.accuracyRate || 0).toFixed(1)}%) está abaixo do recomendado (90%). 
                         Considere revisar os processos de contagem e treinamento da equipe.
                       </p>
                     </div>
@@ -735,7 +833,7 @@ export default function InventoryFinalReportPage() {
                     </div>
                   )}
                   
-                  {report.kpis.accuracyRate >= 95 && report.differences.adjustmentCount <= report.totalItems * 0.05 && (
+                  {(report.kpis?.accuracyRate || 0) >= 95 && report.differences.adjustmentCount <= report.totalItems * 0.05 && (
                     <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <p className="font-semibold text-green-800">✅ Excelente Performance</p>
                       <p className="text-green-700">
