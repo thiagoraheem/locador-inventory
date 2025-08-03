@@ -1637,8 +1637,7 @@ export class SimpleStorage {
       },
       createdBy: {
         id: inventory.createdBy,
-        name: 'Admin', // Simplified for now
-        email: 'admin@example.com'
+        name: 'Admin' // Simplified for now
       },
       description: inventory.description,
       selectedLocations: inventory.selectedLocationIds 
@@ -1654,12 +1653,12 @@ export class SimpleStorage {
       },
       participants: participants.map((p: any) => ({
         userId: p.userId,
-        userName: `Usuário ${p.userId}`,
+        userName: p.userName || `Usuário ${p.userId}`,
         itemsCounted: p.itemsCounted || 0,
-        count1Items: 0,
-        count2Items: 0,
-        count3Items: 0,
-        count4Items: 0
+        count1Items: p.count1Items || 0,
+        count2Items: p.count2Items || 0,
+        count3Items: p.count3Items || 0,
+        count4Items: p.count4Items || 0
       })),
       totalItems: stats.totalItems,
       completedItems: stats.completedItems,
@@ -1720,6 +1719,29 @@ export class SimpleStorage {
       }),
       recommendations,
     };
+  }
+
+  // Export inventory items to Excel format data
+  async getInventoryExportData(inventoryId: number): Promise<any[]> {
+    const request = this.pool.request();
+    
+    const result = await request.input("inventoryId", inventoryId).query(`
+      SELECT 
+        p.sku as SKU,
+        p.name as Descrição,
+        ii.expectedQuantity as "Quantidade Esperada",
+        ii.count1 as "Contagem 1",
+        ii.count2 as "Contagem 2", 
+        ii.count3 as "Contagem 3",
+        ii.count4 as "Contagem 4",
+        ii.finalQuantity as "Quantidade Final"
+      FROM inventory_items ii
+      LEFT JOIN products p ON ii.productId = p.id
+      WHERE ii.inventoryId = @inventoryId
+      ORDER BY p.sku
+    `);
+
+    return result.recordset;
   }
 
   // Inventory Stock Items methods (for patrimônio)

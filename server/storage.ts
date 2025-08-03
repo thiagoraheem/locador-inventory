@@ -91,6 +91,9 @@ export interface IStorage {
     stockLocations: number;
     lastAuditDays: number;
   }>;
+
+  // Excel export
+  getInventoryExportData(inventoryId: number): Promise<any[]>;
 }
 
 // In-memory storage implementation (kept for fallback/testing)
@@ -795,6 +798,25 @@ export class MemStorage implements IStorage {
       stockLocations,
       lastAuditDays,
     };
+  }
+
+  // Excel export
+  async getInventoryExportData(inventoryId: number): Promise<any[]> {
+    const inventoryItems = Array.from(this.inventoryItems.values()).filter(item => item.inventoryId === inventoryId);
+    
+    return inventoryItems.map(item => {
+      const product = this.products.get(item.productId);
+      return {
+        SKU: product?.sku || '',
+        Descrição: product?.name || '',
+        'Quantidade Esperada': item.expectedQuantity || 0,
+        'Contagem 1': null,
+        'Contagem 2': null,
+        'Contagem 3': null,
+        'Contagem 4': null,
+        'Quantidade Final': item.finalQuantity || null
+      };
+    });
   }
 }
 

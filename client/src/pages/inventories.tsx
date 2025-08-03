@@ -40,6 +40,7 @@ import {
   XCircle,
   Trash2,
   FileText,
+  Download,
 } from "lucide-react";
 import { Link } from "wouter";
 import type { Inventory } from "@shared/schema";
@@ -50,6 +51,41 @@ export default function Inventories() {
   const [cancelReason, setCancelReason] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+
+  // Excel export function
+  const handleExportInventory = async (inventoryId: number, inventoryCode: string) => {
+    try {
+      const response = await fetch(`/api/inventories/${inventoryId}/export`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export inventory');
+      }
+      
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Inventario_${inventoryCode}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Sucesso",
+        description: "Inventário exportado com sucesso",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao exportar inventário",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -208,6 +244,16 @@ export default function Inventories() {
               <FileText className="h-4 w-4" />
             </Button>
           </Link>
+
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            title="Exportar para Excel"
+            onClick={() => handleExportInventory(row.id, row.code)}
+            className="text-green-600 hover:text-green-700"
+          >
+            <Download className="h-4 w-4" />
+          </Button>
           
           <Link href={`/inventory-counting/${row.id}`}>
             <Button variant="ghost" size="sm" title="Abrir contagem">

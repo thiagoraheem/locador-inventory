@@ -963,6 +963,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Export inventory to Excel
+  app.get(
+    "/api/inventories/:id/export",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        
+        // Get inventory info for filename
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        // Get export data
+        const exportData = await storage.getInventoryExportData(inventoryId);
+        
+        // Convert to Excel-compatible CSV format
+        if (exportData.length === 0) {
+          return res.status(404).json({ message: "No data to export" });
+        }
+
+        // Get headers from first row
+        const headers = Object.keys(exportData[0]);
+        
+        // Create CSV content
+        let csvContent = headers.join(',') + '\n';
+        exportData.forEach(row => {
+          const values = headers.map(header => {
+            const value = row[header];
+            // Handle null/undefined values and escape quotes
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // Escape quotes and wrap in quotes if contains comma, quote, or newline
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+              return '"' + stringValue.replace(/"/g, '""') + '"';
+            }
+            return stringValue;
+          });
+          csvContent += values.join(',') + '\n';
+        });
+
+        // Set headers for file download
+        const filename = `Inventario_${inventory.code}_${new Date().toISOString().split('T')[0]}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        // Add BOM for Excel UTF-8 support
+        res.write('\uFEFF');
+        res.end(csvContent);
+      } catch (error) {
+        console.error("Error exporting inventory:", error as Error);
+        res.status(500).json({
+          message: "Failed to export inventory",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
   // Update count 1 for inventory item
   app.put(
     "/api/inventory-items/:id/count1",

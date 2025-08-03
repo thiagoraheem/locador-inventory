@@ -156,6 +156,41 @@ export default function InventoryControlBoard() {
   }>({});
 
   const { toast } = useToast();
+
+  // Excel export function
+  const handleExportInventory = async (inventoryId: number, inventoryCode: string) => {
+    try {
+      const response = await fetch(`/api/inventories/${inventoryId}/export`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export inventory');
+      }
+      
+      // Create download link
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Inventario_${inventoryCode}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Sucesso",
+        description: "Inventário exportado com sucesso",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Falha ao exportar inventário",
+        variant: "destructive",
+      });
+    }
+  };
   const queryClient = useQueryClient();
 
   const { data: inventories } = useQuery<Inventory[]>({
@@ -719,6 +754,16 @@ export default function InventoryControlBoard() {
               >
                 <RefreshCw className="h-3 w-3" />
                 Recarregar
+              </Button>
+
+              <Button
+                onClick={() => handleExportInventory(selectedInventoryId, selectedInventory.code)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-1 text-green-600 hover:text-green-700"
+              >
+                <Download className="h-3 w-3" />
+                Exportar
               </Button>
             </div>
           )}
