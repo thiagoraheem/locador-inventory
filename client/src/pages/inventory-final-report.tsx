@@ -746,52 +746,7 @@ export default function InventoryFinalReportPage() {
             </div>
 
             {/* Divergent Items */}
-            {report.divergentItems.length > 0 && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5" />
-                    Itens com Divergências ({report.divergentItems.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Local</TableHead>
-                        <TableHead className="text-center">Esperado</TableHead>
-                        <TableHead className="text-center">Contado</TableHead>
-                        <TableHead className="text-center">Diferença</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {report.divergentItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-mono text-sm">{item.productSku}</TableCell>
-                          <TableCell>{item.productName}</TableCell>
-                          <TableCell>{item.locationName}</TableCell>
-                          <TableCell className="text-center">{item.expectedQuantity}</TableCell>
-                          <TableCell className="text-center">{item.finalQuantity}</TableCell>
-                          <TableCell className={`text-center font-semibold ${
-                            item.difference >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {item.difference > 0 ? '+' : ''}{item.difference}
-                          </TableCell>
-                          <TableCell className={`text-right font-semibold ${
-                            (item.totalImpact || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {formatCurrency(item.totalImpact || 0)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
+
 
             {/* Recommendations */}
             <Card className="mb-6">

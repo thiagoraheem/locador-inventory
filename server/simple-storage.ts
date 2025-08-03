@@ -1286,6 +1286,35 @@ export class SimpleStorage {
 
     const inventory = inventoryResult.recordset[0];
 
+    // Get additional inventory data (participants, type, creator)
+    const [participantsResult, inventoryDetailsResult] = await Promise.all([
+      request.input("inventoryId0", inventoryId).query(`
+        SELECT DISTINCT 
+          c.countedBy as userId,
+          u.name as userName,
+          COUNT(*) as itemsCounted,
+          COUNT(CASE WHEN c.countNumber = 1 THEN 1 END) as count1Items,
+          COUNT(CASE WHEN c.countNumber = 2 THEN 1 END) as count2Items,
+          COUNT(CASE WHEN c.countNumber = 3 THEN 1 END) as count3Items,
+          COUNT(CASE WHEN c.countNumber = 4 THEN 1 END) as count4Items
+        FROM counts c
+        LEFT JOIN users u ON c.countedBy = u.id
+        WHERE c.inventoryId = @inventoryId0
+        GROUP BY c.countedBy, u.name
+      `),
+      request.input("inventoryIdDetails", inventoryId).query(`
+        SELECT 
+          i.*,
+          it.name as typeName,
+          u.name as createdByName,
+          u.email as createdByEmail
+        FROM inventories i
+        LEFT JOIN inventory_types it ON i.typeId = it.id
+        LEFT JOIN users u ON i.createdBy = u.id
+        WHERE i.id = @inventoryIdDetails
+      `)
+    ]);
+
     // Get comprehensive statistics
     const [itemsResult, divergentItemsResult, financialResult] =
       await Promise.all([
@@ -1337,6 +1366,8 @@ export class SimpleStorage {
     const stats = itemsResult.recordset[0];
     const divergentItems = divergentItemsResult.recordset;
     const financial = financialResult.recordset[0];
+    const participants = participantsResult.recordset;
+    const inventoryDetails = inventoryDetailsResult.recordset[0];
 
     const accuracyRate =
       stats.completedItems > 0
@@ -1346,6 +1377,11 @@ export class SimpleStorage {
     const differenceValue = financial.differenceValue || 0;
     const impactPercentage =
       totalValue > 0 ? Math.abs(differenceValue / totalValue) * 100 : 0;
+
+    // Calculate time spent (in hours)
+    const totalTimeSpent = inventoryDetails.endDate && inventoryDetails.startDate
+      ? Math.round((new Date(inventoryDetails.endDate).getTime() - new Date(inventoryDetails.startDate).getTime()) / (1000 * 60 * 60))
+      : 0;
 
     // Generate recommendations based on results
     const recommendations: string[] = [];
@@ -1381,14 +1417,40 @@ export class SimpleStorage {
     }
 
     return {
-      inventoryId: inventory.id,
-      inventoryCode: inventory.code,
-      inventoryName: `${inventory.typeName} - ${new Date(inventory.startDate).toLocaleDateString()}`,
-      status: inventory.status,
-      startDate: inventory.startDate,
-      endDate: inventory.endDate || undefined,
+      inventoryId: inventoryDetails.id,
+      inventoryCode: inventoryDetails.code,
+      inventoryName: inventoryDetails.description || `${inventoryDetails.typeName} - ${new Date(inventoryDetails.startDate).toLocaleDateString()}`,
+      status: inventoryDetails.status,
+      startDate: inventoryDetails.startDate,
+      endDate: inventoryDetails.endDate || undefined,
+      totalTimeSpent: totalTimeSpent,
+      type: {
+        id: inventoryDetails.typeId,
+        name: inventoryDetails.typeName || 'Tipo não definido'
+      },
+      createdBy: {
+        id: inventoryDetails.createdBy,
+        name: inventoryDetails.createdByName || 'Usuário não encontrado',
+        email: inventoryDetails.createdByEmail
+      },
+      description: inventoryDetails.description,
+      selectedLocations: [], // Will be populated by frontend if needed
+      selectedCategories: [], // Will be populated by frontend if needed
+      kpis: {
+        totalStock: totalValue,
+        accuracyRate: Math.round(accuracyRate * 10) / 10,
+        totalLossValue: Math.abs(differenceValue)
+      },
+      participants: participants.map((p: any) => ({
+        userId: p.userId,
+        userName: p.userName || 'Usuário não encontrado',
+        itemsCounted: p.itemsCounted || 0,
+        count1Items: p.count1Items || 0,
+        count2Items: p.count2Items || 0,
+        count3Items: p.count3Items || 0,
+        count4Items: p.count4Items || 0
+      })),
       totalItems: stats.totalItems,
-      totalTimeSpent: stats.totalTimeSpent,
       completedItems: stats.completedItems,
       accuracy: {
         totalItems: stats.totalItems,
@@ -1397,7 +1459,7 @@ export class SimpleStorage {
         accuracyRate: Math.round(accuracyRate * 10) / 10,
       },
       differences: {
-        totalDifference: stats.totalDifference || 0,
+        totalDifference: Math.abs(stats.totalDifference || 0),
         positiveAdjustments: stats.positiveAdjustments || 0,
         negativeAdjustments: stats.negativeAdjustments || 0,
         adjustmentCount: stats.adjustmentCount || 0,
@@ -1406,6 +1468,11 @@ export class SimpleStorage {
         totalValue: totalValue,
         differenceValue: differenceValue,
         impactPercentage: Math.round(impactPercentage * 100) / 100,
+      },
+      inventoryValues: {
+        expectedValue: totalValue,
+        finalValue: totalValue + differenceValue,
+        lossValue: Math.abs(differenceValue)
       },
       countingSummary: {
         count1Items: stats.count1Items,
