@@ -1176,8 +1176,10 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr =
-      typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
+    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    
+    // Update inventory_items table
     await request
       .input("id", itemId)
       .input("count1", count)
@@ -1188,6 +1190,19 @@ export class SimpleStorage {
         SET count1 = @count1, count1By = @count1By, count1At = @count1At, updatedAt = @updatedAt
         WHERE id = @id
       `);
+
+    // Also create a record in counts table for auditing
+    const countRequest = this.pool.request();
+    await countRequest
+      .input("inventoryItemId", itemId)
+      .input("countNumber", 1)
+      .input("quantity", count)
+      .input("countedBy", countedByNum)
+      .input("countedAt", new Date())
+      .query(`
+        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
+        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
+      `);
   }
 
   async updateCount2(
@@ -1196,8 +1211,10 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr =
-      typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
+    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    
+    // Update inventory_items table
     await request
       .input("id", itemId)
       .input("count2", count)
@@ -1208,6 +1225,19 @@ export class SimpleStorage {
         SET count2 = @count2, count2By = @count2By, count2At = @count2At, updatedAt = @updatedAt
         WHERE id = @id
       `);
+
+    // Also create a record in counts table for auditing
+    const countRequest = this.pool.request();
+    await countRequest
+      .input("inventoryItemId", itemId)
+      .input("countNumber", 2)
+      .input("quantity", count)
+      .input("countedBy", countedByNum)
+      .input("countedAt", new Date())
+      .query(`
+        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
+        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
+      `);
   }
 
   async updateCount3(
@@ -1216,8 +1246,10 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr =
-      typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
+    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    
+    // Update inventory_items table
     await request
       .input("id", itemId)
       .input("count3", count)
@@ -1227,6 +1259,19 @@ export class SimpleStorage {
         UPDATE inventory_items 
         SET count3 = @count3, count3By = @count3By, count3At = @count3At, updatedAt = @updatedAt
         WHERE id = @id
+      `);
+
+    // Also create a record in counts table for auditing
+    const countRequest = this.pool.request();
+    await countRequest
+      .input("inventoryItemId", itemId)
+      .input("countNumber", 3)
+      .input("quantity", count)
+      .input("countedBy", countedByNum)
+      .input("countedAt", new Date())
+      .query(`
+        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
+        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
       `);
   }
 
