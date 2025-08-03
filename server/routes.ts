@@ -905,190 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Get comprehensive inventory final report
-  app.get(
-    "/api/inventories/:id/final-report",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const inventoryId = parseInt(req.params.id);
-        
-        // Get inventory details
-        const inventory = await storage.getInventory(inventoryId);
-        if (!inventory) {
-          return res.status(404).json({ message: "Inventory not found" });
-        }
 
-        // Get inventory items with details
-        const inventoryItems = await storage.getInventoryItemsWithDetails(inventoryId);
-        
-        // Get all counts for this inventory
-        const allCounts = await storage.getAllCountsForInventory(inventoryId);
-        
-        // Get locations and categories
-        const locations = await storage.getLocations();
-        const categories = await storage.getCategories();
-        const products = await storage.getProducts();
-        const users = await storage.getUsers();
-
-        // Calculate time spent (from start to end date)
-        const totalTimeSpent = inventory.endDate 
-          ? Math.round((inventory.endDate - inventory.startDate) / (1000 * 60 * 60)) 
-          : 0;
-
-        // Get selected locations and categories
-        const selectedLocations = inventory.selectedLocationIds?.map(id => 
-          locations.find(loc => loc.id === id)
-        ).filter(Boolean).map(loc => ({ id: loc.id, name: loc.name })) || [];
-        
-        const selectedCategories = inventory.selectedCategoryIds?.map(id => 
-          categories.find(cat => cat.id === id)
-        ).filter(Boolean).map(cat => ({ id: cat.id, name: cat.name })) || [];
-
-        // Calculate participants stats
-        const participantsMap = new Map();
-        allCounts.forEach(count => {
-          const userId = count.countedBy;
-          const user = users.find(u => u.id === userId);
-          if (!user) return;
-
-          if (!participantsMap.has(userId)) {
-            participantsMap.set(userId, {
-              userId,
-              userName: user.name,
-              itemsCounted: 0,
-              count1Items: 0,
-              count2Items: 0,
-              count3Items: 0,
-              count4Items: 0,
-            });
-          }
-
-          const participant = participantsMap.get(userId);
-          participant.itemsCounted++;
-          
-          if (count.countNumber === 1) participant.count1Items++;
-          else if (count.countNumber === 2) participant.count2Items++;
-          else if (count.countNumber === 3) participant.count3Items++;
-          else if (count.countNumber === 4) participant.count4Items++;
-        });
-
-        // Calculate counting summary
-        const countingSummary = {
-          count1Items: inventoryItems.filter(item => item.count1 !== null && item.count1 !== undefined).length,
-          count2Items: inventoryItems.filter(item => item.count2 !== null && item.count2 !== undefined).length,
-          count3Items: inventoryItems.filter(item => item.count3 !== null && item.count3 !== undefined).length,
-          count4Items: inventoryItems.filter(item => item.count4 !== null && item.count4 !== undefined).length,
-        };
-
-        // Calculate accuracy and differences
-        const completedItems = inventoryItems.filter(item => 
-          item.finalQuantity !== null && item.finalQuantity !== undefined
-        );
-        
-        const accurateItems = completedItems.filter(item => 
-          item.finalQuantity === item.expectedQuantity
-        );
-        
-        const divergentItemsData = completedItems.filter(item => 
-          item.finalQuantity !== item.expectedQuantity
-        ).map(item => {
-          const product = products.find(p => p.id === item.productId);
-          const location = locations.find(l => l.id === item.locationId);
-          return {
-            id: item.id,
-            productName: product?.name || 'Produto não encontrado',
-            productSku: product?.sku || 'N/A',
-            locationName: location?.name || 'Local não encontrado',
-            expectedQuantity: item.expectedQuantity,
-            finalQuantity: item.finalQuantity || 0,
-            difference: (item.finalQuantity || 0) - item.expectedQuantity,
-            unitValue: product?.unitValue || 0,
-            totalValue: ((item.finalQuantity || 0) - item.expectedQuantity) * (product?.unitValue || 0)
-          };
-        });
-
-        // Calculate financial values
-        const expectedValue = inventoryItems.reduce((sum, item) => {
-          const product = products.find(p => p.id === item.productId);
-          return sum + (item.expectedQuantity * (product?.unitValue || 0));
-        }, 0);
-
-        const finalValue = inventoryItems.reduce((sum, item) => {
-          const product = products.find(p => p.id === item.productId);
-          return sum + ((item.finalQuantity || item.expectedQuantity) * (product?.unitValue || 0));
-        }, 0);
-
-        const lossValue = Math.abs(finalValue - expectedValue);
-
-        const totalDifference = divergentItemsData.reduce((sum, item) => sum + Math.abs(item.difference), 0);
-        const positiveAdjustments = divergentItemsData.filter(item => item.difference > 0).length;
-        const negativeAdjustments = divergentItemsData.filter(item => item.difference < 0).length;
-
-        const report = {
-          inventoryId: inventory.id,
-          inventoryCode: inventory.code,
-          inventoryName: inventory.description || `Inventário ${inventory.code}`,
-          status: inventory.status,
-          startDate: inventory.startDate,
-          endDate: inventory.endDate,
-          totalTimeSpent,
-          type: {
-            id: inventory.type.id,
-            name: inventory.type.name
-          },
-          createdBy: {
-            id: inventory.createdByUser.id,
-            name: inventory.createdByUser.name
-          },
-          description: inventory.description,
-          selectedLocations,
-          selectedCategories,
-          kpis: {
-            totalStock: expectedValue,
-            accuracyRate: completedItems.length > 0 ? (accurateItems.length / completedItems.length) * 100 : 0,
-            totalLossValue: lossValue
-          },
-          participants: Array.from(participantsMap.values()),
-          countingSummary,
-          totalItems: inventoryItems.length,
-          completedItems: completedItems.length,
-          accuracy: {
-            totalItems: completedItems.length,
-            accurateItems: accurateItems.length,
-            divergentItems: divergentItemsData.length,
-            accuracyRate: completedItems.length > 0 ? (accurateItems.length / completedItems.length) * 100 : 0
-          },
-          differences: {
-            totalDifference,
-            positiveAdjustments,
-            negativeAdjustments,
-            adjustmentCount: divergentItemsData.length
-          },
-          financial: {
-            totalValue: expectedValue,
-            differenceValue: finalValue - expectedValue,
-            impactPercentage: expectedValue > 0 ? ((finalValue - expectedValue) / expectedValue) * 100 : 0
-          },
-          inventoryValues: {
-            expectedValue,
-            finalValue,
-            lossValue
-          },
-          divergentItems: divergentItemsData
-        };
-
-        res.json(report);
-      } catch (error) {
-        console.error("Error generating inventory final report:", error as Error);
-        res.status(500).json({
-          message: "Failed to generate inventory final report",
-          details: (error as Error).message,
-        });
-      }
-    },
-  );
 
   // Get serial items for inventory
   app.get(
@@ -1126,7 +943,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         storage = await getStorage();
         const inventoryId = parseInt(req.params.id);
+        console.log(`📊 Generating final report for inventory ${inventoryId}`);
         const report = await storage.getInventoryFinalReport(inventoryId);
+        console.log(`📊 Report generated with ${report.divergentItems?.length || 0} divergent items`);
+        
+        // Log sample divergent item for debugging
+        if (report.divergentItems && report.divergentItems.length > 0) {
+          console.log('Sample divergent item:', report.divergentItems[0]);
+        }
+        
         res.json(report);
       } catch (error) {
         console.error("Error generating final report:", error as Error);
