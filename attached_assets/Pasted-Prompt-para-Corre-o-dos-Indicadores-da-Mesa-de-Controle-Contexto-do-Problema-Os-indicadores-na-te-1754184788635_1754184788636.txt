@@ -1,0 +1,78 @@
+Prompt para Correção dos Indicadores da Mesa de Controle
+Contexto do Problema
+Os indicadores na tela "Mesa de Controle" (Progresso, Divergência e Acuracidade) não estão calculando corretamente baseados no estágio atual do inventário. Atualmente eles usam finalQuantity, mas deveriam refletir o progresso da contagem atual (C1, C2, C3).
+
+Alterações Necessárias
+1. Corrija o método getInventoryStats no arquivo server/simple-storage.ts
+Problema atual: O cálculo está baseado em finalQuantity que só existe após as contagens.
+
+Solução: Modifique a lógica para considerar o status atual do inventário:
+
+Progresso:
+
+Se count1_open: % de itens com C1 preenchida
+Se count2_open: % de itens com C2 preenchida
+Se count3_open: % de itens com C3 preenchida
+Se audit_mode: % de itens com C4 preenchida
+Divergência:
+
+Durante count1_open: Contar itens onde C1 ≠ expectedQuantity
+Durante count2_open: Contar itens onde C1 ≠ C2 OU C2 ≠ expectedQuantity
+Durante count3_open: Contar itens onde C1 ≠ C2 ≠ C3
+Durante audit_mode: Contar itens com finalQuantity ≠ expectedQuantity
+Acuracidade:
+
+Durante contagens: % de itens onde a contagem atual = expectedQuantity
+Durante audit: % de itens onde finalQuantity = expectedQuantity
+2. Implemente a lógica dinâmica baseada no status
+// Pseudocódigo da lógica esperada:
+const inventoryStatus = await getInventoryStatus(inventoryId);
+switch(inventoryStatus) {
+  case 'count1_open':
+    // Progresso = itens com count1 definido / total
+    // Divergência = itens onde count1 ≠ expectedQuantity
+    // Acuracidade = itens onde count1 = expectedQuantity / itens com count1
+    break;
+  case 'count2_open':
+    // Progresso = itens com count2 definido / total
+    // Divergência = itens onde count1 ≠ count2 OU diferem do estoque
+    // Acuracidade = itens onde count2 = expectedQuantity / itens com count2
+    break;
+  case 'count3_open':
+    // Progresso = itens com count3 definido / itens que precisam de C3
+    // Divergência = itens onde C1 ≠ C2 ≠ C3
+    // Acuracidade = baseada na resolução das divergências
+    break;
+  case 'audit_mode':
+    // Progresso = itens com finalQuantity definida / total
+    // Divergência = itens com finalQuantity ≠ expectedQuantity
+    // Acuracidade = itens corretos / total de itens finalizados
+    break;
+}
+3. Atualize as queries SQL
+Substitua as queries atuais que usam finalQuantity por queries dinâmicas que consideram:
+
+O status atual do inventário
+A contagem apropriada para cada estágio
+Cálculos condicionais baseados no estágio
+4. Valide no Frontend
+Após as alterações no backend, verifique se os indicadores na inventory-control-board.tsx refletem corretamente:
+
+Progresso real da contagem atual
+Divergências identificadas no estágio atual
+Acuracidade baseada nas contagens já realizadas
+5. Teste os Cenários
+Teste cada status de inventário:
+
+count1_open - Indicadores baseados em C1
+count2_open - Indicadores baseados em C1 vs C2
+count3_open - Indicadores baseados nas divergências C1≠C2
+audit_mode - Indicadores baseados em finalQuantity
+Arquivos a Modificar
+server/simple-storage.ts - Método getInventoryStats
+Possivelmente server/sqlserver-storage.ts se houver lógica duplicada
+Validar client/src/pages/inventory-control-board.tsx para garantir exibição correta
+Resultado Esperado
+Os indicadores devem mostrar valores precisos e atualizados baseados no estágio atual da contagem, proporcionando uma visão real do progresso do inventário em tempo real.
+
+Instrução: Implemente essas correções mantendo a estrutura atual do código e garantindo que os cálculos sejam dinâmicos e precisos para cada estágio do inventário.
