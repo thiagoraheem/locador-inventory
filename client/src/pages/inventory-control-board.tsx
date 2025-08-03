@@ -149,6 +149,7 @@ export default function InventoryControlBoard() {
     useSelectedInventory();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [divergenceFilter, setDivergenceFilter] = useState("all");
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [cancelReason, setCancelReason] = useState("");
   const [editingCount4, setEditingCount4] = useState<{
@@ -190,6 +191,138 @@ export default function InventoryControlBoard() {
         variant: "destructive",
       });
     }
+  };
+
+  // Função para gerar relatório de impressão da 3ª contagem
+  const handlePrintThirdCountReport = () => {
+    if (!selectedInventory || !inventoryItems) return;
+
+    const itemsNeedingThirdCount = inventoryItems.filter(needsThirdCount);
+    
+    if (itemsNeedingThirdCount.length === 0) {
+      toast({
+        title: "Aviso",
+        description: "Não há itens que necessitam de 3ª contagem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Criar janela de impressão
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Relatório de 3ª Contagem - ${selectedInventory.code}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .inventory-info { margin-bottom: 20px; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+            .count-col { text-align: center; width: 80px; }
+            .signature-section { margin-top: 40px; display: flex; justify-content: space-around; }
+            .signature-box { text-align: center; border-top: 1px solid #333; width: 200px; padding-top: 5px; }
+            @media print {
+              body { margin: 10px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>RELATÓRIO DE 3ª CONTAGEM</h1>
+            <h2>Itens com Divergência Entre C1 e C2</h2>
+          </div>
+          
+          <div class="inventory-info">
+            <div class="info-row">
+              <strong>Código do Inventário:</strong>
+              <span>${selectedInventory.code}</span>
+            </div>
+            <div class="info-row">
+              <strong>Data de Início:</strong>
+              <span>${new Date(selectedInventory.startDate).toLocaleDateString('pt-BR')}</span>
+            </div>
+            <div class="info-row">
+              <strong>Status:</strong>
+              <span>${getCountingStageText(selectedInventory.status)}</span>
+            </div>
+            <div class="info-row">
+              <strong>Total de Itens para 3ª Contagem:</strong>
+              <span>${itemsNeedingThirdCount.length}</span>
+            </div>
+            <div class="info-row">
+              <strong>Data de Impressão:</strong>
+              <span>${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</span>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40%;">Produto</th>
+                <th style="width: 25%;">Local de Estoque</th>
+                <th class="count-col">Qtd. Estoque</th>
+                <th class="count-col">C1</th>
+                <th class="count-col">C2</th>
+                <th class="count-col">C3</th>
+                <th style="width: 15%;">Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsNeedingThirdCount.map(item => `
+                <tr>
+                  <td>${getProductName(item.productId)}</td>
+                  <td>${getLocationName(item.locationId)}</td>
+                  <td class="count-col">${item.expectedQuantity}</td>
+                  <td class="count-col" style="background-color: #ffe6e6;">${item.count1 ?? '-'}</td>
+                  <td class="count-col" style="background-color: #ffe6e6;">${item.count2 ?? '-'}</td>
+                  <td class="count-col" style="border: 2px solid #333; background-color: #fff3cd;"></td>
+                  <td></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="signature-section">
+            <div class="signature-box">
+              <div>Responsável pela 3ª Contagem</div>
+              <div style="margin-top: 20px; font-size: 12px;">Data: ___/___/___</div>
+            </div>
+            <div class="signature-box">
+              <div>Supervisor</div>
+              <div style="margin-top: 20px; font-size: 12px;">Data: ___/___/___</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 30px; font-size: 10px; color: #666; text-align: center;">
+            <p><strong>Instruções:</strong></p>
+            <p>1. Realize a contagem física dos itens destacados em amarelo na coluna C3</p>
+            <p>2. Registre a quantidade encontrada na coluna C3</p>
+            <p>3. Anote observações relevantes na última coluna</p>
+            <p>4. Itens em vermelho (C1 e C2) apresentaram divergência e necessitam de nova contagem</p>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
   };
   const queryClient = useQueryClient();
 
@@ -532,6 +665,28 @@ export default function InventoryControlBoard() {
     );
   };
 
+  // Função para identificar divergências
+  const hasDiscrepancy = (item: InventoryItem) => {
+    const { count1, count2, count3, expectedQuantity } = item;
+    
+    // Se tem C1 e C2, verifica se são diferentes entre si ou do estoque
+    if (count1 !== undefined && count2 !== undefined) {
+      if (count1 !== count2) return true;
+      if (count1 !== expectedQuantity || count2 !== expectedQuantity) return true;
+    }
+    
+    // Se tem C3, verifica se é diferente do estoque
+    if (count3 !== undefined && count3 !== expectedQuantity) return true;
+    
+    return false;
+  };
+
+  // Função para verificar se item precisa de 3ª contagem
+  const needsThirdCount = (item: InventoryItem) => {
+    const { count1, count2 } = item;
+    return count1 !== undefined && count2 !== undefined && count1 !== count2;
+  };
+
   const filteredItems =
     inventoryItems?.filter((item) => {
       const productName = getProductName(item.productId);
@@ -545,7 +700,13 @@ export default function InventoryControlBoard() {
       const matchesStatus =
         statusFilter === "all" || item.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      const matchesDivergence =
+        divergenceFilter === "all" ||
+        (divergenceFilter === "divergent" && hasDiscrepancy(item)) ||
+        (divergenceFilter === "needs_count3" && needsThirdCount(item)) ||
+        (divergenceFilter === "no_divergence" && !hasDiscrepancy(item));
+
+      return matchesSearch && matchesStatus && matchesDivergence;
     }) || [];
 
   // Helper functions for counting status
@@ -765,6 +926,18 @@ export default function InventoryControlBoard() {
                 <Download className="h-3 w-3" />
                 Exportar
               </Button>
+
+              {selectedInventory.status === "count3_open" && (
+                <Button
+                  onClick={handlePrintThirdCountReport}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                >
+                  <Package className="h-3 w-3" />
+                  Relatório 3ª Contagem
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -895,6 +1068,17 @@ export default function InventoryControlBoard() {
                       <SelectItem value="DIVERGENT">Divergente</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={divergenceFilter} onValueChange={setDivergenceFilter}>
+                    <SelectTrigger className="w-full sm:w-48 h-9">
+                      <SelectValue placeholder="Divergências" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as Situações</SelectItem>
+                      <SelectItem value="divergent">Com Divergência</SelectItem>
+                      <SelectItem value="needs_count3">Precisa 3ª Contagem</SelectItem>
+                      <SelectItem value="no_divergence">Sem Divergência</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -1004,25 +1188,25 @@ export default function InventoryControlBoard() {
                             )}
                           </TableCell>
                           <TableCell className="text-center">
-                            {item.count1 !== undefined &&
-                            item.count2 !== undefined ? (
-                              <span
-                                className={
-                                  Math.abs(
-                                    item.count1 - item.expectedQuantity,
-                                  ) > 0 ||
-                                  Math.abs(
-                                    item.count2 - item.expectedQuantity,
-                                  ) > 0
-                                    ? "text-red-600"
-                                    : "text-green-600"
-                                }
-                              >
-                                {item.count1 === item.expectedQuantity &&
-                                item.count2 === item.expectedQuantity
-                                  ? "0"
-                                  : "Divergente"}
-                              </span>
+                            {item.count1 !== undefined && item.count2 !== undefined ? (
+                              <div className="flex flex-col items-center gap-1">
+                                {hasDiscrepancy(item) ? (
+                                  <>
+                                    <Badge variant="destructive" className="text-xs">
+                                      Divergente
+                                    </Badge>
+                                    {needsThirdCount(item) && (
+                                      <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">
+                                        Precisa C3
+                                      </Badge>
+                                    )}
+                                  </>
+                                ) : (
+                                  <Badge variant="default" className="text-xs bg-green-600">
+                                    Conforme
+                                  </Badge>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -1067,7 +1251,8 @@ export default function InventoryControlBoard() {
                           filteredItems.filter(
                             (item) =>
                               (selectedInventory.status === "count1_open" && item.count1 !== undefined && item.count1 !== null) ||
-                              (selectedInventory.status === "count2_open" && item.count2 !== undefined && item.count2 !== null),
+                              (selectedInventory.status === "count2_open" && item.count2 !== undefined && item.count2 !== null) ||
+                              (selectedInventory.status === "count3_open" && item.count3 !== undefined && item.count3 !== null),
                           ).length
                         }
                       </strong>
@@ -1075,15 +1260,15 @@ export default function InventoryControlBoard() {
                   </div>
                   <div className="flex gap-6">
                     <span>
-                      Divergências:{" "}
-                      <strong className="text-red-60">
-                        {
-                          filteredItems.filter(
-                            (item) =>
-                            (selectedInventory.status === "count1_open" && item.count1 !== undefined && item.count1 !== null && (Math.abs(item.count1 - item.expectedQuantity) > 0)) ||
-                            (selectedInventory.status === "count2_open" && item.count2 !== undefined && item.count2 !== null && (Math.abs(item.count2 - item.expectedQuantity) > 0)),
-                          ).length
-                        }
+                      Com Divergência:{" "}
+                      <strong className="text-red-600">
+                        {filteredItems.filter(hasDiscrepancy).length}
+                      </strong>
+                    </span>
+                    <span>
+                      Precisam 3ª Contagem:{" "}
+                      <strong className="text-orange-600">
+                        {filteredItems.filter(needsThirdCount).length}
                       </strong>
                     </span>
                     <span>
