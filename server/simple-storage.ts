@@ -210,6 +210,46 @@ export class SimpleStorage {
     };
   }
 
+  async getLocationsByIds(locationIds: number[]): Promise<Array<{id: number, name: string}>> {
+    if (!locationIds || locationIds.length === 0) return [];
+    
+    const placeholders = locationIds.map((_, index) => `@id${index}`).join(',');
+    const request = this.pool.request();
+    
+    locationIds.forEach((id, index) => {
+      request.input(`id${index}`, id);
+    });
+    
+    const result = await request.query(`
+      SELECT id, name 
+      FROM locations 
+      WHERE id IN (${placeholders}) AND isActive = 1
+      ORDER BY name
+    `);
+    
+    return result.recordset;
+  }
+
+  async getCategoriesByIds(categoryIds: number[]): Promise<Array<{id: number, name: string}>> {
+    if (!categoryIds || categoryIds.length === 0) return [];
+    
+    const placeholders = categoryIds.map((_, index) => `@id${index}`).join(',');
+    const request = this.pool.request();
+    
+    categoryIds.forEach((id, index) => {
+      request.input(`id${index}`, id);
+    });
+    
+    const result = await request.query(`
+      SELECT id, name 
+      FROM categories 
+      WHERE id IN (${placeholders}) AND isActive = 1
+      ORDER BY name
+    `);
+    
+    return result.recordset;
+  }
+
   // Stock operations
   async getStock(): Promise<
     (Stock & { product?: Product; location?: Location })[]
@@ -1434,8 +1474,12 @@ export class SimpleStorage {
         email: 'admin@example.com'
       },
       description: inventory.description,
-      selectedLocations: [], // Will be populated by frontend if needed
-      selectedCategories: [], // Will be populated by frontend if needed
+      selectedLocations: inventory.selectedLocationIds 
+        ? await this.getLocationsByIds(JSON.parse(inventory.selectedLocationIds))
+        : [],
+      selectedCategories: inventory.selectedCategoryIds 
+        ? await this.getCategoriesByIds(JSON.parse(inventory.selectedCategoryIds))
+        : [],
       kpis: {
         totalStock: totalValue,
         accuracyRate: Math.round(accuracyRate * 10) / 10,
