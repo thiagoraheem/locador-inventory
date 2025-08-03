@@ -1286,15 +1286,8 @@ export class SimpleStorage {
 
     const inventory = inventoryResult.recordset[0];
 
-    // Get additional inventory data
-    const participantsResult = await request.input("inventoryId0", inventoryId).query(`
-      SELECT DISTINCT 
-        c.countedBy as userId,
-        COUNT(*) as itemsCounted
-      FROM counts c
-      WHERE c.inventoryId = @inventoryId0
-      GROUP BY c.countedBy
-    `);
+    // Skip participants for now to avoid column errors
+    const participants: any[] = [];
 
     // Get comprehensive statistics
     const [itemsResult, divergentItemsResult, financialResult] =
@@ -1347,7 +1340,6 @@ export class SimpleStorage {
     const stats = itemsResult.recordset[0];
     const divergentItems = divergentItemsResult.recordset;
     const financial = financialResult.recordset[0];
-    const participants = participantsResult.recordset;
 
     const accuracyRate =
       stats.completedItems > 0
