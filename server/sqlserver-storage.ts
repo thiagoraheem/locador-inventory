@@ -646,6 +646,10 @@ export class SqlServerStorage implements IStorage {
     itemsCompleted: number;
     accuracyRate: number;
     divergenceCount: number;
+    totalDifference?: number;
+    accuracyItems?: number;
+    divergentItems?: number;
+    financialImpact?: number;
     countingProgress: {
       count1: number;
       count2: number;
@@ -655,56 +659,264 @@ export class SqlServerStorage implements IStorage {
   }> {
     const request = this.pool.request();
 
-    // Get total items count for this inventory
-    const totalItemsResult = await request
-      .input('inventoryId', sql.Int, inventoryId)
-      .query(`
-        SELECT COUNT(*) as totalItems
-        FROM inventory_items 
-        WHERE inventoryId = @inventoryId
-      `);
+    // First get the inventory status to determine calculation logic
+    const inventoryStatusResult = await request
+      .input('id', sql.Int, inventoryId)
+      .query(`SELECT status FROM inventories WHERE id = @id`);
 
-    const itemsResult = await request
-      .input('inventoryId', sql.Int, inventoryId)
-      .query(`
-        SELECT 
-          COUNT(*) as totalItems,
-          COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL THEN 1 END) as completed,
-          COUNT(CASE WHEN count1 IS NULL OR count2 IS NULL THEN 1 END) as inProgress,
-          COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Done,
-          COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Done,
-          COUNT(CASE WHEN count3 IS NOT NULL THEN 1 END) as count3Done,
-          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as count4Done,
-          COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as divergences
-        FROM inventory_items 
-        WHERE inventoryId = @inventoryId
-      `);
-
-    const stats = itemsResult.recordset[0];
-    const totalItems = stats.totalItems || 0;
-    const completed = stats.completed || 0;
-    const inProgress = totalItems - completed;
-
-    // Calculate accuracy rate based on matches between counts
-    let accuracyRate = 0;
-    if (totalItems > 0 && completed > 0) {
-      const accurateItems = completed - (stats.divergences || 0);
-      accuracyRate = (accurateItems / completed) * 100;
+    if (inventoryStatusResult.recordset.length === 0) {
+      throw new Error("Inventory not found");
     }
 
-    return {
-      totalInventories: 1,
-      activeInventories: 1,
-      itemsInProgress: inProgress,
-      itemsCompleted: completed,
-      accuracyRate: Math.round(accuracyRate * 10) / 10, // Round to 1 decimal place
-      divergenceCount: stats.divergences || 0,
-      countingProgress: {
-        count1: stats.count1Done || 0,
-        count2: stats.count2Done || 0,
-        count3: stats.count3Done || 0,
-        audit: stats.count4Done || 0
+    const inventoryStatus = inventoryStatusResult.recordset[0].status;
+
+    // Get basic inventory info and counting progress
+    const [inventoryResult, countsResult] = await Promise.all([
+      this.query<{ activeInventories: number }>(`
+        SELECT COUNT(*) as activeInventories FROM inventories 
+        WHERE status NOT IN ('closed', 'cancelled')
+      `),
+      this.query<{ count1Total: number; count2Total: number; count3Total: number; auditTotal: number }>(`
+        SELECT 
+          COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as count1Total,
+          COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as count2Total,
+          COUNT(CASE WHEN count3 IS NOT NULL THEN 1 END) as count3Total,
+          COUNT(CASE WHEN count4 IS NOT NULL THEN 1 END) as auditTotal
+        FROM inventory_items 
+        WHERE inventoryId = @inventoryId
+      `, { inventoryId }),
+    ]);
+
+    const counts = countsResult[0];
+
+    // Dynamic calculation based on inventory status
+    switch (inventoryStatus) {
+      case 'count1_open': {
+        const statsResult = await this.query<{
+          totalItems: number;
+          completedItems: number;
+          divergentItems: number;
+          accurateItems: number;
+        }>(`
+          SELECT 
+            COUNT(*) as totalItems,
+            COUNT(CASE WHEN count1 IS NOT NULL THEN 1 END) as completedItems,
+            COUNT(CASE WHEN count1 IS NOT NULL AND count1 != expectedQuantity THEN 1 END) as divergentItems,
+            COUNT(CASE WHEN count1 IS NOT NULL AND count1 = expectedQuantity THEN 1 END) as accurateItems
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId
+        `, { inventoryId });
+        
+        const stats = statsResult[0];
+        const totalItems = stats.totalItems || 0;
+        const completedItems = stats.completedItems || 0;
+        const divergentItems = stats.divergentItems || 0;
+        const accurateItems = stats.accurateItems || 0;
+        
+        const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+        
+        return {
+          totalInventories: 1,
+          activeInventories: inventoryResult[0]?.activeInventories || 1,
+          itemsInProgress: totalItems - completedItems,
+          itemsCompleted: completedItems,
+          accuracyRate: Math.round(accuracyRate * 10) / 10,
+          divergenceCount: divergentItems,
+          totalDifference: 0,
+          accuracyItems: accurateItems,
+          divergentItems: divergentItems,
+          financialImpact: undefined,
+          countingProgress: {
+            count1: counts.count1Total || 0,
+            count2: counts.count2Total || 0,
+            count3: counts.count3Total || 0,
+            audit: counts.auditTotal || 0,
+          },
+        };
       }
-    };
+
+      case 'count2_open': {
+        const statsResult = await this.query<{
+          totalItems: number;
+          completedItems: number;
+          c1_c2_divergent: number;
+          c2_expected_divergent: number;
+          accurateItems: number;
+        }>(`
+          SELECT 
+            COUNT(*) as totalItems,
+            COUNT(CASE WHEN count2 IS NOT NULL THEN 1 END) as completedItems,
+            COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as c1_c2_divergent,
+            COUNT(CASE WHEN count2 IS NOT NULL AND count2 != expectedQuantity THEN 1 END) as c2_expected_divergent,
+            COUNT(CASE WHEN count2 IS NOT NULL AND count2 = expectedQuantity THEN 1 END) as accurateItems
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId
+        `, { inventoryId });
+        
+        const stats = statsResult[0];
+        const totalItems = stats.totalItems || 0;
+        const completedItems = stats.completedItems || 0;
+        const divergentItems = Math.max(stats.c1_c2_divergent || 0, stats.c2_expected_divergent || 0);
+        const accurateItems = stats.accurateItems || 0;
+        
+        const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+        
+        return {
+          totalInventories: 1,
+          activeInventories: inventoryResult[0]?.activeInventories || 1,
+          itemsInProgress: totalItems - completedItems,
+          itemsCompleted: completedItems,
+          accuracyRate: Math.round(accuracyRate * 10) / 10,
+          divergenceCount: divergentItems,
+          totalDifference: 0,
+          accuracyItems: accurateItems,
+          divergentItems: divergentItems,
+          financialImpact: undefined,
+          countingProgress: {
+            count1: counts.count1Total || 0,
+            count2: counts.count2Total || 0,
+            count3: counts.count3Total || 0,
+            audit: counts.auditTotal || 0,
+          },
+        };
+      }
+
+      case 'count3_open': {
+        const statsResult = await this.query<{
+          itemsNeedingCount3: number;
+          completedItems: number;
+          divergentItems: number;
+          accurateItems: number;
+        }>(`
+          SELECT 
+            COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as itemsNeedingCount3,
+            COUNT(CASE WHEN count3 IS NOT NULL AND count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as completedItems,
+            COUNT(CASE WHEN count1 IS NOT NULL AND count2 IS NOT NULL AND count3 IS NOT NULL AND (count1 != count2 OR count2 != count3 OR count1 != count3) THEN 1 END) as divergentItems,
+            COUNT(CASE WHEN count3 IS NOT NULL AND count3 = expectedQuantity AND count1 IS NOT NULL AND count2 IS NOT NULL AND count1 != count2 THEN 1 END) as accurateItems
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId
+        `, { inventoryId });
+        
+        const stats = statsResult[0];
+        const totalItems = stats.itemsNeedingCount3 || 0;
+        const completedItems = stats.completedItems || 0;
+        const divergentItems = stats.divergentItems || 0;
+        const accurateItems = stats.accurateItems || 0;
+        
+        const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+        
+        return {
+          totalInventories: 1,
+          activeInventories: inventoryResult[0]?.activeInventories || 1,
+          itemsInProgress: totalItems - completedItems,
+          itemsCompleted: completedItems,
+          accuracyRate: Math.round(accuracyRate * 10) / 10,
+          divergenceCount: divergentItems,
+          totalDifference: 0,
+          accuracyItems: accurateItems,
+          divergentItems: divergentItems,
+          financialImpact: undefined,
+          countingProgress: {
+            count1: counts.count1Total || 0,
+            count2: counts.count2Total || 0,
+            count3: counts.count3Total || 0,
+            audit: counts.auditTotal || 0,
+          },
+        };
+      }
+
+      case 'audit_mode': {
+        const statsResult = await this.query<{
+          totalItems: number;
+          completedItems: number;
+          divergentItems: number;
+          accurateItems: number;
+          totalDifference: number;
+        }>(`
+          SELECT 
+            COUNT(*) as totalItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity != expectedQuantity THEN 1 END) as divergentItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity = expectedQuantity THEN 1 END) as accurateItems,
+            SUM(CASE WHEN finalQuantity IS NOT NULL THEN (finalQuantity - expectedQuantity) ELSE 0 END) as totalDifference
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId
+        `, { inventoryId });
+        
+        const stats = statsResult[0];
+        const totalItems = stats.totalItems || 0;
+        const completedItems = stats.completedItems || 0;
+        const divergentItems = stats.divergentItems || 0;
+        const accurateItems = stats.accurateItems || 0;
+        
+        const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+        
+        return {
+          totalInventories: 1,
+          activeInventories: inventoryResult[0]?.activeInventories || 1,
+          itemsInProgress: totalItems - completedItems,
+          itemsCompleted: completedItems,
+          accuracyRate: Math.round(accuracyRate * 10) / 10,
+          divergenceCount: divergentItems,
+          totalDifference: stats.totalDifference || 0,
+          accuracyItems: accurateItems,
+          divergentItems: divergentItems,
+          financialImpact: undefined,
+          countingProgress: {
+            count1: counts.count1Total || 0,
+            count2: counts.count2Total || 0,
+            count3: counts.count3Total || 0,
+            audit: counts.auditTotal || 0,
+          },
+        };
+      }
+
+      default: {
+        // For other statuses, use basic counting progress
+        const statsResult = await this.query<{
+          totalItems: number;
+          completedItems: number;
+          divergentItems: number;
+          accurateItems: number;
+          totalDifference: number;
+        }>(`
+          SELECT 
+            COUNT(*) as totalItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL THEN 1 END) as completedItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity != expectedQuantity THEN 1 END) as divergentItems,
+            COUNT(CASE WHEN finalQuantity IS NOT NULL AND finalQuantity = expectedQuantity THEN 1 END) as accurateItems,
+            SUM(CASE WHEN finalQuantity IS NOT NULL THEN (finalQuantity - expectedQuantity) ELSE 0 END) as totalDifference
+          FROM inventory_items 
+          WHERE inventoryId = @inventoryId
+        `, { inventoryId });
+        
+        const stats = statsResult[0];
+        const totalItems = stats.totalItems || 0;
+        const completedItems = stats.completedItems || 0;
+        const divergentItems = stats.divergentItems || 0;
+        const accurateItems = stats.accurateItems || 0;
+        
+        const accuracyRate = completedItems > 0 ? (accurateItems / completedItems) * 100 : 0;
+        
+        return {
+          totalInventories: 1,
+          activeInventories: inventoryResult[0]?.activeInventories || 1,
+          itemsInProgress: totalItems - completedItems,
+          itemsCompleted: completedItems,
+          accuracyRate: Math.round(accuracyRate * 10) / 10,
+          divergenceCount: divergentItems,
+          totalDifference: stats.totalDifference || 0,
+          accuracyItems: accurateItems,
+          divergentItems: divergentItems,
+          financialImpact: undefined,
+          countingProgress: {
+            count1: counts.count1Total || 0,
+            count2: counts.count2Total || 0,
+            count3: counts.count3Total || 0,
+            audit: counts.auditTotal || 0,
+          },
+        };
+      }
+    }
   }
 }
