@@ -822,6 +822,49 @@ export class SimpleStorage {
     }));
   }
 
+  async getCountsByInventoryItem(inventoryItemId: number): Promise<Count[]> {
+    const request = this.pool.request();
+    const result = await request
+      .input("inventoryItemId", inventoryItemId)
+      .query(`
+        SELECT c.*, u.username as countedByUser
+        FROM counts c
+        LEFT JOIN users u ON c.countedBy = u.id
+        WHERE c.inventoryItemId = @inventoryItemId
+        ORDER BY c.countNumber ASC
+      `);
+
+    return result.recordset.map(record => ({
+      id: record.id,
+      inventoryItemId: record.inventoryItemId,
+      countNumber: record.countNumber,
+      quantity: record.quantity,
+      countedBy: record.countedBy,
+      countedAt: new Date(record.countedAt).getTime(),
+      notes: record.notes,
+    }));
+  }
+
+  async getAllCounts(): Promise<Count[]> {
+    const request = this.pool.request();
+    const result = await request.query(`
+      SELECT c.*, u.username as countedByUser
+      FROM counts c
+      LEFT JOIN users u ON c.countedBy = u.id
+      ORDER BY c.countedAt DESC
+    `);
+
+    return result.recordset.map(record => ({
+      id: record.id,
+      inventoryItemId: record.inventoryItemId,
+      countNumber: record.countNumber,
+      quantity: record.quantity,
+      countedBy: record.countedBy,
+      countedAt: new Date(record.countedAt).getTime(),
+      notes: record.notes,
+    }));
+  }
+
   async createCount(countData: Omit<InsertCount, "id">): Promise<Count> {
     const request = this.pool.request();
     await request
@@ -1281,8 +1324,10 @@ export class SimpleStorage {
     countedBy: string | number,
   ): Promise<void> {
     const request = this.pool.request();
-    const countedByStr =
-      typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    const countedByNum = typeof countedBy === "string" ? parseInt(countedBy) : countedBy;
+    const countedByStr = typeof countedBy === "number" ? countedBy.toString() : countedBy;
+    
+    // Update inventory_items table
     await request
       .input("id", itemId)
       .input("count4", count)
@@ -1295,6 +1340,19 @@ export class SimpleStorage {
             finalQuantity = @finalQuantity, updatedAt = @updatedAt, 
             status = 'confirmed'
         WHERE id = @id
+      `);
+
+    // Also create a record in counts table for auditing
+    const countRequest = this.pool.request();
+    await countRequest
+      .input("inventoryItemId", itemId)
+      .input("countNumber", 4)
+      .input("quantity", count)
+      .input("countedBy", countedByNum)
+      .input("countedAt", new Date())
+      .query(`
+        INSERT INTO counts (inventoryItemId, countNumber, quantity, countedBy, countedAt)
+        VALUES (@inventoryItemId, @countNumber, @quantity, @countedBy, @countedAt)
       `);
   }
 
@@ -1331,8 +1389,22 @@ export class SimpleStorage {
 
     const inventory = inventoryResult.recordset[0];
 
-    // Skip participants for now to avoid column errors
-    const participants: any[] = [];
+    // Get participants from counts table
+    const participantsResult = await request.input("inventoryIdParticipants", inventoryId).query(`
+      SELECT DISTINCT 
+        c.countedBy as userId,
+        u.username as userName,
+        COUNT(*) as itemsCounted,
+        COUNT(CASE WHEN c.countNumber = 1 THEN 1 END) as count1Items,
+        COUNT(CASE WHEN c.countNumber = 2 THEN 1 END) as count2Items,
+        COUNT(CASE WHEN c.countNumber = 3 THEN 1 END) as count3Items,
+        COUNT(CASE WHEN c.countNumber = 4 THEN 1 END) as count4Items
+      FROM counts c
+      LEFT JOIN users u ON c.countedBy = u.id
+      INNER JOIN inventory_items ii ON c.inventoryItemId = ii.id
+      WHERE ii.inventoryId = @inventoryIdParticipants
+      GROUP BY c.countedBy, u.username
+    `);
 
     // Get comprehensive statistics
     const [itemsResult, divergentItemsResult, financialResult] =
@@ -1385,6 +1457,7 @@ export class SimpleStorage {
     const stats = itemsResult.recordset[0];
     const divergentItems = divergentItemsResult.recordset;
     const financial = financialResult.recordset[0];
+    const participants = participantsResult.recordset;
 
     const accuracyRate =
       stats.completedItems > 0
