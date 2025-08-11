@@ -44,11 +44,6 @@ export default function ProductListingReport() {
     return product ? { ...product, inventoryItem: item } : null;
   }).filter(Boolean) || [];
 
-  // Debug log to verify filtering
-  console.log('Selected Inventory ID:', selectedInventoryId);
-  console.log('Inventory Items:', inventoryItems);
-  console.log('Filtered Products:', inventoryProducts);
-
   // Group products by category
   const groupedProducts = inventoryProducts.reduce((acc, product) => {
     if (!product) return acc;

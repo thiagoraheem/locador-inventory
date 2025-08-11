@@ -142,8 +142,6 @@ export default function Stock() {
     },
   ];
 
-  console.log('Stock data:', stock); // Debug log
-
   return (
     <div>
       <Header title="Controle de Estoque" subtitle="Associação de produtos com locais de armazenamento" />

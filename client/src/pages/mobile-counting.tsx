@@ -569,7 +569,6 @@ export default function MobileCounting() {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error("Erro ao registrar contagem manual:", error);
       throw error;
     }
   };

@@ -61,8 +61,6 @@ export default function ProductSearchCombobox({
     queryFn: async () => {
       if (!debouncedTerm || debouncedTerm.length < 1) return [];
 
-      console.log("🔍 Buscando produtos para:", debouncedTerm);
-
       const response = await fetch(
         `/api/products/search?q=${encodeURIComponent(debouncedTerm)}&limit=10`,
         {
@@ -89,7 +87,6 @@ export default function ProductSearchCombobox({
       }
 
       const result = await response.json();
-      console.log("✅ Produtos encontrados:", result.length, result);
       return Array.isArray(result) ? result : [];
     },
     enabled: debouncedTerm.length >= 1,
@@ -101,8 +98,6 @@ export default function ProductSearchCombobox({
     onSelect(product);
     setOpen(false);
     setSearchTerm("");
-    // Debug: log para verificar se a seleção está funcionando
-    console.log("Produto selecionado:", product);
   };
 
   const handleClear = () => {

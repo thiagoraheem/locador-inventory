@@ -419,12 +419,6 @@ export class SimpleStorage {
         : new Date(inventoryData.predictedEndDate)
       : null;
 
-    // Debug log para verificar o valor de isToBlockSystem
-    console.log(
-      "📝 Creating inventory with isToBlockSystem:",
-      inventoryData.isToBlockSystem,
-    );
-
     await request
       .input("code", inventoryData.code)
       .input("typeId", inventoryData.typeId)
@@ -2136,9 +2130,6 @@ export class SimpleStorage {
           WHERE ii.inventoryId = @inventoryId;
         `);
 
-      console.log(
-        `✅ Created serial items for inventory ${inventoryId} with location filtering`,
-      );
     } catch (error) {
       console.error("❌ Error creating inventory serial items:", error);
       throw error;

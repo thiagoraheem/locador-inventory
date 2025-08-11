@@ -145,11 +145,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: message });
       }
 
-      /*const hashedPassword = await hashPassword(password);
-      console.log(`password: ${password}`);
-      console.log(`user.password: ${user.password}`);
-      console.log(`hashedPassword: ${hashedPassword}`);*/
-
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ message: "Credenciais inválidas" });
@@ -268,10 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { q, limit = 10 } = req.query;
 
-      console.log("🔍 Search request received:", { q, limit });
-
       if (!q || typeof q !== "string" || q.trim().length < 1) {
-        console.log("❌ Search term too short or empty");
         return res.json([]);
       }
 
@@ -281,9 +273,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parseInt(limit.toString()),
       );
 
-      console.log(
-        `✅ Found ${products.length} products for search term: "${q}"`,
-      );
       res.json(products);
     } catch (error) {
       console.error("❌ Error searching products:", error);
@@ -860,9 +849,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if the method exists, if not, return all products for now
         if (typeof storage.getProductsWithSerialControl === "function") {
           const products = await storage.getProductsWithSerialControl();
-          console.log(
-            `✅ Fetched ${products.length} products with serial control info`,
-          );
           res.json(products);
         } else {
           // Fallback: return all products with a serialControl flag
@@ -871,9 +857,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...product,
             hasSerialControl: false, // Default value until proper implementation
           }));
-          console.log(
-            `✅ Fetched ${productsWithSerialInfo.length} products (fallback)`,
-          );
           res.json(productsWithSerialInfo);
         }
       } catch (error) {
@@ -943,15 +926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         storage = await getStorage();
         const inventoryId = parseInt(req.params.id);
-        console.log(`📊 Generating final report for inventory ${inventoryId}`);
         const report = await storage.getInventoryFinalReport(inventoryId);
-        console.log(`📊 Report generated with ${report.divergentItems?.length || 0} divergent items`);
-        
-        // Log sample divergent item for debugging
-        if (report.divergentItems && report.divergentItems.length > 0) {
-          console.log('Sample divergent item:', report.divergentItems[0]);
-        }
-        
         res.json(report);
       } catch (error) {
         console.error("Error generating final report:", error as Error);

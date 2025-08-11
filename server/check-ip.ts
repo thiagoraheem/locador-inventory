@@ -27,15 +27,12 @@ router.get('/check-ip', async (req, res) => {
       }
     });
     
-    console.log('🖥️ IPs da máquina local:', localIPs);
-    
     // Também obter o IP externo para referência
     let externalIP = null;
     try {
       const response = await fetch('https://api.ipify.org?format=json');
       const data = await response.json();
       externalIP = data.ip;
-      console.log('🌐 IP externo:', externalIP);
     } catch (externalError) {
       console.error('⚠️ Não foi possível obter o IP externo:', externalError);
     }

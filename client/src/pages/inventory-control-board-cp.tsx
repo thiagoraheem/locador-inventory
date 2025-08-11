@@ -169,7 +169,11 @@ export default function InventoryControlBoardCP() {
   }) || [];
 
   const handleExport = () => {
-    console.log("Export functionality to be implemented");
+    // TODO: Implementar funcionalidade de exportação
+    toast({
+      title: "Em desenvolvimento",
+      description: "Funcionalidade de exportação será implementada em breve",
+    });
   };
 
   // Function to refresh all data
