@@ -255,7 +255,7 @@ export class SimpleStorage {
     (Stock & { product?: Product; location?: Location })[]
   > {
     const result = await this.pool.request().query(`
-      SELECT s.*, p.name as productName, p.sku, l.name as locationName, l.code as locationCode
+      SELECT s.*, p.name as productName, p.sku, CAST(l.sequence AS varchar) + l.name as locationName, l.code as locationCode
       FROM stock s
       LEFT JOIN products p ON s.productId = p.id
       LEFT JOIN locations l ON s.locationId = l.id

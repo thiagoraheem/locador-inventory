@@ -98,9 +98,9 @@ export default function Users() {
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const { confirmPassword, ...userData } = data;
       if (selectedUser) {
-        await apiRequest("PUT", `/api/users/${selectedUser.id}`, userData);
+        await apiRequest(`/api/users/${selectedUser.id}`, "PUT", userData);
       } else {
-        await apiRequest("POST", "/api/users", userData);
+        await apiRequest("/api/users", "POST", userData);
       }
     },
     onSuccess: () => {
@@ -135,7 +135,7 @@ export default function Users() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/users/${id}`);
+      await apiRequest(`/api/users/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
@@ -166,7 +166,7 @@ export default function Users() {
 
   const reactivateMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("PUT", `/api/users/${id}`, { isActive: true });
+      await apiRequest(`/api/users/${id}`, "PUT", { isActive: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });

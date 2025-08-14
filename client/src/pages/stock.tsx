@@ -1,23 +1,48 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/layout/header";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import StockForm from "@/components/stock-form";
-import DataTable from "@/components/data-table";
+import { Badge } from "@/components/ui/badge";
 import CategoryFilter from "@/components/category-filter";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
+import { Search, Package, MapPin } from "lucide-react";
+
+interface StockItem {
+  id: number;
+  quantity: number;
+  product: {
+    id: number;
+    sku: string;
+    name: string;
+    categoryId: number;
+    category?: {
+      id: number;
+      name: string;
+    };
+  };
+  location: {
+    id: number;
+    name: string;
+  };
+}
+
+interface PivotData {
+  categoryName: string;
+  categoryId: number;
+  products: {
+    sku: string;
+    name: string;
+    locations: {
+      locationName: string;
+      quantity: number;
+    }[];
+  }[];
+}
 
 export default function Stock() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStock, setSelectedStock] = useState<any>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -42,160 +67,219 @@ export default function Stock() {
     retry: false,
   });
 
-  const filteredStock = useMemo(() => {
+  // Transform stock data into pivot format
+  const pivotData = useMemo(() => {
     if (!stock || !Array.isArray(stock)) return [];
     
-    let filtered = stock;
+    const stockItems = stock as StockItem[];
+    const categoryMap = new Map<number, PivotData>();
     
-    // Filter by category - assuming stock items have a category field
+    stockItems.forEach((item) => {
+      // Verificações de segurança para evitar erros
+      if (!item.product || !item.location) {
+        console.warn('Item de estoque com dados incompletos:', item);
+        return;
+      }
+      
+      const categoryId = item.product.categoryId;
+      const categoryName = item.product.category?.name || `Categoria ${categoryId}`;
+      
+      if (!categoryMap.has(categoryId)) {
+        categoryMap.set(categoryId, {
+          categoryId,
+          categoryName,
+          products: []
+        });
+      }
+      
+      const category = categoryMap.get(categoryId)!;
+      let product = category.products.find(p => p.sku === item.product.sku);
+      
+      if (!product) {
+        product = {
+          sku: item.product.sku || 'N/A',
+          name: item.product.name || 'Produto sem nome',
+          locations: []
+        };
+        category.products.push(product);
+      }
+      
+      product.locations.push({
+        locationName: item.location.name || 'Local não informado',
+        quantity: item.quantity || 0
+      });
+    });
+    
+    return Array.from(categoryMap.values());
+  }, [stock]);
+  
+  // Filter pivot data based on search and category
+  const filteredPivotData = useMemo(() => {
+    let filtered = pivotData;
+    
+    // Filter by category
     if (selectedCategory !== "all") {
-      filtered = filtered.filter((item: any) => 
-        item.product && item.product.categoryId && 
-        item.product.categoryId.toString() === selectedCategory
+      filtered = filtered.filter(category => 
+        category.categoryId.toString() === selectedCategory
       );
     }
     
+    // Filter by search query (SKU or product name)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.map(category => ({
+        ...category,
+        products: category.products.filter(product => 
+          product.sku.toLowerCase().includes(query) ||
+          product.name.toLowerCase().includes(query)
+        )
+      })).filter(category => category.products.length > 0);
+    }
+    
     return filtered;
-  }, [stock, selectedCategory]);
+  }, [pivotData, selectedCategory, searchQuery]);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/stock/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stock"] });
-      toast({
-        title: "Sucesso",
-        description: "Item de estoque excluído com sucesso!",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
+  // Get all unique locations for table headers
+  const allLocations = useMemo(() => {
+    const locations = new Set<string>();
+    pivotData.forEach(category => {
+      category.products.forEach(product => {
+        product.locations.forEach(location => {
+          locations.add(location.locationName);
         });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir item de estoque",
-        variant: "destructive",
       });
-    },
-  });
+    });
+    return Array.from(locations).sort();
+  }, [pivotData]);
 
-  const columns = [
-    {
-      header: "SKU",
-      accessorKey: "product",
-      sortable: true,
-      cell: (value: any) => value?.sku || "N/A",
-    },
-    {
-      header: "Produto",
-      accessorKey: "product",
-      sortable: true,
-      cell: (value: any) => value?.name || "N/A",
-    },
-    {
-      header: "Local",
-      accessorKey: "location",
-      sortable: true,
-      cell: (value: any) => value?.name || "N/A",
-    },
-    {
-      header: "Quantidade",
-      accessorKey: "quantity",
-      sortable: true,
-      cell: (value: string) => parseFloat(value).toLocaleString(),
-    },
-    {
-      header: "Ações",
-      accessorKey: "actions",
-      cell: (value: any, row: any) => (
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSelectedStock(row);
-              setIsFormOpen(true);
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => deleteMutation.mutate(row.id)}
-            disabled={deleteMutation.isPending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+  const renderPivotTable = () => {
+    if (!filteredPivotData.length) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Nenhum item encontrado</p>
         </div>
-      ),
-    },
-  ];
+      );
+    }
+    
+    return (
+      <div className="space-y-6">
+        {filteredPivotData.map((category) => (
+          <div key={category.categoryId} className="border rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-4 py-3 border-b">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                {category.categoryName}
+                <Badge variant="secondary" className="ml-2">
+                  {category.products.length} produto(s)
+                </Badge>
+              </h3>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">SKU</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700">Produto</th>
+                    {allLocations.map((location) => (
+                      <th key={location} className="px-4 py-3 text-center font-medium text-gray-700">
+                        <div className="flex items-center justify-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {location}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {category.products.map((product, index) => (
+                    <tr key={product.sku} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="px-4 py-3 font-mono text-sm">{product.sku}</td>
+                      <td className="px-4 py-3">{product.name}</td>
+                      {allLocations.map((location) => {
+                        const locationData = product.locations.find(l => l.locationName === location);
+                        return (
+                          <td key={location} className="px-4 py-3 text-center">
+                            {locationData ? (
+                              <Badge variant={locationData.quantity > 0 ? "default" : "secondary"}>
+                                {locationData.quantity.toLocaleString()}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div>
-      <Header title="Controle de Estoque" subtitle="Associação de produtos com locais de armazenamento" />
+      <Header title="Controle de Estoque" subtitle="Visualização pivot de produtos por categoria e local" />
       
       <div className="space-y-6 p-4 md:p-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Itens em Estoque</CardTitle>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
-              <CategoryFilter
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
-                placeholder="Filtrar por categoria"
-              />
-              <div className="relative">
-                <Input
-                  placeholder="Filtrar estoque..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-10"
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-6 w-6" />
+                Estoque por Categoria e Local
+              </CardTitle>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
+                <CategoryFilter
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  placeholder="Todas as categorias"
                 />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              </div>
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setSelectedStock(null)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Item
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {selectedStock ? "Editar Estoque" : "Novo Item de Estoque"}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <StockForm
-                    stock={selectedStock}
-                    onSuccess={() => {
-                      setIsFormOpen(false);
-                      setSelectedStock(null);
-                    }}
+                <div className="relative">
+                  <Input
+                    placeholder="Buscar por SKU ou produto..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-64 pl-10"
                   />
-                </DialogContent>
-              </Dialog>
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Summary stats */}
+            <div className="flex flex-wrap gap-4 mt-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Package className="h-4 w-4" />
+                <span>{filteredPivotData.length} categoria(s)</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="h-4 w-4" />
+                <span>{allLocations.length} local(is)</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Badge variant="outline">
+                  {filteredPivotData.reduce((acc, cat) => acc + cat.products.length, 0)} produto(s)
+                </Badge>
+              </div>
             </div>
           </CardHeader>
+          
           <CardContent>
-            <DataTable
-              data={filteredStock || []}
-              columns={columns}
-              searchQuery={searchQuery}
-              isLoading={stockLoading}
-            />
+            {stockLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+                <p className="mt-2 text-gray-500">Carregando estoque...</p>
+              </div>
+            ) : (
+              renderPivotTable()
+            )}
           </CardContent>
         </Card>
       </div>

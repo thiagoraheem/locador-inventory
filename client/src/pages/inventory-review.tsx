@@ -50,7 +50,7 @@ export default function InventoryReview() {
 
   const closeInventoryMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", `/api/inventories/${inventoryId}/close`);
+      await apiRequest(`/api/inventories/${inventoryId}/close`, "POST");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });

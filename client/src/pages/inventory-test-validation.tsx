@@ -153,9 +153,7 @@ export default function InventoryTestValidation() {
   // Run individual test scenario
   const runScenarioMutation = useMutation({
     mutationFn: async (scenarioId: string) => {
-      return await apiRequest(`/api/test/run-scenario/${scenarioId}`, {
-        method: 'POST'
-      });
+      return await apiRequest(`/api/test/run-scenario/${scenarioId}`, 'POST');
     },
     onMutate: (scenarioId) => {
       setRunningTests(prev => new Set([...Array.from(prev), scenarioId]));
@@ -210,9 +208,7 @@ export default function InventoryTestValidation() {
   // Run validation tests
   const runValidationMutation = useMutation({
     mutationFn: async (category: string) => {
-      return await apiRequest(`/api/test/validate-${category.toLowerCase()}`, {
-        method: 'POST'
-      });
+      return await apiRequest(`/api/test/validate-${category.toLowerCase()}`, 'POST');
     },
     onSuccess: (data: any, category) => {
       if (category === 'permissions') {
@@ -244,9 +240,7 @@ export default function InventoryTestValidation() {
   // Run all tests
   const runAllTestsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/test/run-all', {
-        method: 'POST'
-      });
+      return await apiRequest('/api/test/run-all', 'POST');
     },
     onSuccess: (data: any) => {
       // Update all test states based on results

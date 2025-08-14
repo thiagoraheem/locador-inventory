@@ -114,12 +114,11 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         selectedCategoryIds: data.selectedCategoryIds,
       };
 
-      const response = await apiRequest(
-        "POST",
+      const inventory = await apiRequest(
         "/api/inventories",
+        "POST",
         inventoryPayload,
       );
-      const inventory = await response.json();
 
       return inventory;
     },

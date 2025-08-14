@@ -16,7 +16,15 @@ export async function apiRequest(url: string, method: string = "GET", data?: unk
   });
 
   await throwIfResNotOk(res);
-  return res.json();
+  
+  try {
+    return await res.json();
+  } catch (jsonError) {
+    console.error('Failed to parse JSON response:', jsonError);
+    console.error('Response status:', res.status);
+    console.error('Response headers:', res.headers);
+    throw new Error('Invalid JSON response from server');
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

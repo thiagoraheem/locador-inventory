@@ -128,15 +128,10 @@ export default function LoginPage() {
           </Form>
           
           <div className="mt-4 space-y-2 text-center text-sm">
-            <div>
-              <span className="text-muted-foreground">
-                Usuário padrão: <strong>admin</strong> / Senha: <strong>admin123</strong>
-              </span>
-            </div>
             <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground border-t border-border pt-2">
               <Globe className="h-3 w-3" />
               <span>
-                IP do Replit: {ipLoading ? (
+                IP: {ipLoading ? (
                   <span className="animate-pulse">Carregando...</span>
                 ) : (
                   <strong className="font-mono">{ipData?.externalIP || (ipData?.localIPs && ipData.localIPs.length > 0 ? ipData.localIPs[0].ip : 'Não disponível')}</strong>
