@@ -3,14 +3,22 @@ import sql from 'mssql';
 import { SimpleStorage } from './simple-storage';
 
 // SQL Server configuration
+const {
+  DB_SERVER = '54.232.194.197',
+  DB_DATABASE = 'inventory',
+  DB_USER = 'usrInventory',
+  DB_PASSWORD = 'inv@2025',
+  NODE_ENV,
+} = process.env;
+
 const sqlServerConfig = {
-  server: '54.232.194.197',
-  database: 'inventory',
-  user: 'usrInventory',
-  password: 'inv@2025',
+  server: DB_SERVER,
+  database: DB_DATABASE,
+  user: DB_USER,
+  password: DB_PASSWORD,
   options: {
-    encrypt: false,
-    trustServerCertificate: true,
+    encrypt: true,
+    trustServerCertificate: NODE_ENV !== 'production',
     connectTimeout: 720000,
     requestTimeout: 720000,
   },
