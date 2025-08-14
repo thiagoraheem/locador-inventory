@@ -8,8 +8,11 @@ export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const MemoryStoreSession = MemoryStore(session);
 
-  // Generate a secure session secret if not provided
-  const sessionSecret = process.env.SESSION_SECRET || 'As/uEgJuzwRP7JcjDoNcVY41F75KCSNg/c9jew8VIzQ=';
+  // SESSION_SECRET must be provided and rotated periodically
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
 
   return session({
     secret: sessionSecret,
