@@ -1,15 +1,13 @@
 import type { Express } from "express";
-import { getStorage } from "../db";
 import { isAuthenticated } from "../auth";
+import { productService } from "../services/product.service";
 
 export function registerProductRoutes(app: Express) {
-  let storage: any;
 
   // List all products
   app.get("/api/products", isAuthenticated, async (req, res) => {
     try {
-      storage = await getStorage();
-      const products = await storage.getProducts();
+      const products = await productService.getProducts();
       res.json(products);
     } catch (error) {
       console.error("Error fetching products:", error as Error);
@@ -21,8 +19,7 @@ export function registerProductRoutes(app: Express) {
   app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
     try {
       const { q = "", limit = 20 } = req.query;
-      storage = await getStorage();
-      const products = await storage.searchProducts(
+      const products = await productService.searchProducts(
         q.trim(),
         parseInt(limit.toString()),
       );
@@ -39,9 +36,8 @@ export function registerProductRoutes(app: Express) {
   // Get product by id
   app.get("/api/products/:id", isAuthenticated, async (req, res) => {
     try {
-      storage = await getStorage();
       const id = parseInt(req.params.id);
-      const product = await storage.getProduct(id);
+      const product = await productService.getProduct(id);
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -58,21 +54,8 @@ export function registerProductRoutes(app: Express) {
     isAuthenticated,
     async (req: any, res) => {
       try {
-        storage = await getStorage();
-
-        // Check if the method exists, if not, return all products for now
-        if (typeof storage.getProductsWithSerialControl === "function") {
-          const products = await storage.getProductsWithSerialControl();
-          res.json(products);
-        } else {
-          // Fallback: return all products with a serialControl flag
-          const products = await storage.getProducts();
-          const productsWithSerialInfo = products.map((product: any) => ({
-            ...product,
-            hasSerialControl: false, // Default value until proper implementation
-          }));
-          res.json(productsWithSerialInfo);
-        }
+        const products = await productService.getProductsWithSerialControl();
+        res.json(products);
       } catch (error) {
         console.error("\u274c Error fetching products with serial control:", error);
         res
@@ -89,8 +72,7 @@ export function registerProductRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const serialNumber = req.params.serial;
-        storage = await getStorage();
-        const product = await storage.findProductBySerial(serialNumber);
+        const product = await productService.findProductBySerial(serialNumber);
 
         if (!product) {
           return res

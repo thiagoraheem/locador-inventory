@@ -1,9 +1,8 @@
 import type { Express } from "express";
-import { getStorage } from "../db";
 import { isAuthenticated } from "../auth";
+import { reportService } from "../services/report.service";
 
 export function registerReportRoutes(app: Express) {
-  let storage: any;
 
   // Get comprehensive final report for inventory
   app.get(
@@ -11,9 +10,8 @@ export function registerReportRoutes(app: Express) {
     isAuthenticated,
     async (req: any, res) => {
       try {
-        storage = await getStorage();
         const inventoryId = parseInt(req.params.id);
-        const report = await storage.getInventoryFinalReport(inventoryId);
+        const report = await reportService.getFinalReport(inventoryId);
         res.json(report);
       } catch (error) {
         console.error("Error generating final report:", error as Error);
@@ -31,32 +29,20 @@ export function registerReportRoutes(app: Express) {
     isAuthenticated,
     async (req: any, res) => {
       try {
-        storage = await getStorage();
         const inventoryId = parseInt(req.params.id);
-
-        const inventory = await storage.getInventory(inventoryId);
-        if (!inventory) {
+        const result = await reportService.generateInventoryCsv(inventoryId);
+        if (!result) {
           return res.status(404).json({ message: "Inventory not found" });
         }
-
-        const exportData = await storage.getInventoryExportData(inventoryId);
-        if (exportData.length === 0) {
+        if (result.csv === null) {
           return res.status(404).json({ message: "No data to export" });
         }
-
-        const headers = Object.keys(exportData[0]);
-        const csvRows = [
-          headers.join(","),
-          ...exportData.map((row: any) => headers.map((h) => row[h]).join(",")),
-        ];
-        const csv = csvRows.join("\n");
-
         res.setHeader(
           "Content-Disposition",
           `attachment; filename=inventory-${inventoryId}.csv`,
         );
         res.setHeader("Content-Type", "text/csv");
-        res.send(csv);
+        res.send(result.csv);
       } catch (error) {
         console.error("Error exporting inventory:", error as Error);
         res.status(500).json({
@@ -74,24 +60,10 @@ export function registerReportRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-
-        const { InventoryIntegrityValidator } = await import("../validation");
-        const validator = new InventoryIntegrityValidator(storage);
-
-        const report = await validator.validateInventoryIntegrity(inventoryId);
-
-        await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
-          action: "VALIDATE_INVENTORY",
-          entityType: "inventory",
-          entityId: inventoryId.toString(),
-          newValues: JSON.stringify({
-            isValid: report.isValid,
-            issuesCount: report.issues.length,
-          }),
-        });
-
+        const report = await reportService.validateInventoryIntegrity(
+          inventoryId,
+          (req.session as any).user?.id || 0,
+        );
         res.json(report);
       } catch (error) {
         console.error("Error validating inventory:", error);
@@ -107,20 +79,10 @@ export function registerReportRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-        await storage.reconcileInventoryQuantities(inventoryId);
-
-        const reconciliation = await storage.getInventoryReconciliation(
+        const reconciliation = await reportService.reconcileInventory(
           inventoryId,
+          (req.session as any).user?.id || 0,
         );
-
-        await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
-          action: "INVENTORY_RECONCILIATION",
-          entityType: "inventory",
-          entityId: inventoryId.toString(),
-          metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
-        });
 
         res.json({ message: "Reconciliation completed", data: reconciliation });
       } catch (error) {
@@ -137,8 +99,7 @@ export function registerReportRoutes(app: Express) {
     async (req: any, res) => {
       try {
         const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-        const reconciliation = await storage.getInventoryReconciliation(
+        const reconciliation = await reportService.getInventoryReconciliation(
           inventoryId,
         );
         res.json(reconciliation);
