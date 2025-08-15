@@ -2,6 +2,10 @@ import type { Express } from "express";
 import { getStorage } from "../db";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import {
+  requireRoles,
+  requireAuditMode,
+} from "../middlewares/permissions.middleware";
+import {
   insertInventorySchema,
   serialReadingRequestSchema,
   insertCountSchema,
@@ -10,41 +14,6 @@ import { inventoryService } from "../services/inventory.service";
 
 export async function registerInventoryRoutes(app: Express) {
   let storage: any;
-  const hasAuditModeAccess = async (req: any, res: any, next: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const userRole = req.user.role?.toLowerCase();
-      const allowedRoles = ["admin", "gerente", "supervisor"];
-
-      if (!allowedRoles.includes(userRole)) {
-        return res.status(403).json({
-          message:
-            "Access denied. Only users with Mesa de Controle access can perform audit mode operations.",
-        });
-      }
-
-      if (req.params.id) {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-        const inventory = await storage.getInventory(inventoryId);
-
-        if (inventory && inventory.status !== "audit_mode") {
-          return res.status(400).json({
-            message:
-              "This operation is only allowed when inventory is in audit mode.",
-          });
-        }
-      }
-
-      next();
-    } catch (error) {
-      console.error("Error checking audit mode access:", error);
-      res.status(500).json({ message: "Failed to verify audit mode access" });
-    }
-  };
 
   app.get("/api/inventory-types", isAuthenticated, async (req: any, res) => {
     try {
@@ -1135,7 +1104,8 @@ export async function registerInventoryRoutes(app: Express) {
   app.post(
     "/api/inventories/:id/validate-closure",
     isAuthenticated,
-    hasAuditModeAccess,
+    requireRoles(["admin", "gerente", "supervisor"]),
+    requireAuditMode,
     async (req: any, res) => {
       try {
         const inventoryId = parseInt(req.params.id);
