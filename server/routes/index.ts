@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getStorage } from "../db";
+import { auditRepository } from "../repositories/audit.repository";
 import { setupAuth } from "../auth";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import checkIpRouter from "../check-ip";
@@ -147,8 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit log routes
   app.get("/api/audit-logs", isAuthenticated, async (req: any, res) => {
     try {
-      storage = await getStorage();
-      const logs = await storage.getAuditLogs();
+      const logs = await auditRepository.findAll();
       res.json(logs);
     } catch (error) {
       console.error("Error fetching audit logs:", error as Error);

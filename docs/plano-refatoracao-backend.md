@@ -137,12 +137,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Implementar `InventoryRepository`
 - [x] Implementar `ProductRepository`
 - [x] Implementar `AuditRepository`
+- [x] Migrar lógica de `SimpleStorage` para repositórios
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Migrar lógica de `SimpleStorage` para repositórios
 - [ ] Testes de integração para repositórios
 
 ### 🛡️ Fase 4: Middlewares e Validação (Semana 7)
@@ -200,10 +200,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 50% (1/6 fases concluídas)
+  - **Progresso Total**: 52% (1/6 fases concluídas)
   - **Fase Atual**: Fase 3 - Padrão Repository
-  - **Tarefas Concluídas**: 30/60 (50%)
-  - **Próxima Milestone**: Padrão Repository
+  - **Tarefas Concluídas**: 31/60 (52%)
+  - **Próxima Milestone**: Testes de integração para repositórios
 
 ### 📋 Checklist por Fase
 
@@ -211,7 +211,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
-| 3 | Padrão Repository | 🚧 Em andamento | 6/8 (75%) |
+| 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |

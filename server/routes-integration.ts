@@ -1,6 +1,7 @@
 // APIs de integração e testes implementadas separadamente para evitar conflitos
 import express from 'express';
 import { SimpleStorage } from './simple-storage';
+import { auditRepository } from './repositories/audit.repository';
 
 export function addIntegrationRoutes(app: express.Application, getStorage: () => Promise<SimpleStorage>, isAuthenticated: any) {
   
@@ -262,10 +263,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   app.get("/api/inventories/:id/audit-report", isAuthenticated, async (req: any, res) => {
     try {
       const inventoryId = parseInt(req.params.id);
-      const storage = await getStorage();
-      
-      // Buscar logs de auditoria relacionados ao inventário
-      const auditLogs = await storage.getAuditLogs();
+      const auditLogs = await auditRepository.findAll(1000, 0);
       const inventoryLogs = auditLogs.filter(log => 
         log.entityType === 'inventory' && log.entityId === inventoryId.toString() ||
         log.entityType === 'inventory_item' && log.metadata?.includes(`"inventoryId":${inventoryId}`) ||
