@@ -13,7 +13,12 @@ export class AuditRepository {
       .input("limit", limit)
       .input("offset", offset)
       .query(`
-        SELECT a.*, u.name as userName, u.email as userEmail
+        SELECT a.*, 
+               CONCAT(u.firstName, ' ', u.lastName) as userName, 
+               u.email as userEmail,
+               u.firstName,
+               u.lastName,
+               u.username
         FROM audit_logs a
         LEFT JOIN users u ON a.userId = u.id
         ORDER BY a.timestamp DESC
@@ -27,8 +32,14 @@ export class AuditRepository {
         : Date.now(),
       user: {
         id: log.userId,
-        name: log.userName,
+        firstName: log.firstName,
+        lastName: log.lastName,
+        username: log.username,
         email: log.userEmail,
+        role: 'user', // Default role since not selected
+        isActive: true, // Default active since not selected
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       } as User,
     }));
   }

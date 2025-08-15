@@ -1,5 +1,6 @@
 // @ts-nocheck
 import type { Express } from "express";
+import { createServer } from "http";
 import { getStorage } from "../db";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import { requireRoles, requireAuditMode } from "../middlewares/permissions.middleware";
@@ -81,6 +82,7 @@ export async function registerInventoryRoutes(app: Express) {
   // Get inventory items with product and location data
   app.get("/api/inventories/:id/items", async (req, res) => {
     try {
+      storage = await getStorage();
       const inventoryId = parseInt(req.params.id);
       const items = await storage.getInventoryItemsWithDetails(inventoryId);
       res.json(items);
