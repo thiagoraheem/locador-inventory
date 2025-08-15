@@ -115,12 +115,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 
 #### ✅ Tarefas Concluídas
 - [x] Criar `AuthService` com lógica de autenticação
+- [x] Criar `InventoryService` com regras de negócio
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `InventoryService` com regras de negócio
 - [ ] Criar `ProductService` para gestão de produtos
 - [ ] Criar `UserService` para gestão de usuários
 - [ ] Criar `ReportService` para geração de relatórios
@@ -202,9 +202,9 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 22% (1/6 fases concluídas)
+  - **Progresso Total**: 23% (1/6 fases concluídas)
   - **Fase Atual**: Fase 2 - Implementação de Serviços
-  - **Tarefas Concluídas**: 13/60 (22%)
+  - **Tarefas Concluídas**: 14/60 (23%)
   - **Próxima Milestone**: Implementação de Serviços
 
 ### 📋 Checklist por Fase
@@ -212,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | Fase | Descrição | Status | Progresso |
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
-| 2 | Implementação de Serviços | 🚧 Em andamento | 1/8 (12%) |
+| 2 | Implementação de Serviços | 🚧 Em andamento | 2/8 (25%) |
 | 3 | Padrão Repository | ⏳ Pendente | 0/8 (0%) |
 | 4 | Middlewares e Validação | ⏳ Pendente | 0/7 (0%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |

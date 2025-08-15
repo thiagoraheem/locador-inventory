@@ -1,7 +1,12 @@
 import type { Express } from "express";
 import { getStorage } from "../db";
 import { isAuthenticated } from "../auth";
-import { insertInventorySchema, serialReadingRequestSchema, insertCountSchema } from "@shared/schema";
+import {
+  insertInventorySchema,
+  serialReadingRequestSchema,
+  insertCountSchema,
+} from "@shared/schema";
+import { inventoryService } from "../services/inventory.service";
 
 export function registerInventoryRoutes(app: Express) {
   let storage: any;
@@ -43,8 +48,7 @@ export function registerInventoryRoutes(app: Express) {
 
   app.get("/api/inventory-types", isAuthenticated, async (req: any, res) => {
     try {
-      storage = await getStorage();
-      const types = await storage.getInventoryTypes();
+      const types = await inventoryService.getInventoryTypes();
       res.json(types);
     } catch (error) {
       console.error("Error fetching inventory types:", error as Error);
@@ -54,8 +58,7 @@ export function registerInventoryRoutes(app: Express) {
 
   app.get("/api/inventories", isAuthenticated, async (req: any, res) => {
     try {
-      storage = await getStorage();
-      const inventories = await storage.getInventories();
+      const inventories = await inventoryService.getInventories();
       res.json(inventories);
     } catch (error) {
       console.error("Error fetching inventories:", error as Error);
@@ -65,9 +68,8 @@ export function registerInventoryRoutes(app: Express) {
 
   app.get("/api/inventories/:id", isAuthenticated, async (req: any, res) => {
     try {
-      storage = await getStorage();
       const id = parseInt(req.params.id);
-      const inventory = await storage.getInventory(id);
+      const inventory = await inventoryService.getInventory(id);
       if (!inventory) {
         return res.status(404).json({ message: "Inventory not found" });
       }
@@ -136,7 +138,7 @@ export function registerInventoryRoutes(app: Express) {
         .partial()
         .parse(inventoryData);
 
-      const inventory = await storage.createInventory(validatedData);
+      const inventory = await inventoryService.createInventory(validatedData);
 
       // Create inventory items if locations and categories are provided
       if (req.body.selectedLocationIds && req.body.selectedCategoryIds) {
