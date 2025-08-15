@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { getStorage } from "../db";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 import {
   insertInventorySchema,
   serialReadingRequestSchema,

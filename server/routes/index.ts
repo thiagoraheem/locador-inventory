@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { getStorage } from "../db";
-import { setupAuth, isAuthenticated } from "../auth";
+import { setupAuth } from "../auth";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 import checkIpRouter from "../check-ip";
 import { registerAuthRoutes } from "./auth.routes";
 import { registerInventoryRoutes } from "./inventory.routes";

@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 import { reportService } from "../services/report.service";
 
 export function registerReportRoutes(app: Express) {

@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated } from "../middlewares/auth.middleware";
 import { insertUserSchema } from "@shared/schema";
 import { userService } from "../services/user.service";
 

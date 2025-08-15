@@ -1,8 +1,7 @@
 import bcrypt from "bcrypt";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express } from "express";
 import MemoryStore from "memorystore";
-import { getStorage } from "./db";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -33,33 +32,6 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
 }
-
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const session = req.session as any;
-
-  if (!session.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  try {
-    // Verify user still exists and is active
-    const storage = await getStorage();
-    const user = await storage.getUser(Number(session.userId));
-
-    if (!user || !user.isActive) {
-      // Clear invalid session
-      session.destroy(() => { });
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Attach user to request
-    (req as any).user = user;
-    next();
-  } catch (error) {
-    console.error('Auth error:', error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
