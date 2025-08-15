@@ -273,7 +273,7 @@ Este documento deve ser atualizado:
 
 ---
 
-**Última atualização**: Novembro 2024
+**Última atualização**: Outubro 2025
 **Próxima revisão**: Meio da Fase 2
 **Responsável**: Equipe de Desenvolvimento
 **Status**: 🚀 Em andamento
