@@ -82,6 +82,7 @@ export async function registerInventoryRoutes(app: Express) {
   // Get inventory items with product and location data
   app.get("/api/inventories/:id/items", async (req, res) => {
     try {
+      storage = await getStorage();
       const inventoryId = parseInt(req.params.id);
       const items = await storage.getInventoryItemsWithDetails(inventoryId);
       res.json(items);
