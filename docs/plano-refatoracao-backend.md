@@ -154,12 +154,13 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Implementar middleware de logging
 - [x] Adicionar middleware de rate limiting
 - [x] Implementar validação de permissões
+- [x] Testes para middlewares
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Testes para middlewares
+- [ ] Nenhuma tarefa pendente
 
 ### 🎮 Fase 5: Controllers (Semana 8)
 
@@ -200,10 +201,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 65% (2/6 fases concluídas)
-  - **Fase Atual**: Fase 4 - Middlewares e Validação
-  - **Tarefas Concluídas**: 39/60 (65%)
-  - **Próxima Milestone**: Testes para middlewares
+  - **Progresso Total**: 67% (3/6 fases concluídas)
+  - **Fase Atual**: Fase 2 - Implementação de Serviços
+  - **Tarefas Concluídas**: 40/60 (67%)
+  - **Próxima Milestone**: Testes para serviços
 
 ### 📋 Checklist por Fase
 
@@ -212,7 +213,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
-| 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
+| 4 | Middlewares e Validação | ✅ Concluída | 7/7 (100%) |
 | 5 | Controllers | ✅ Concluída | 8/8 (100%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
