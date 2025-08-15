@@ -1,40 +1,47 @@
 import type { Express } from "express";
 import { isAuthenticated } from "../middlewares/auth.middleware";
+import { validate } from "../middlewares/validation.middleware";
 import { loginSchema, registerSchema } from "@shared/schema";
 import { authService } from "../services/auth.service";
 
 export function registerAuthRoutes(app: Express) {
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = loginSchema.parse(req.body);
+  app.post(
+    "/api/auth/login",
+    validate(loginSchema),
+    async (req, res) => {
+      try {
+        const { username, password } = req.body;
 
-      const user = await authService.login(username, password);
+        const user = await authService.login(username, password);
 
-      const session = req.session as any;
-      session.userId = user.id;
+        const session = req.session as any;
+        session.userId = user.id;
 
-      res.json({ user });
-    } catch (error) {
-      console.error("Error during login:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
+        res.json({ user });
+      } catch (error) {
+        console.error("Error during login:", error);
+        res.status(500).json({ message: "Erro interno do servidor" });
+      }
+    },
+  );
 
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = registerSchema.parse(req.body);
+  app.post(
+    "/api/auth/register",
+    validate(registerSchema),
+    async (req, res) => {
+      try {
+        const newUser = await authService.register(req.body);
 
-      const newUser = await authService.register(userData);
+        const session = req.session as any;
+        session.userId = newUser.id;
 
-      const session = req.session as any;
-      session.userId = newUser.id;
-
-      res.status(201).json({ user: newUser });
-    } catch (error) {
-      console.error("Error during registration:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
+        res.status(201).json({ user: newUser });
+      } catch (error) {
+        console.error("Error during registration:", error);
+        res.status(500).json({ message: "Erro interno do servidor" });
+      }
+    },
+  );
 
   app.post("/api/auth/logout", (req, res) => {
     const session = req.session as any;
