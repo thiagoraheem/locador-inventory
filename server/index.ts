@@ -4,10 +4,12 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler } from "./middlewares/error.middleware";
 import { loggingMiddleware } from "./middlewares/logging.middleware";
+import { rateLimiter } from "./middlewares/rate-limit.middleware";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(rateLimiter);
 app.use(loggingMiddleware);
 
 (async () => {

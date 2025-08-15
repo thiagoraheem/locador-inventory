@@ -152,12 +152,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Implementar middleware de validação com Zod
 - [x] Criar middleware de tratamento de erros
 - [x] Implementar middleware de logging
+- [x] Adicionar middleware de rate limiting
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Adicionar middleware de rate limiting
 - [ ] Implementar validação de permissões
 - [ ] Testes para middlewares
 
@@ -200,9 +200,9 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 47% (1/6 fases concluídas)
+  - **Progresso Total**: 48% (1/6 fases concluídas)
   - **Fase Atual**: Fase 3 - Padrão Repository
-  - **Tarefas Concluídas**: 28/60 (47%)
+  - **Tarefas Concluídas**: 29/60 (48%)
   - **Próxima Milestone**: Padrão Repository
 
 ### 📋 Checklist por Fase
@@ -212,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 6/8 (75%) |
-| 4 | Middlewares e Validação | 🚧 Em andamento | 4/7 (57%) |
+| 4 | Middlewares e Validação | 🚧 Em andamento | 5/7 (71%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
