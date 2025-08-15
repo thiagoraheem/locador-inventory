@@ -22,8 +22,8 @@ const config = {
   },
 };
 
-async function updateStoredProcedure() {
-  let pool: sql.ConnectionPool;
+  async function updateStoredProcedure() {
+    let pool: sql.ConnectionPool | null = null;
   
   try {
     console.log('Conectando ao SQL Server...');
@@ -46,9 +46,9 @@ async function updateStoredProcedure() {
     console.error('Erro ao atualizar stored procedure:', error);
     process.exit(1);
   } finally {
-    if (pool) {
-      await pool.close();
-    }
+      if (pool) {
+        await pool.close();
+      }
   }
 }
 
