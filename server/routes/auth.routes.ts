@@ -1,33 +1,19 @@
 import type { Express } from "express";
-import { getStorage } from "../db";
-import { isAuthenticated, verifyPassword } from "../auth";
+import { isAuthenticated } from "../auth";
 import { loginSchema, registerSchema } from "@shared/schema";
+import { authService } from "../services/auth.service";
 
 export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = loginSchema.parse(req.body);
 
-      const storage = await getStorage();
-      const user = await storage.getUserByUsername(username);
-      if (!user || !user.isActive) {
-        const message =
-          user && !user.isActive
-            ? "Usuário desativado"
-            : "Usuário não encontrado";
-        return res.status(401).json({ message });
-      }
-
-      const isValidPassword = await verifyPassword(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
-      }
+      const user = await authService.login(username, password);
 
       const session = req.session as any;
       session.userId = user.id;
 
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword });
+      res.json({ user });
     } catch (error) {
       console.error("Error during login:", error);
       res.status(500).json({ message: "Erro interno do servidor" });
@@ -38,30 +24,12 @@ export function registerAuthRoutes(app: Express) {
     try {
       const userData = registerSchema.parse(req.body);
 
-      const storage = await getStorage();
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Nome de usuário já existe" });
-      }
-
-      const existingEmail = await storage.getUserByEmail(userData.email);
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email já cadastrado" });
-      }
-
-      const { confirmPassword, ...userDataWithoutConfirm } = userData;
-
-      const newUser = await storage.createUser({
-        ...userDataWithoutConfirm,
-        role: "user",
-        isActive: true,
-      });
+      const newUser = await authService.register(userData);
 
       const session = req.session as any;
       session.userId = newUser.id;
 
-      const { password: _, ...userWithoutPassword } = newUser;
-      res.status(201).json({ user: userWithoutPassword });
+      res.status(201).json({ user: newUser });
     } catch (error) {
       console.error("Error during registration:", error);
       res.status(500).json({ message: "Erro interno do servidor" });

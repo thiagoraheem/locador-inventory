@@ -114,13 +114,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ### 🏗️ Fase 2: Implementação de Serviços (Semana 3-4)
 
 #### ✅ Tarefas Concluídas
-- [ ] Nenhuma tarefa concluída
+- [x] Criar `AuthService` com lógica de autenticação
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `AuthService` com lógica de autenticação
 - [ ] Criar `InventoryService` com regras de negócio
 - [ ] Criar `ProductService` para gestão de produtos
 - [ ] Criar `UserService` para gestão de usuários
@@ -203,9 +202,9 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 17% (1/6 fases concluídas)
+  - **Progresso Total**: 22% (1/6 fases concluídas)
   - **Fase Atual**: Fase 2 - Implementação de Serviços
-  - **Tarefas Concluídas**: 12/60 (20%)
+  - **Tarefas Concluídas**: 13/60 (22%)
   - **Próxima Milestone**: Implementação de Serviços
 
 ### 📋 Checklist por Fase
@@ -213,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | Fase | Descrição | Status | Progresso |
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
-| 2 | Implementação de Serviços | ⏳ Pendente | 0/8 (0%) |
+| 2 | Implementação de Serviços | 🚧 Em andamento | 1/8 (12%) |
 | 3 | Padrão Repository | ⏳ Pendente | 0/8 (0%) |
 | 4 | Middlewares e Validação | ⏳ Pendente | 0/7 (0%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
@@ -275,7 +274,7 @@ Este documento deve ser atualizado:
 
 ---
 
-**Última atualização**: Agosto 2025
-**Próxima revisão**: Início da Fase 2
+**Última atualização**: Setembro 2025
+**Próxima revisão**: Meio da Fase 2
 **Responsável**: Equipe de Desenvolvimento
 **Status**: 🚀 Em andamento
