@@ -106,7 +106,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Testes de regressão
 
 #### 🔄 Em Andamento
-- [ ] Nenhuma tarefa em andamento
+- [ ] Testes para controllers
 
 #### ⏳ Pendentes
 - [ ] Nenhuma tarefa pendente
@@ -173,10 +173,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Adicionar documentação OpenAPI/Swagger
 
 #### 🔄 Em Andamento
-- [ ] Nenhuma tarefa em andamento
+- [ ] Testes para controllers
 
 #### ⏳ Pendentes
-- [ ] Testes para controllers
+- [ ] Nenhuma tarefa pendente
 
 ### 🔧 Fase 6: Otimizações e Observabilidade (Semana 9-10)
 
@@ -202,7 +202,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
   - **Progresso Total**: 63% (1/6 fases concluídas)
   - **Fase Atual**: Fase 5 - Controllers
   - **Tarefas Concluídas**: 38/60 (63%)
-  - **Próxima Milestone**: Testes para controllers
+  - **Próxima Milestone**: Concluir testes para controllers
 
 ### 📋 Checklist por Fase
 

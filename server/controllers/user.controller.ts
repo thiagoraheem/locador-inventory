@@ -4,15 +4,17 @@ import { userService } from "../services/user.service";
 import { asyncHandler } from "../utils/async-handler";
 
 export class UserController {
+  constructor(private service = userService) {}
+
   list = asyncHandler(async (_req: Request, res: Response) => {
-    const users = await userService.getUsers();
+    const users = await this.service.getUsers();
     res.json(users);
   });
 
   create = asyncHandler(async (req: any, res: Response) => {
     const { confirmPassword, ...userData } = req.body || {};
     const validatedData = insertUserSchema.parse(userData);
-    const user = await userService.createUser(validatedData, req.user.id);
+    const user = await this.service.createUser(validatedData, req.user.id);
     res.status(201).json(user);
   });
 
@@ -23,7 +25,7 @@ export class UserController {
       delete userData.password;
     }
     const validatedData = insertUserSchema.partial().parse(userData);
-    const user = await userService.updateUser(id, validatedData, req.user.id);
+    const user = await this.service.updateUser(id, validatedData, req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -32,7 +34,7 @@ export class UserController {
 
   delete = asyncHandler(async (req: any, res: Response) => {
     const id = req.params.id;
-    const success = await userService.deleteUser(id, req.user.id);
+    const success = await this.service.deleteUser(id, req.user.id);
     if (!success) {
       return res.status(404).json({ message: "User not found" });
     }
