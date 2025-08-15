@@ -5,6 +5,7 @@ import { auditRepository } from "../repositories/audit.repository";
 import { setupAuth } from "../auth";
 import { isAuthenticated } from "../middlewares/auth.middleware";
 import checkIpRouter from "../check-ip";
+import swaggerUi from "swagger-ui-express";
 import { registerAuthRoutes } from "./auth.routes";
 import { registerInventoryRoutes } from "./inventory.routes";
 import { registerProductRoutes } from "./product.routes";
@@ -17,6 +18,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Registrar o router de check-ip
   app.use("/api", checkIpRouter);
+
+  const swaggerDocument = (await import("../../docs/swagger.json", { assert: { type: "json" } })).default;
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // Initialize SQL Server storage
   let storage = await getStorage();
