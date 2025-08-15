@@ -106,7 +106,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Testes de regressão
 
 #### 🔄 Em Andamento
-- [ ] Testes para controllers
+- [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
 - [ ] Nenhuma tarefa pendente
@@ -120,12 +120,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Criar `UserService` com regras de negócio
 - [x] Criar `ReportService` com regras de negócio
 - [x] Criar `ERPIntegrationService` para integrações externas
+- [x] Adicionar testes para serviços
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Adicionar testes para serviços
 - [ ] Documentar serviços
 
 ### 🗄️ Fase 3: Padrão Repository (Semana 5-6)
