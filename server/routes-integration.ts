@@ -335,7 +335,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   // Endpoint individual para atualizar estoque no ERP
   app.post("/api/Estoque/atualizar", isAuthenticated, async (req: any, res) => {
     try {
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       
@@ -367,7 +367,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   // Endpoint para atualizar lista de itens no estoque ERP
   app.post("/api/Estoque/atualizar-lista", isAuthenticated, async (req: any, res) => {
     try {
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       
@@ -417,7 +417,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const inventoryId = parseInt(req.params.id);
       const userId = req.user?.id || 0;
       
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       
@@ -440,7 +440,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const inventoryId = parseInt(req.params.id);
       const userId = req.user?.id || 0;
       
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       
@@ -464,7 +464,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   // Validar conexão com ERP
   app.get("/api/erp/validate-connection", isAuthenticated, async (req: any, res) => {
     try {
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       
@@ -510,7 +510,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
   // Congelar/descongelar estoque no ERP (endpoint /api/Estoque/congelar)
   app.patch("/api/Estoque/congelar", isAuthenticated, async (req: any, res) => {
     try {
-      const { ERPIntegrationService } = await import('./erp-integration');
+      const { ERPIntegrationService } = await import('./services/erp-integration.service');
       const storage = await getStorage();
       const erpService = new ERPIntegrationService(storage);
       

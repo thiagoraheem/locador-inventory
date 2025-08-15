@@ -1,5 +1,10 @@
-import { SimpleStorage } from "./simple-storage.js";
-import { ERPStockUpdateRequest, ERPMigrationRequest, ERPMigrationResponse, ERPMigrationStatus } from "../shared/schema.js";
+import { SimpleStorage } from "../simple-storage.js";
+import {
+  ERPStockUpdateRequest,
+  ERPMigrationRequest,
+  ERPMigrationResponse,
+  ERPMigrationStatus,
+} from "../../shared/schema.js";
 
 export class ERPIntegrationService {
   constructor(private storage: SimpleStorage) {}

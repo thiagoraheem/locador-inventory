@@ -119,12 +119,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Criar `ProductService` com regras de negócio
 - [x] Criar `UserService` com regras de negócio
 - [x] Criar `ReportService` com regras de negócio
+- [x] Criar `ERPIntegrationService` para integrações externas
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `ERPIntegrationService` para integrações externas
 - [ ] Adicionar testes para serviços
 - [ ] Documentar serviços
 
@@ -202,9 +202,9 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 28% (1/6 fases concluídas)
+  - **Progresso Total**: 30% (1/6 fases concluídas)
   - **Fase Atual**: Fase 2 - Implementação de Serviços
-  - **Tarefas Concluídas**: 17/60 (28%)
+  - **Tarefas Concluídas**: 18/60 (30%)
   - **Próxima Milestone**: Implementação de Serviços
 
 ### 📋 Checklist por Fase
@@ -212,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | Fase | Descrição | Status | Progresso |
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
-| 2 | Implementação de Serviços | 🚧 Em andamento | 5/8 (63%) |
+| 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | ⏳ Pendente | 0/8 (0%) |
 | 4 | Middlewares e Validação | ⏳ Pendente | 0/7 (0%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
