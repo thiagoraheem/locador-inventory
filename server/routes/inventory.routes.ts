@@ -1,35 +1,16 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { getStorage } from "./db";
-import { setupAuth, isAuthenticated, verifyPassword } from "./auth";
-import checkIpRouter from "./check-ip";
-import {
-  insertInventorySchema,
-  insertCountSchema,
-  insertUserSchema,
-  loginSchema,
-  registerSchema,
-  serialReadingRequestSchema,
-} from "@shared/schema";
+import { getStorage } from "../db";
+import { isAuthenticated } from "../auth";
+import { insertInventorySchema, serialReadingRequestSchema, insertCountSchema } from "@shared/schema";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Registrar o router de check-ip
-  app.use("/api", checkIpRouter);
-
-  // Initialize SQL Server storage
-  let storage = await getStorage();
-
-  // Middleware to check if user has Mesa de Controle access for audit mode operations
+export function registerInventoryRoutes(app: Express) {
+  let storage: any;
   const hasAuditModeAccess = async (req: any, res: any, next: any) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Check if user has appropriate role for audit mode access
       const userRole = req.user.role?.toLowerCase();
       const allowedRoles = ["admin", "gerente", "supervisor"];
 
@@ -40,7 +21,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // If inventory ID is provided, check if it's in audit mode
       if (req.params.id) {
         const inventoryId = parseInt(req.params.id);
         storage = await getStorage();
@@ -61,268 +41,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Database setup endpoint
-  app.post("/api/setup-sqlserver", async (req, res) => {
-    try {
-      console.log("🔧 Setting up SQL Server database...");
-      const { setupSqlServerDatabase } = await import("./setup-sqlserver");
-      await setupSqlServerDatabase();
-      res.json({ message: "SQL Server database setup completed successfully" });
-    } catch (error) {
-      console.error("Error setting up SQL Server:", error as Error);
-      res.status(500).json({
-        error: "Failed to setup SQL Server database",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Database test endpoint
-  app.get("/api/test-database", async (req, res) => {
-    try {
-      console.log("🔍 Testing SQL Server connection...");
-      const { testSqlServerConnection } = await import("./setup-sqlserver");
-      const connected = await testSqlServerConnection();
-
-      if (connected) {
-        storage = await getStorage();
-        const stats = await storage.getDashboardStats();
-        console.log("📊 Database stats:", stats);
-
-        res.json({
-          connected: true,
-          stats,
-          message: "SQL Server connection successful",
-        });
-      } else {
-        res.status(500).json({ error: "SQL Server connection failed" });
-      }
-    } catch (error) {
-      console.error("SQL Server connection error:", error as Error);
-      res.status(500).json({
-        error: "Database connection failed",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Fix inventory schema endpoint
-  app.post("/api/fix-inventory-schema", async (req, res) => {
-    try {
-      console.log("🔧 Fixing inventory table schema...");
-      storage = await getStorage();
-
-      // Execute the schema fix using SimpleStorage method
-      await storage.fixInventorySchema();
-
-      console.log("✅ Inventory schema fixed successfully");
-      res.json({
-        message: "Inventory schema fixed successfully",
-        details:
-          "Added selectedLocationIds, selectedCategoryIds, predictedEndDate, and isToBlockSystem columns",
-      });
-    } catch (error) {
-      console.error("Error fixing inventory schema:", error as Error);
-      res.status(500).json({
-        error: "Failed to fix inventory schema",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  // Auth routes
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = loginSchema.parse(req.body);
-
-      storage = await getStorage();
-      const user = await storage.getUserByUsername(username);
-      if (!user || !user.isActive) {
-        const message =
-          user && !user.isActive
-            ? "Usuário desativado"
-            : "Usuário não encontrado";
-        return res.status(401).json({ message: message });
-      }
-
-      const isValidPassword = await verifyPassword(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: "Credenciais inválidas" });
-      }
-
-      // Create session
-      const session = req.session as any;
-      session.userId = user.id;
-
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
-
-      res.json({ user: userWithoutPassword });
-    } catch (error) {
-      console.error("Error during login:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = registerSchema.parse(req.body);
-
-      storage = await getStorage();
-      // Check if username or email already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Nome de usuário já existe" });
-      }
-
-      const existingEmail = await storage.getUserByEmail(userData.email);
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email já cadastrado" });
-      }
-
-      // Create user (password will be hashed in storage layer)
-      const { confirmPassword, ...userDataWithoutConfirm } = userData;
-
-      const newUser = await storage.createUser({
-        ...userDataWithoutConfirm,
-        role: "user",
-        isActive: true,
-      });
-
-      // Create session
-      const session = req.session as any;
-      session.userId = newUser.id;
-
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = newUser;
-      res.status(201).json({ user: userWithoutPassword });
-    } catch (error) {
-      console.error("Error during registration:", error);
-      res.status(500).json({ message: "Erro interno do servidor" });
-    }
-  });
-
-  app.post("/api/auth/logout", (req, res) => {
-    const session = req.session as any;
-    session.destroy((err: any) => {
-      if (err) {
-        return res.status(500).json({ message: "Erro ao fazer logout" });
-      }
-      res.json({ message: "Logout realizado com sucesso" });
-    });
-  });
-
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
-    try {
-      const { password: _, ...userWithoutPassword } = req.user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
-
-  // Dashboard routes
-  app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {
-    try {
-      storage = await getStorage();
-      const stats = await storage.getDashboardStats();
-      res.json(stats);
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard stats" });
-    }
-  });
-
-  // Category routes
-  app.get("/api/categories", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const categories = await storage.getCategories();
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-      res.status(500).json({ message: "Failed to fetch categories" });
-    }
-  });
-
-  // Product routes
-  app.get("/api/products", isAuthenticated, async (req, res) => {
-    try {
-      storage = await getStorage();
-      const products = await storage.getProducts();
-      res.json(products);
-    } catch (error) {
-      console.error("Error fetching products:", error as Error);
-      res.status(500).json({ message: "Failed to fetch products" });
-    }
-  });
-
-  // Buscar produtos por termo (SKU ou descrição) - API para combobox dinâmico
-  app.get("/api/products/search", isAuthenticated, async (req: any, res) => {
-    try {
-      const { q, limit = 10 } = req.query;
-
-      if (!q || typeof q !== "string" || q.trim().length < 1) {
-        return res.json([]);
-      }
-
-      storage = await getStorage();
-      const products = await storage.searchProducts(
-        q.trim(),
-        parseInt(limit.toString()),
-      );
-
-      res.json(products);
-    } catch (error) {
-      console.error("❌ Error searching products:", error);
-      res.status(500).json({
-        message: "Failed to search products",
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  });
-
-  app.get("/api/products/:id", isAuthenticated, async (req, res) => {
-    try {
-      storage = await getStorage();
-      const id = parseInt(req.params.id);
-      const product = await storage.getProduct(id);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-      res.json(product);
-    } catch (error) {
-      console.error("Error fetching product:", error as Error);
-      res.status(500).json({ message: "Failed to fetch product" });
-    }
-  });
-
-  // Location routes
-  app.get("/api/locations", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const locations = await storage.getLocations();
-      res.json(locations);
-    } catch (error) {
-      console.error("Error fetching locations:", error as Error);
-      res.status(500).json({ message: "Failed to fetch locations" });
-    }
-  });
-
-  // Stock routes
-  app.get("/api/stock", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const stock = await storage.getStock();
-      res.json(stock);
-    } catch (error) {
-      console.error("Error fetching stock:", error as Error);
-      res.status(500).json({ message: "Failed to fetch stock" });
-    }
-  });
-
-  // Inventory routes
   app.get("/api/inventory-types", isAuthenticated, async (req: any, res) => {
     try {
       storage = await getStorage();
@@ -550,7 +268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Count routes
   app.get(
     "/api/inventory-items/:id/counts",
     isAuthenticated,
@@ -590,167 +307,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating count:", error as Error);
       res.status(500).json({ message: "Failed to create count" });
-    }
-  });
-
-  // Audit log routes
-  app.get("/api/audit-logs", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const logs = await storage.getAuditLogs();
-      res.json(logs);
-    } catch (error) {
-      console.error("Error fetching audit logs:", error as Error);
-      res.status(500).json({ message: "Failed to fetch audit logs" });
-    }
-  });
-
-  // User management routes
-  app.get("/api/users", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const users = await storage.getUsers();
-      res.json(users);
-    } catch (error) {
-      console.error("Error fetching users:", error as Error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
-
-  app.post("/api/users", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-
-      // Prepare user data
-      const userData = { ...req.body };
-      // Password will be hashed in storage layer if provided
-
-      // Validate the user data (excluding password confirmation if present)
-      const { confirmPassword, ...userDataToValidate } = userData;
-      const validatedData = insertUserSchema.parse(userDataToValidate);
-
-      const user = await storage.createUser(validatedData);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "CREATE",
-        entityType: "USER",
-        entityId: user.id.toString(),
-        oldValues: "",
-        newValues: JSON.stringify({ ...validatedData, password: "[REDACTED]" }),
-        metadata: "",
-      });
-
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
-      res.status(201).json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error creating user:", error as Error);
-      res.status(500).json({
-        message: "Failed to create user",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  app.put("/api/users/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const id = req.params.id;
-      const oldUser = await storage.getUser(id);
-      if (!oldUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Prepare update data
-      const userData = { ...req.body };
-      if (!userData.password || userData.password.trim() === "") {
-        // Remove password field if empty
-        delete userData.password;
-      }
-      // Password will be hashed in storage layer if provided
-
-      // Remove confirmPassword if present
-      const { confirmPassword, ...userDataToValidate } = userData;
-      const validatedData = insertUserSchema
-        .partial()
-        .parse(userDataToValidate);
-
-      const user = await storage.updateUser(id, validatedData);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "UPDATE",
-        entityType: "USER",
-        entityId: id,
-        oldValues: JSON.stringify({ ...oldUser, password: "[REDACTED]" }),
-        newValues: JSON.stringify({
-          ...validatedData,
-          password: validatedData.password ? "[REDACTED]" : undefined,
-        }),
-      });
-
-      // Return user without password
-      const { password: _, ...userWithoutPassword } = user;
-      res.json(userWithoutPassword);
-    } catch (error) {
-      console.error("Error updating user:", error as Error);
-      res.status(500).json({
-        message: "Failed to update user",
-        details: (error as Error).message,
-      });
-    }
-  });
-
-  app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const id = req.params.id;
-      const oldUser = await storage.getUser(id);
-      if (!oldUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      await storage.deleteUser(id);
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "DELETE",
-        entityType: "USER",
-        entityId: id,
-        oldValues: JSON.stringify(oldUser),
-        newValues: "",
-        metadata: "",
-      });
-
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting user:", error as Error);
-      res.status(500).json({ message: "Failed to delete user" });
-    }
-  });
-
-  // Companies routes (read-only)
-  app.get("/api/companies", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const companies = await storage.getCompanies();
-      res.json(companies);
-    } catch (error) {
-      console.error("Error fetching companies:", error as Error);
-      res.status(500).json({ message: "Failed to fetch companies" });
-    }
-  });
-
-  // Stock Items routes (read-only)
-  app.get("/api/stock-items", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-      const stockItems = await storage.getStockItems();
-      res.json(stockItems);
-    } catch (error) {
-      console.error("Error fetching stock items:", error as Error);
-      res.status(500).json({ message: "Failed to fetch stock items" });
     }
   });
 
@@ -838,35 +394,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Get products with serial control information
-  app.get(
-    "/api/products/with-serial-control",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-
-        // Check if the method exists, if not, return all products for now
-        if (typeof storage.getProductsWithSerialControl === "function") {
-          const products = await storage.getProductsWithSerialControl();
-          res.json(products);
-        } else {
-          // Fallback: return all products with a serialControl flag
-          const products = await storage.getProducts();
-          const productsWithSerialInfo = products.map((product) => ({
-            ...product,
-            hasSerialControl: false, // Default value until proper implementation
-          }));
-          res.json(productsWithSerialInfo);
-        }
-      } catch (error) {
-        console.error("❌ Error fetching products with serial control:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch products with serial control" });
-      }
-    },
-  );
 
   // Get inventory statistics for Control Panel
   app.get(
@@ -918,86 +445,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Get comprehensive final report for inventory
-  app.get(
-    "/api/inventories/:id/final-report",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const inventoryId = parseInt(req.params.id);
-        const report = await storage.getInventoryFinalReport(inventoryId);
-        res.json(report);
-      } catch (error) {
-        console.error("Error generating final report:", error as Error);
-        res.status(500).json({
-          message: "Failed to generate final report",
-          details: (error as Error).message,
-        });
-      }
-    },
-  );
-
-  // Export inventory to Excel
-  app.get(
-    "/api/inventories/:id/export",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        storage = await getStorage();
-        const inventoryId = parseInt(req.params.id);
-        
-        // Get inventory info for filename
-        const inventory = await storage.getInventory(inventoryId);
-        if (!inventory) {
-          return res.status(404).json({ message: "Inventory not found" });
-        }
-
-        // Get export data
-        const exportData = await storage.getInventoryExportData(inventoryId);
-        
-        // Convert to Excel-compatible CSV format
-        if (exportData.length === 0) {
-          return res.status(404).json({ message: "No data to export" });
-        }
-
-        // Get headers from first row
-        const headers = Object.keys(exportData[0]);
-        
-        // Create CSV content
-        let csvContent = headers.join(',') + '\n';
-        exportData.forEach(row => {
-          const values = headers.map(header => {
-            const value = row[header];
-            // Handle null/undefined values and escape quotes
-            if (value === null || value === undefined) return '';
-            const stringValue = String(value);
-            // Escape quotes and wrap in quotes if contains comma, quote, or newline
-            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-              return '"' + stringValue.replace(/"/g, '""') + '"';
-            }
-            return stringValue;
-          });
-          csvContent += values.join(',') + '\n';
-        });
-
-        // Set headers for file download
-        const filename = `Inventario_${inventory.code}_${new Date().toISOString().split('T')[0]}.csv`;
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        
-        // Add BOM for Excel UTF-8 support
-        res.write('\uFEFF');
-        res.end(csvContent);
-      } catch (error) {
-        console.error("Error exporting inventory:", error as Error);
-        res.status(500).json({
-          message: "Failed to export inventory",
-          details: (error as Error).message,
-        });
-      }
-    },
-  );
 
   // Update count 1 for inventory item
   app.put(
@@ -1482,95 +929,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ===== ROTAS PARA VALIDAÇÃO E INTEGRAÇÃO =====
-
-  // Validar integridade do inventário
-  app.post(
-    "/api/inventories/:id/validate",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-
-        const { InventoryIntegrityValidator } = await import("./validation");
-        const validator = new InventoryIntegrityValidator(storage);
-
-        const report = await validator.validateInventoryIntegrity(inventoryId);
-
-        await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
-          action: "VALIDATE_INVENTORY",
-          entityType: "inventory",
-          entityId: inventoryId.toString(),
-          newValues: JSON.stringify({
-            isValid: report.isValid,
-            issuesCount: report.issues.length,
-          }),
-        });
-
-        res.json(report);
-      } catch (error) {
-        console.error("Error validating inventory:", error);
-        res.status(500).json({ message: "Failed to validate inventory" });
-      }
-    },
-  );
-
-  // Executar reconciliação do inventário
-  app.post(
-    "/api/inventories/:id/reconcile",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-
-        // Executar stored procedure de reconciliação
-        await storage.reconcileInventory(inventoryId);
-
-        await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
-          action: "RECONCILE_INVENTORY",
-          entityType: "inventory",
-          entityId: inventoryId.toString(),
-          metadata: JSON.stringify({ timestamp: Date.now() }),
-        });
-
-        res.json({ message: "Reconciliation completed successfully" });
-      } catch (error) {
-        console.error("Error reconciling inventory:", error);
-        res.status(500).json({ message: "Failed to reconcile inventory" });
-      }
-    },
-  );
-
-  // Obter relatório de reconciliação
-  app.get(
-    "/api/inventories/:id/reconciliation",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-
-        const { InventoryIntegrityValidator } = await import("./validation");
-        const validator = new InventoryIntegrityValidator(storage);
-
-        const report =
-          await validator.generateReconciliationReport(inventoryId);
-        res.json(report);
-      } catch (error) {
-        console.error("Error fetching reconciliation report:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch reconciliation report" });
-      }
-    },
-  );
-
   // Importar rotas de integração
-  const { addIntegrationRoutes } = await import("./routes-integration");
+  const { addIntegrationRoutes } = await import("../routes-integration");
   addIntegrationRoutes(app, getStorage, isAuthenticated);
 
   // ===== ROTAS PARA CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
@@ -1655,29 +1015,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Buscar produto por número de série
-  app.get(
-    "/api/products/by-serial/:serial",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const serialNumber = req.params.serial;
-        storage = await getStorage();
-        const product = await storage.findProductBySerial(serialNumber);
-
-        if (!product) {
-          return res
-            .status(404)
-            .json({ message: "Product not found for this serial number" });
-        }
-
-        res.json(product);
-      } catch (error) {
-        console.error("Error finding product by serial:", error);
-        res.status(500).json({ message: "Failed to find product" });
-      }
-    },
-  );
 
   // Listar itens de série do inventário
   app.get(
@@ -1737,54 +1074,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Reconciliação de quantidades
-  app.post(
-    "/api/inventories/:id/reconcile",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-        await storage.reconcileInventoryQuantities(inventoryId);
-
-        const reconciliation =
-          await storage.getInventoryReconciliation(inventoryId);
-
-        await storage.createAuditLog({
-          userId: (req.session as any).user?.id || 0,
-          action: "INVENTORY_RECONCILIATION",
-          entityType: "inventory",
-          entityId: inventoryId.toString(),
-          metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
-        });
-
-        res.json({ message: "Reconciliation completed", data: reconciliation });
-      } catch (error) {
-        console.error("Error reconciling inventory:", error);
-        res.status(500).json({ message: "Failed to reconcile inventory" });
-      }
-    },
-  );
-
-  // Buscar dados de reconciliação
-  app.get(
-    "/api/inventories/:id/reconciliation",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const inventoryId = parseInt(req.params.id);
-        storage = await getStorage();
-        const reconciliation =
-          await storage.getInventoryReconciliation(inventoryId);
-        res.json(reconciliation);
-      } catch (error) {
-        console.error("Error fetching reconciliation data:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch reconciliation data" });
-      }
-    },
-  );
 
   // Buscar histórico de número de série
   app.get(
@@ -2887,3 +2176,4 @@ async function validateAuditModePermissions(storage: any, inventoryId: number) {
       "Permission validation: Mesa de Controle can modify count4 (to be implemented)",
   };
 }
+
