@@ -164,13 +164,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ### 🎮 Fase 5: Controllers (Semana 8)
 
 #### ✅ Tarefas Concluídas
-- [ ] Nenhuma tarefa concluída
+- [x] Criar `AuthController`
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `AuthController`
 - [ ] Criar `InventoryController`
 - [ ] Criar `ProductController`
 - [ ] Criar `UserController`
@@ -200,10 +199,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 52% (1/6 fases concluídas)
-  - **Fase Atual**: Fase 3 - Padrão Repository
-  - **Tarefas Concluídas**: 31/60 (52%)
-  - **Próxima Milestone**: Testes de integração para repositórios
+  - **Progresso Total**: 53% (1/6 fases concluídas)
+  - **Fase Atual**: Fase 5 - Controllers
+  - **Tarefas Concluídas**: 32/60 (53%)
+  - **Próxima Milestone**: Implementar `InventoryController`
 
 ### 📋 Checklist por Fase
 
@@ -213,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
-| 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
+| 5 | Controllers | 🚧 Em andamento | 1/8 (13%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
 ## 🎯 Benefícios Esperados
