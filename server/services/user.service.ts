@@ -23,13 +23,17 @@ export class UserService {
     return userWithoutPassword;
   }
 
-  async updateUser(id: string, data: any, actorId: number) {
-    const oldUser = await userRepository.findById(id);
-    if (!oldUser) {
-      return null;
-    }
+    async updateUser(id: string, data: any, actorId: number) {
+      const oldUser = await userRepository.findById(id);
+      if (!oldUser) {
+        return null;
+      }
 
-    const user = await userRepository.update(id, data);
+      const user = await userRepository.update(id, data);
+
+      if (!user) {
+        return null;
+      }
 
     await auditRepository.create({
       userId: actorId,
@@ -43,9 +47,9 @@ export class UserService {
       }),
     });
 
-    const { password: _password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
-  }
+      const { password: _password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    }
 
   async deleteUser(id: string, actorId: number) {
     const oldUser = await userRepository.findById(id);

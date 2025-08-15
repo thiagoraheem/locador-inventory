@@ -1,16 +1,5 @@
 import { BaseRepository } from "./base.repository";
-
-export interface User {
-  id: number;
-  username: string;
-  password: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  isActive: boolean;
-  [key: string]: any;
-}
+import type { User } from "@shared/schema";
 
 export class UserRepository extends BaseRepository<User> {
   async findAll(): Promise<User[]> {

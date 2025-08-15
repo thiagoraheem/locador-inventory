@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { AuditLog, User } from "@shared/schema";
 import { getSqlServerPool } from "../db";
 

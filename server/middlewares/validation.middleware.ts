@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { ZodTypeAny, ZodError } from 'zod';
 
 /**
  * Middleware factory for validating request data using Zod schemas.
@@ -7,7 +7,7 @@ import { AnyZodObject, ZodError } from 'zod';
  * @param property Request property to validate (defaults to body)
  */
 export function validate(
-  schema: AnyZodObject,
+  schema: ZodTypeAny,
   property: 'body' | 'query' | 'params' = 'body'
 ) {
   return (req: Request, res: Response, next: NextFunction) => {

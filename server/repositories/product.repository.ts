@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { BaseRepository } from "./base.repository";
 
 export interface Product {

@@ -63,9 +63,9 @@ export interface IStorage {
   getInventoryTypes(): Promise<InventoryType[]>;
   createInventoryType(type: InsertInventoryType): Promise<InventoryType>;
 
-  // Inventory operations
-  getInventories(status?: string): Promise<(Inventory & { type: InventoryType; createdByUser: User })[]>;
-  getInventory(id: number): Promise<(Inventory & { type: InventoryType; createdByUser: User }) | undefined>;
+    // Inventory operations
+    getInventories(status?: string): Promise<Inventory[]>;
+    getInventory(id: number): Promise<Inventory | undefined>;
   createInventory(inventory: InsertInventory): Promise<Inventory>;
   updateInventory(id: number, inventory: Partial<InsertInventory>): Promise<Inventory>;
   closeInventory(id: number): Promise<void>;
@@ -104,7 +104,7 @@ export class MemStorage implements IStorage {
   private locations: Map<number, Location> = new Map();
   private stock: Map<number, Stock & { product: Product; location: Location }> = new Map();
   private inventoryTypes: Map<number, InventoryType> = new Map();
-  private inventories: Map<number, Inventory & { type: InventoryType; createdByUser: User }> = new Map();
+  private inventories: Map<number, Inventory & { type?: InventoryType; createdByUser?: User }> = new Map();
   private inventoryItems: Map<number, InventoryItem & { product: Product; location: Location }> = new Map();
   private counts: Map<number, Count & { countedByUser: User }> = new Map();
   private auditLogs: Map<number, AuditLog & { user: User }> = new Map();
@@ -486,7 +486,7 @@ export class MemStorage implements IStorage {
   }
 
   // Inventory operations
-  async getInventories(status?: string): Promise<(Inventory & { type: InventoryType; createdByUser: User })[]> {
+  async getInventories(status?: string): Promise<Inventory[]> {
     let inventories = Array.from(this.inventories.values());
 
     if (status) {
@@ -496,7 +496,7 @@ export class MemStorage implements IStorage {
     return inventories.sort((a, b) => b.createdAt - a.createdAt);
   }
 
-  async getInventory(id: number): Promise<(Inventory & { type: InventoryType; createdByUser: User }) | undefined> {
+  async getInventory(id: number): Promise<Inventory | undefined> {
     return this.inventories.get(id);
   }
 
@@ -519,11 +519,19 @@ export class MemStorage implements IStorage {
 
     const inventory: Inventory = {
       id: this.nextId.inventory++,
-      ...inventoryData,
       code,
-      isToBlockSystem: inventoryData.isToBlockSystem || false,
+      typeId: inventoryData.typeId,
+      status: inventoryData.status,
+      startDate: inventoryData.startDate,
+      endDate: inventoryData.endDate ?? undefined,
+      predictedEndDate: inventoryData.predictedEndDate ?? undefined,
+      description: inventoryData.description ?? undefined,
+      selectedLocationIds: inventoryData.selectedLocationIds ?? undefined,
+      selectedCategoryIds: inventoryData.selectedCategoryIds ?? undefined,
+      createdBy: inventoryData.createdBy,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      isToBlockSystem: inventoryData.isToBlockSystem || false,
     };
 
     this.inventories.set(inventory.id, {
@@ -573,19 +581,26 @@ export class MemStorage implements IStorage {
       ...existing,
       ...inventoryData,
       updatedAt: Date.now(),
+    } as Inventory & { type?: InventoryType; createdByUser?: User };
+
+    const normalized = {
+      ...updated,
+      endDate: updated.endDate ?? undefined,
+      description: updated.description ?? undefined,
     };
-    this.inventories.set(id, updated);
+
+    this.inventories.set(id, normalized);
     return {
-      id: updated.id,
-      code: updated.code,
-      typeId: updated.typeId,
-      status: updated.status,
-      startDate: updated.startDate,
-      endDate: updated.endDate,
-      description: updated.description,
-      createdBy: updated.createdBy,
-      createdAt: updated.createdAt,
-      updatedAt: updated.updatedAt,
+      id: normalized.id,
+      code: normalized.code,
+      typeId: normalized.typeId,
+      status: normalized.status,
+      startDate: normalized.startDate,
+      endDate: normalized.endDate,
+      description: normalized.description,
+      createdBy: normalized.createdBy,
+      createdAt: normalized.createdAt,
+      updatedAt: normalized.updatedAt,
     };
   }
 
@@ -616,7 +631,7 @@ export class MemStorage implements IStorage {
     // Update inventory status
     this.inventories.set(id, {
       ...inventory,
-      status: 'CLOSED',
+      status: 'closed',
       endDate: Date.now(),
       updatedAt: Date.now(),
     });
@@ -780,7 +795,7 @@ export class MemStorage implements IStorage {
     lastAuditDays: number;
   }> {
     const totalProducts = Array.from(this.products.values()).filter(p => p.isActive).length;
-    const activeInventories = Array.from(this.inventories.values()).filter(inv => inv.status === 'OPEN').length;
+    const activeInventories = Array.from(this.inventories.values()).filter(inv => inv.status === 'open').length;
     const stockLocations = Array.from(this.locations.values()).filter(loc => loc.isActive).length;
 
     const auditLogs = Array.from(this.auditLogs.values());
