@@ -1,4 +1,5 @@
 import { getStorage } from "../db";
+import { auditRepository } from "../repositories/audit.repository";
 
 export class ReportService {
   async getFinalReport(inventoryId: number) {
@@ -31,15 +32,17 @@ export class ReportService {
     const validator = new InventoryIntegrityValidator(storage);
     const report = await validator.validateInventoryIntegrity(inventoryId);
 
-    await storage.createAuditLog({
+    await auditRepository.create({
       userId,
       action: "VALIDATE_INVENTORY",
-      entityType: "inventory",
+      entityType: "INVENTORY",
       entityId: inventoryId.toString(),
       newValues: JSON.stringify({
         isValid: report.isValid,
         issuesCount: report.issues.length,
       }),
+      oldValues: "",
+      metadata: "",
     });
 
     return report;
@@ -50,12 +53,14 @@ export class ReportService {
     await storage.reconcileInventoryQuantities(inventoryId);
     const reconciliation = await storage.getInventoryReconciliation(inventoryId);
 
-    await storage.createAuditLog({
+    await auditRepository.create({
       userId,
       action: "INVENTORY_RECONCILIATION",
-      entityType: "inventory",
+      entityType: "INVENTORY",
       entityId: inventoryId.toString(),
       metadata: JSON.stringify({ itemsReconciled: reconciliation.length }),
+      oldValues: "",
+      newValues: "",
     });
 
     return reconciliation;

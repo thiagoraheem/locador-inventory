@@ -1,4 +1,4 @@
-import { getStorage } from "../db";
+import { auditRepository } from "../repositories/audit.repository";
 import { userRepository } from "../repositories/user.repository";
 
 export class UserService {
@@ -8,9 +8,8 @@ export class UserService {
 
   async createUser(data: any, actorId: number) {
     const user = await userRepository.create(data);
-    const storage = await getStorage();
 
-    await storage.createAuditLog({
+    await auditRepository.create({
       userId: actorId,
       action: "CREATE",
       entityType: "USER",
@@ -25,7 +24,6 @@ export class UserService {
   }
 
   async updateUser(id: string, data: any, actorId: number) {
-    const storage = await getStorage();
     const oldUser = await userRepository.findById(id);
     if (!oldUser) {
       return null;
@@ -33,7 +31,7 @@ export class UserService {
 
     const user = await userRepository.update(id, data);
 
-    await storage.createAuditLog({
+    await auditRepository.create({
       userId: actorId,
       action: "UPDATE",
       entityType: "USER",
@@ -50,7 +48,6 @@ export class UserService {
   }
 
   async deleteUser(id: string, actorId: number) {
-    const storage = await getStorage();
     const oldUser = await userRepository.findById(id);
     if (!oldUser) {
       return false;
@@ -58,7 +55,7 @@ export class UserService {
 
     await userRepository.delete(id);
 
-    await storage.createAuditLog({
+    await auditRepository.create({
       userId: actorId,
       action: "DELETE",
       entityType: "USER",
