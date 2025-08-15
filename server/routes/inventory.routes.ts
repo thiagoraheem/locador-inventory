@@ -867,6 +867,23 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  // Limpar duplicatas de números de série
+  app.post(
+    "/api/inventories/:id/serial-items/remove-duplicates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        storage = await getStorage();
+        await storage.removeDuplicateSerialItems(inventoryId);
+        res.json({ message: "Duplicate serial items removed successfully" });
+      } catch (error) {
+        console.error("Error removing duplicate serial items:", error);
+        res.status(500).json({ message: "Failed to remove duplicate serial items" });
+      }
+    },
+  );
+
   // Atualizar item de série
   app.put(
     "/api/inventory-serial-items/:id",

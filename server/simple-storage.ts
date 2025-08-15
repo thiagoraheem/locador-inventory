@@ -2085,20 +2085,8 @@ import type {
     console.log(`📋 Creating serial items for inventory ${inventoryId}...`);
 
     try {
-      // Get inventory details to filter by selected locations
-      /*const inventoryResult = await this.pool.request()
-        .input('inventoryId', sql.Int, inventoryId)
-        .query('SELECT selectedLocationIds FROM inventories WHERE id = @inventoryId');
-
-      const inventory = inventoryResult.recordset[0];
-      let locationFilter = '';
-
-      if (inventory && inventory.selectedLocationIds) {
-        const selectedLocationIds = JSON.parse(inventory.selectedLocationIds);
-        if (selectedLocationIds && selectedLocationIds.length > 0) {
-          locationFilter = `AND si.locationId IN (${selectedLocationIds.join(',')})`;
-        }
-      }*/
+      // First, remove any existing duplicates for this inventory
+      await this.removeDuplicateSerialItems(inventoryId);
 
       // Create serial items with location filtering
       await this.pool.request().input("inventoryId", sql.Int, inventoryId)
@@ -2114,8 +2102,15 @@ import type {
             si.locationId,
             1
           FROM stock_items si
-          INNER JOIN inventory_items ii ON si.productId = ii.productId --AND si.locationId = ii.locationId
-          WHERE ii.inventoryId = @inventoryId;
+          INNER JOIN inventory_items ii ON si.productId = ii.productId AND si.locationId = ii.locationId
+          WHERE ii.inventoryId = @inventoryId
+          AND NOT EXISTS (
+            SELECT 1 FROM inventory_serial_items isi 
+            WHERE isi.inventoryId = @inventoryId 
+            AND isi.serialNumber = si.serialNumber
+            AND isi.productId = si.productId
+            AND isi.locationId = si.locationId
+          );
 
           -- Update counters in inventory_items
           UPDATE ii
@@ -2132,6 +2127,36 @@ import type {
 
     } catch (error) {
       console.error("❌ Error creating inventory serial items:", error);
+      throw error;
+    }
+  }
+
+  // Remove duplicate serial items for an inventory
+  async removeDuplicateSerialItems(inventoryId: number): Promise<void> {
+    console.log(`🧹 Removing duplicate serial items for inventory ${inventoryId}...`);
+    
+    try {
+      await this.pool.request().input("inventoryId", sql.Int, inventoryId)
+        .query(`
+          WITH DuplicateSerials AS (
+            SELECT 
+              id,
+              ROW_NUMBER() OVER (
+                PARTITION BY inventoryId, serialNumber, productId, locationId 
+                ORDER BY id
+              ) as rn
+            FROM inventory_serial_items
+            WHERE inventoryId = @inventoryId
+          )
+          DELETE FROM inventory_serial_items
+          WHERE id IN (
+            SELECT id FROM DuplicateSerials WHERE rn > 1
+          );
+        `);
+      
+      console.log(`✅ Duplicate serial items removed for inventory ${inventoryId}`);
+    } catch (error) {
+      console.error("❌ Error removing duplicate serial items:", error);
       throw error;
     }
   }
