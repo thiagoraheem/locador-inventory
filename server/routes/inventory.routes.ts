@@ -1,170 +1,20 @@
 import type { Express } from "express";
 import { getStorage } from "../db";
 import { isAuthenticated } from "../middlewares/auth.middleware";
-import {
-  requireRoles,
-  requireAuditMode,
-} from "../middlewares/permissions.middleware";
-import {
-  insertInventorySchema,
-  serialReadingRequestSchema,
-  insertCountSchema,
-} from "@shared/schema";
-import { inventoryService } from "../services/inventory.service";
+import { requireRoles, requireAuditMode } from "../middlewares/permissions.middleware";
+import { insertInventorySchema, serialReadingRequestSchema, insertCountSchema } from "@shared/schema";
+import { inventoryController } from "../controllers/inventory.controller";
 
 export async function registerInventoryRoutes(app: Express) {
   let storage: any;
 
-  app.get("/api/inventory-types", isAuthenticated, async (req: any, res) => {
-    try {
-      const types = await inventoryService.getInventoryTypes();
-      res.json(types);
-    } catch (error) {
-      console.error("Error fetching inventory types:", error as Error);
-      res.status(500).json({ message: "Failed to fetch inventory types" });
-    }
-  });
+  app.get("/api/inventory-types", isAuthenticated, inventoryController.getTypes);
 
-  app.get("/api/inventories", isAuthenticated, async (req: any, res) => {
-    try {
-      const inventories = await inventoryService.getInventories();
-      res.json(inventories);
-    } catch (error) {
-      console.error("Error fetching inventories:", error as Error);
-      res.status(500).json({ message: "Failed to fetch inventories" });
-    }
-  });
+  app.get("/api/inventories", isAuthenticated, inventoryController.list);
 
-  app.get("/api/inventories/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const inventory = await inventoryService.getInventory(id);
-      if (!inventory) {
-        return res.status(404).json({ message: "Inventory not found" });
-      }
-      res.json(inventory);
-    } catch (error) {
-      console.error("Error fetching inventory:", error as Error);
-      res.status(500).json({ message: "Failed to fetch inventory" });
-    }
-  });
+  app.get("/api/inventories/:id", isAuthenticated, inventoryController.get);
 
-  app.post("/api/inventories", isAuthenticated, async (req: any, res) => {
-    try {
-      storage = await getStorage();
-
-      // Prepare data with proper formatting and date conversion
-      const inventoryData: any = {
-        code: req.body.code,
-        typeId: req.body.typeId,
-        startDate:
-          typeof req.body.startDate === "string"
-            ? new Date(req.body.startDate).getTime()
-            : req.body.startDate,
-        status: req.body.status || "open",
-        isToBlockSystem:
-          req.body.isToBlockSystem === true ||
-          req.body.isToBlockSystem === "true",
-        createdBy: req.user.id,
-      };
-
-      // Only add optional fields if they have values
-      if (req.body.endDate) {
-        inventoryData.endDate =
-          typeof req.body.endDate === "string"
-            ? new Date(req.body.endDate).getTime()
-            : req.body.endDate;
-      }
-
-      if (req.body.predictedEndDate) {
-        inventoryData.predictedEndDate =
-          typeof req.body.predictedEndDate === "string"
-            ? new Date(req.body.predictedEndDate).getTime()
-            : req.body.predictedEndDate;
-      }
-
-      if (req.body.description) {
-        inventoryData.description = req.body.description;
-      }
-
-      // Add selected locations and categories to be saved in the database
-      if (
-        req.body.selectedLocationIds &&
-        Array.isArray(req.body.selectedLocationIds)
-      ) {
-        inventoryData.selectedLocationIds = req.body.selectedLocationIds;
-      }
-
-      if (
-        req.body.selectedCategoryIds &&
-        Array.isArray(req.body.selectedCategoryIds)
-      ) {
-        inventoryData.selectedCategoryIds = req.body.selectedCategoryIds;
-      }
-
-      // Use partial validation to allow optional fields
-      const validatedData = insertInventorySchema
-        .partial()
-        .parse(inventoryData);
-
-      const inventory = await inventoryService.createInventory(validatedData);
-
-      // Create inventory items if locations and categories are provided
-      if (req.body.selectedLocationIds && req.body.selectedCategoryIds) {
-        const { selectedLocationIds, selectedCategoryIds } = req.body;
-
-        // Get stock data for selected locations and categories
-        const stockItems = await storage.getStock();
-        const products = await storage.getProducts();
-
-        for (const locationId of selectedLocationIds) {
-          const locationStock = stockItems.filter(
-            (item: any) => item.locationId === locationId,
-          );
-
-          for (const stockItem of locationStock) {
-            const product = products.find(
-              (p: any) => p.id === stockItem.productId,
-            );
-            if (product && selectedCategoryIds.includes(product.categoryId)) {
-              await storage.createInventoryItem({
-                inventoryId: inventory.id,
-                productId: stockItem.productId,
-                locationId: stockItem.locationId,
-                expectedQuantity: stockItem.quantity,
-                status: "pending",
-              });
-            }
-          }
-        }
-
-        // Create serial items for products with serial control
-        console.log("🔧 Creating serial items for inventory...");
-        try {
-          await storage.createInventorySerialItems(inventory.id);
-          console.log("✅ Serial items created successfully");
-        } catch (serialError) {
-          console.warn("⚠️ Failed to create serial items:", serialError);
-          // Don't fail the inventory creation if serial items fail
-        }
-      }
-
-      await storage.createAuditLog({
-        userId: req.user.id,
-        action: "CREATE",
-        entityType: "INVENTORY",
-        entityId: inventory.id.toString(),
-        oldValues: undefined,
-        newValues: JSON.stringify(validatedData),
-        metadata: undefined,
-      });
-
-      res.status(201).json(inventory);
-    } catch (error) {
-      console.error("Error creating inventory:", error as Error);
-      res.status(500).json({ message: "Failed to create inventory" });
-    }
-  });
+  app.post("/api/inventories", isAuthenticated, inventoryController.create);
 
   app.put("/api/inventories/:id", isAuthenticated, async (req: any, res) => {
     try {
