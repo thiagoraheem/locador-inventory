@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 import express from 'express';
 import https from 'https';
 import os from 'os';

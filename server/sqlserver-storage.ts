@@ -187,7 +187,7 @@ export class SqlServerStorage implements IStorage {
       LEFT JOIN categories c ON p.categoryId = c.id
     `;
 
-    const conditions = [];
+      const conditions: string[] = [];
     const params: any = {};
 
     if (!includeInactive) {
@@ -414,16 +414,19 @@ export class SqlServerStorage implements IStorage {
     return result[0];
   }
 
-  // Inventory operations - simplified for brevity
-  async getInventories(): Promise<Inventory[]> {
-    const inventories = await this.query<any>('SELECT * FROM inventories ORDER BY createdAt DESC');
-    // Parse JSON fields back to arrays
-    return inventories.map(inventory => ({
-      ...inventory,
-      selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
-      selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null
-    }));
-  }
+    // Inventory operations - simplified for brevity
+    async getInventories(status?: string): Promise<Inventory[]> {
+      const inventories = await this.query<any>('SELECT * FROM inventories ORDER BY createdAt DESC');
+      let list = inventories.map((inventory) => ({
+        ...inventory,
+        selectedLocationIds: inventory.selectedLocationIds ? JSON.parse(inventory.selectedLocationIds) : null,
+        selectedCategoryIds: inventory.selectedCategoryIds ? JSON.parse(inventory.selectedCategoryIds) : null,
+      }));
+      if (status) {
+        list = list.filter((inv) => inv.status === status);
+      }
+      return list;
+    }
 
   async createInventory(inventory: InsertInventory): Promise<Inventory> {
     const now = new Date();
@@ -479,7 +482,7 @@ export class SqlServerStorage implements IStorage {
       .input('endDate', sql.BigInt, Date.now())
       .query(`
         UPDATE inventories 
-        SET status = 'CLOSED', endDate = @endDate
+        SET status = 'closed', endDate = @endDate
         WHERE id = @id
       `);
   }
@@ -492,7 +495,7 @@ export class SqlServerStorage implements IStorage {
       .input('endDate', sql.BigInt, Date.now())
       .query(`
         UPDATE inventories 
-        SET status = 'CANCELLED', endDate = @endDate, description = CONCAT(ISNULL(description, ''), ' [CANCELADO: ', @reason, ']')
+          SET status = 'cancelled', endDate = @endDate, description = CONCAT(ISNULL(description, ''), ' [CANCELADO: ', @reason, ']')
         WHERE id = @id
       `);
   }
@@ -510,7 +513,7 @@ export class SqlServerStorage implements IStorage {
       .query('DELETE FROM inventories WHERE id = @id');
   }
 
-  async getInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
+    async getInventoryItems(inventoryId: number): Promise<InventoryItem[]> {
     const request = this.pool.request();
     request.input('inventoryId', sql.Int, inventoryId);
 
@@ -521,9 +524,9 @@ export class SqlServerStorage implements IStorage {
     `);
 
     return result.recordset.map(this.mapInventoryItem);
-  }
+    }
 
-  async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
+    async getInventoryItemsWithDetails(inventoryId: number): Promise<(InventoryItem & { product: Product; location: Location })[]> {
     const request = this.pool.request();
     request.input('inventoryId', sql.Int, inventoryId);
 
@@ -541,8 +544,8 @@ export class SqlServerStorage implements IStorage {
       ORDER BY ii.id
     `);
 
-    return result.recordset.map(record => {
-      const item = this.mapInventoryItem(record);
+      return result.recordset.map(record => {
+        const item = this.mapInventoryItem(record);
 
       const product: Product = {
         id: record.productId || item.productId,
@@ -570,8 +573,31 @@ export class SqlServerStorage implements IStorage {
         product,
         location
       };
-    });
-  }
+      });
+    }
+
+    async getInventoryExportData(inventoryId: number): Promise<any[]> {
+      const request = this.pool.request();
+      request.input('inventoryId', sql.Int, inventoryId);
+      const result = await request.query(
+        'SELECT * FROM InventoryItems WHERE inventoryId = @inventoryId'
+      );
+      return result.recordset;
+    }
+
+    private mapInventoryItem(record: any): InventoryItem {
+      return {
+        id: record.id,
+        inventoryId: record.inventoryId,
+        productId: record.productId,
+        locationId: record.locationId,
+        expectedQuantity: record.expectedQuantity,
+        finalQuantity: record.finalQuantity ?? undefined,
+        status: record.status,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      };
+    }
 
   async createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem> {
     throw new Error("Method not implemented.");
@@ -624,7 +650,7 @@ export class SqlServerStorage implements IStorage {
     );
 
     const inventoryCount = await this.query<{ count: number }>(
-      "SELECT COUNT(*) as count FROM inventories WHERE status != 'CLOSED'"
+      "SELECT COUNT(*) as count FROM inventories WHERE status != 'closed'"
     );
 
     const locationCount = await this.query<{ count: number }>(

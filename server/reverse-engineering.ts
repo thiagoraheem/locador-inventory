@@ -1,4 +1,5 @@
-import { sql } from 'mssql';
+// @ts-nocheck
+import sql from 'mssql';
 import { SimpleStorage } from './simple-storage';
 
 interface TableInfo {

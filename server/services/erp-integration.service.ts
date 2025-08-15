@@ -1,5 +1,11 @@
-import { SimpleStorage } from "./simple-storage.js";
-import { ERPStockUpdateRequest, ERPMigrationRequest, ERPMigrationResponse, ERPMigrationStatus } from "../shared/schema.js";
+import { SimpleStorage } from "../simple-storage.js";
+import { auditRepository } from "../repositories/audit.repository";
+import {
+  ERPStockUpdateRequest,
+  ERPMigrationRequest,
+  ERPMigrationResponse,
+  ERPMigrationStatus,
+} from "../../shared/schema.js";
 
 export class ERPIntegrationService {
   constructor(private storage: SimpleStorage) {}
@@ -132,15 +138,17 @@ export class ERPIntegrationService {
         await this.markInventoryAsMigrated(inventoryId, userId);
 
         // Criar log de auditoria
-        await this.storage.createAuditLog({
+        await auditRepository.create({
           userId,
-          action: 'ERP_MIGRATION',
-          entityType: 'inventory',
+          action: "ERP_MIGRATION",
+          entityType: "INVENTORY",
           entityId: inventoryId.toString(),
           metadata: JSON.stringify({
             itemsCount: migrationResult.migratedItems,
-            timestamp: new Date().toISOString()
-          })
+            timestamp: new Date().toISOString(),
+          }),
+          oldValues: "",
+          newValues: "",
         });
       }
 

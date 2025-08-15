@@ -29,12 +29,12 @@ import type {
   SerialReadingResponse,
 } from "@shared/schema";
 
-export class SimpleStorage {
-  private pool: sql.ConnectionPool;
+  export class SimpleStorage {
+    public pool: sql.ConnectionPool;
 
-  constructor(pool: sql.ConnectionPool) {
-    this.pool = pool;
-  }
+    constructor(pool: sql.ConnectionPool) {
+      this.pool = pool;
+    }
 
   // User operations
 
@@ -701,7 +701,7 @@ export class SimpleStorage {
       }
     }
 
-    const setParts = [];
+    const setParts: string[] = [];
     const request = this.pool.request().input("id", sql.Int, id);
 
     if (updates.username !== undefined) {
@@ -2245,8 +2245,8 @@ export class SimpleStorage {
         AND isi.serialNumber = @serialNumber
       `);
 
-    let locationId = null;
-    let locationName = null;
+      let locationId: number | undefined;
+      let locationName: string | undefined;
     if (serialItemInfo.recordset.length > 0) {
       locationId = serialItemInfo.recordset[0].locationId;
       locationName = serialItemInfo.recordset[0].locationName;
@@ -2507,7 +2507,7 @@ export class SimpleStorage {
     id: number,
     data: Partial<InventorySerialItem>,
   ): Promise<InventorySerialItem> {
-    const updateFields = [];
+      const updateFields: string[] = [];
     const request = this.pool.request().input("id", sql.Int, id);
 
     if (data.status !== undefined) {

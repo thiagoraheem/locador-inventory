@@ -19,12 +19,12 @@ export class InventoryTestScenarios {
       
       // 3. Simular leituras de série
       const serialNumbers = ['SER001', 'SER002', 'SER003'];
-      for (const serial of serialNumbers) {
-        const result = await this.storage.registerSerialReading(
-          inventory.id, 
-          { serialNumber: serial, countStage: 'count1' }, 
-          'test-user'
-        );
+        for (const serial of serialNumbers) {
+          const result = await this.storage.registerSerialReading(
+            inventory.id,
+            { serialNumber: serial, countStage: 'count1' },
+            1
+          );
         results.push({ 
           step: 'REGISTER_SERIAL', 
           success: result.success, 
@@ -58,7 +58,7 @@ export class InventoryTestScenarios {
     
     try {
       // 1. Buscar produto por SKU
-      const product = await this.storage.searchProductBySKU('SKU001');
+        const [product] = await this.storage.searchProducts('SKU001');
       results.push({ 
         step: 'SEARCH_PRODUCT', 
         success: !!product, 
@@ -98,13 +98,13 @@ export class InventoryTestScenarios {
       results.push({ step: 'CREATE_INVENTORY', success: true, data: inventory });
       
       // Simular registros de série incompletos
-      const partialSerials = ['SER001', 'SER002']; // Faltando SER003
-      for (const serial of partialSerials) {
-        const result = await this.storage.registerSerialReading(
-          inventory.id, 
-          { serialNumber: serial, countStage: 'count1' }, 
-          'test-user'
-        );
+        const partialSerials = ['SER001', 'SER002']; // Faltando SER003
+        for (const serial of partialSerials) {
+          const result = await this.storage.registerSerialReading(
+            inventory.id,
+            { serialNumber: serial, countStage: 'count1' },
+            1
+          );
         results.push({ 
           step: 'REGISTER_PARTIAL_SERIAL', 
           success: result.success, 
@@ -146,17 +146,17 @@ export class InventoryTestScenarios {
       const batchSize = 100;
       
       for (let i = 0; i < serialCount; i += batchSize) {
-        const batchPromises = [];
+          const batchPromises: Promise<any>[] = [];
         
         for (let j = 0; j < batchSize && (i + j) < serialCount; j++) {
           const serial = `PERF${String(i + j + 1).padStart(6, '0')}`;
-          batchPromises.push(
-            this.storage.registerSerialReading(
-              inventory.id, 
-              { serialNumber: serial, countStage: 'count1' }, 
-              'test-user'
-            )
-          );
+            batchPromises.push(
+              this.storage.registerSerialReading(
+                inventory.id,
+                { serialNumber: serial, countStage: 'count1' },
+                1
+              )
+            );
         }
         
         await Promise.all(batchPromises);
