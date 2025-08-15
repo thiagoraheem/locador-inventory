@@ -8,7 +8,7 @@ import {
 } from "@shared/schema";
 import { inventoryService } from "../services/inventory.service";
 
-export function registerInventoryRoutes(app: Express) {
+export async function registerInventoryRoutes(app: Express) {
   let storage: any;
   const hasAuditModeAccess = async (req: any, res: any, next: any) => {
     try {
