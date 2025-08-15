@@ -131,19 +131,18 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ### 🗄️ Fase 3: Padrão Repository (Semana 5-6)
 
 #### ✅ Tarefas Concluídas
-- [ ] Nenhuma tarefa concluída
+- [x] Criar `BaseRepository` com operações comuns
+- [x] Implementar interface `IRepository`
+- [x] Implementar `UserRepository`
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `BaseRepository` com operações comuns
-- [ ] Implementar `UserRepository`
 - [ ] Implementar `InventoryRepository`
 - [ ] Implementar `ProductRepository`
 - [ ] Implementar `AuditRepository`
 - [ ] Migrar lógica de `SimpleStorage` para repositórios
-- [ ] Implementar interface `IRepository`
 - [ ] Testes de integração para repositórios
 
 ### 🛡️ Fase 4: Middlewares e Validação (Semana 7)
@@ -201,10 +200,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 33% (1/6 fases concluídas)
-  - **Fase Atual**: Fase 2 - Implementação de Serviços
-  - **Tarefas Concluídas**: 20/60 (33%)
-  - **Próxima Milestone**: Implementação de Serviços
+  - **Progresso Total**: 38% (1/6 fases concluídas)
+  - **Fase Atual**: Fase 3 - Padrão Repository
+  - **Tarefas Concluídas**: 23/60 (38%)
+  - **Próxima Milestone**: Padrão Repository
 
 ### 📋 Checklist por Fase
 
@@ -212,7 +211,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
-| 3 | Padrão Repository | ⏳ Pendente | 0/8 (0%) |
+| 3 | Padrão Repository | 🚧 Em andamento | 3/8 (37%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 2/7 (29%) |
 | 5 | Controllers | ⏳ Pendente | 0/8 (0%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |

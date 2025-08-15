@@ -1,14 +1,14 @@
 import { getStorage } from "../db";
+import { userRepository } from "../repositories/user.repository";
 
 export class UserService {
   async getUsers() {
-    const storage = await getStorage();
-    return storage.getUsers();
+    return userRepository.findAll();
   }
 
   async createUser(data: any, actorId: number) {
+    const user = await userRepository.create(data);
     const storage = await getStorage();
-    const user = await storage.createUser(data);
 
     await storage.createAuditLog({
       userId: actorId,
@@ -26,12 +26,12 @@ export class UserService {
 
   async updateUser(id: string, data: any, actorId: number) {
     const storage = await getStorage();
-    const oldUser = await storage.getUser(id);
+    const oldUser = await userRepository.findById(id);
     if (!oldUser) {
       return null;
     }
 
-    const user = await storage.updateUser(id, data);
+    const user = await userRepository.update(id, data);
 
     await storage.createAuditLog({
       userId: actorId,
@@ -51,12 +51,12 @@ export class UserService {
 
   async deleteUser(id: string, actorId: number) {
     const storage = await getStorage();
-    const oldUser = await storage.getUser(id);
+    const oldUser = await userRepository.findById(id);
     if (!oldUser) {
       return false;
     }
 
-    await storage.deleteUser(id);
+    await userRepository.delete(id);
 
     await storage.createAuditLog({
       userId: actorId,
