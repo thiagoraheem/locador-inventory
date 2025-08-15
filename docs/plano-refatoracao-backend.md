@@ -201,17 +201,17 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 67% (3/6 fases concluídas)
+  - **Progresso Total**: 80% (3/6 fases concluídas)
   - **Fase Atual**: Fase 2 - Implementação de Serviços
-  - **Tarefas Concluídas**: 40/60 (67%)
-  - **Próxima Milestone**: Testes para serviços
+  - **Tarefas Concluídas**: 41/51 (80%)
+  - **Próxima Milestone**: Documentar serviços
 
 ### 📋 Checklist por Fase
 
 | Fase | Descrição | Status | Progresso |
 |------|-----------|--------|----------|
 | 1 | Reestruturação de Rotas | ✅ Concluída | 12/12 (100%) |
-| 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
+| 2 | Implementação de Serviços | 🚧 Em andamento | 7/8 (88%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | ✅ Concluída | 7/7 (100%) |
 | 5 | Controllers | ✅ Concluída | 8/8 (100%) |
