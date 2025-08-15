@@ -1,24 +1,20 @@
-import { getStorage } from "../db";
+import { inventoryRepository } from "../repositories/inventory.repository";
 
 export class InventoryService {
   async getInventoryTypes() {
-    const storage = await getStorage();
-    return storage.getInventoryTypes();
+    return inventoryRepository.getTypes();
   }
 
   async getInventories() {
-    const storage = await getStorage();
-    return storage.getInventories();
+    return inventoryRepository.findAll();
   }
 
   async getInventory(id: number) {
-    const storage = await getStorage();
-    return storage.getInventory(id);
+    return inventoryRepository.findById(String(id));
   }
 
   async createInventory(data: any) {
-    const storage = await getStorage();
-    return storage.createInventory(data);
+    return inventoryRepository.create(data);
   }
 }
 
