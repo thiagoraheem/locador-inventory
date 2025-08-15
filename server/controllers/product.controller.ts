@@ -3,14 +3,16 @@ import { productService } from "../services/product.service";
 import { asyncHandler } from "../utils/async-handler";
 
 export class ProductController {
+  constructor(private service = productService) {}
+
   list = asyncHandler(async (_req: Request, res: Response) => {
-    const products = await productService.getProducts();
+    const products = await this.service.getProducts();
     res.json(products);
   });
 
   search = asyncHandler(async (req: Request, res: Response) => {
     const { q = "", limit = 20 } = req.query as any;
-    const products = await productService.searchProducts(
+    const products = await this.service.searchProducts(
       q.toString().trim(),
       parseInt(limit.toString(), 10),
     );
@@ -19,7 +21,7 @@ export class ProductController {
 
   get = asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
-    const product = await productService.getProduct(id);
+    const product = await this.service.getProduct(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -27,13 +29,13 @@ export class ProductController {
   });
 
   withSerialControl = asyncHandler(async (_req: Request, res: Response) => {
-    const products = await productService.getProductsWithSerialControl();
+    const products = await this.service.getProductsWithSerialControl();
     res.json(products);
   });
 
   findBySerial = asyncHandler(async (req: Request, res: Response) => {
     const serialNumber = req.params.serial;
-    const product = await productService.findProductBySerial(serialNumber);
+    const product = await this.service.findProductBySerial(serialNumber);
     if (!product) {
       return res.status(404).json({
         message: "Product not found for this serial number",

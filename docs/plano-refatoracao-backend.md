@@ -171,9 +171,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Criar `ReportController`
 - [x] Implementar tratamento de erros nos controllers
 - [x] Adicionar documentação OpenAPI/Swagger
+ - [x] Testes para controllers
 
 #### 🔄 Em Andamento
-- [ ] Testes para controllers
+- [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
 - [ ] Nenhuma tarefa pendente
@@ -199,10 +200,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 63% (1/6 fases concluídas)
-  - **Fase Atual**: Fase 5 - Controllers
-  - **Tarefas Concluídas**: 38/60 (63%)
-  - **Próxima Milestone**: Concluir testes para controllers
+  - **Progresso Total**: 65% (2/6 fases concluídas)
+  - **Fase Atual**: Fase 4 - Middlewares e Validação
+  - **Tarefas Concluídas**: 39/60 (65%)
+  - **Próxima Milestone**: Testes para middlewares
 
 ### 📋 Checklist por Fase
 
@@ -212,7 +213,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
-| 5 | Controllers | 🚧 Em andamento | 7/8 (88%) |
+| 5 | Controllers | ✅ Concluída | 8/8 (100%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
 ## 🎯 Benefícios Esperados
