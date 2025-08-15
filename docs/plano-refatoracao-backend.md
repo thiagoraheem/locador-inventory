@@ -166,12 +166,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 #### ✅ Tarefas Concluídas
 - [x] Criar `AuthController`
 - [x] Criar `InventoryController`
+- [x] Criar `ProductController`
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `ProductController`
 - [ ] Criar `UserController`
 - [ ] Criar `ReportController`
 - [ ] Implementar tratamento de erros nos controllers
@@ -199,10 +199,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 55% (1/6 fases concluídas)
+  - **Progresso Total**: 57% (1/6 fases concluídas)
   - **Fase Atual**: Fase 5 - Controllers
-  - **Tarefas Concluídas**: 33/60 (55%)
-  - **Próxima Milestone**: Implementar `ProductController`
+  - **Tarefas Concluídas**: 34/60 (57%)
+  - **Próxima Milestone**: Implementar `UserController`
 
 ### 📋 Checklist por Fase
 
@@ -212,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
-| 5 | Controllers | 🚧 Em andamento | 2/8 (25%) |
+| 5 | Controllers | 🚧 Em andamento | 3/8 (38%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
 ## 🎯 Benefícios Esperados
