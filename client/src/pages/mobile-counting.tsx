@@ -843,6 +843,7 @@ export default function MobileCounting() {
                   onKeyPress={(e) => e.key === "Enter" && handleSerialScan()}
                   className="flex-1 text-lg"
                   autoFocus={activeTab === "serial"}
+                  inputMode="numeric"
                 />
                 <Button
                   onClick={handleSerialScan}
