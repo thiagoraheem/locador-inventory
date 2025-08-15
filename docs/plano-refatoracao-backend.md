@@ -167,12 +167,12 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 - [x] Criar `AuthController`
 - [x] Criar `InventoryController`
 - [x] Criar `ProductController`
+- [x] Criar `UserController`
 
 #### 🔄 Em Andamento
 - [ ] Nenhuma tarefa em andamento
 
 #### ⏳ Pendentes
-- [ ] Criar `UserController`
 - [ ] Criar `ReportController`
 - [ ] Implementar tratamento de erros nos controllers
 - [ ] Adicionar documentação OpenAPI/Swagger
@@ -199,10 +199,10 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 ## 📊 Métricas de Progresso
 
 ### 📈 Status Geral
-  - **Progresso Total**: 57% (1/6 fases concluídas)
+  - **Progresso Total**: 58% (1/6 fases concluídas)
   - **Fase Atual**: Fase 5 - Controllers
-  - **Tarefas Concluídas**: 34/60 (57%)
-  - **Próxima Milestone**: Implementar `UserController`
+  - **Tarefas Concluídas**: 35/60 (58%)
+  - **Próxima Milestone**: Implementar `ReportController`
 
 ### 📋 Checklist por Fase
 
@@ -212,7 +212,7 @@ Este documento serve como guia e controle de progresso para a refatoração arqu
 | 2 | Implementação de Serviços | 🚧 Em andamento | 6/8 (75%) |
 | 3 | Padrão Repository | 🚧 Em andamento | 7/8 (88%) |
 | 4 | Middlewares e Validação | 🚧 Em andamento | 6/7 (86%) |
-| 5 | Controllers | 🚧 Em andamento | 3/8 (38%) |
+| 5 | Controllers | 🚧 Em andamento | 4/8 (50%) |
 | 6 | Otimizações | ⏳ Pendente | 0/8 (0%) |
 
 ## 🎯 Benefícios Esperados
