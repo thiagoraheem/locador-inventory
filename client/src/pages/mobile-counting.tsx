@@ -83,6 +83,7 @@ interface CountedProduct {
   locationId: number;
   locationName: string;
   hasSerialControl: boolean;
+  countStage: number; // Estágio de contagem em que o produto foi lido
 
   // Para produtos sem série (quantidade manual)
   manualQuantity?: number;
@@ -111,9 +112,10 @@ export default function MobileCounting() {
   const [quantityInput, setQuantityInput] = useState<number>(1);
   const [countedProducts, setCountedProducts] = useState<CountedProduct[]>([]);
 
-  // Chave para localStorage baseada no inventário e usuário
+  // Chave para localStorage baseada no inventário, usuário e estágio de contagem
   const getStorageKey = () => {
-    return `mobile-counting-${selectedInventoryId}-${currentUser?.id || 'anonymous'}`;
+    const stage = getCurrentCountStage();
+    return `mobile-counting-${selectedInventoryId}-${currentUser?.id || 'anonymous'}-stage${stage}`;
   };
 
   // Salvar dados no localStorage
@@ -129,7 +131,12 @@ export default function MobileCounting() {
       const stored = localStorage.getItem(getStorageKey());
       if (stored) {
         try {
-          return JSON.parse(stored);
+          const parsed = JSON.parse(stored);
+          // Migração: adicionar countStage para produtos existentes que não possuem
+          return parsed.map((product: any) => ({
+            ...product,
+            countStage: product.countStage || currentCountStage
+          }));
         } catch (error) {
           console.error('Erro ao carregar dados do localStorage:', error);
         }
@@ -166,6 +173,7 @@ export default function MobileCounting() {
   const [commandQuery, setCommandQuery] = useState("");
   const [countingProgress, setCountingProgress] = useState(0);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [currentCountStage, setCurrentCountStage] = useState<number>(1);
   const [pendingSerialData, setPendingSerialData] = useState<{
     serialNumber: string;
     productId: number;
@@ -242,13 +250,17 @@ export default function MobileCounting() {
   // Carregar dados persistidos na inicialização
   useEffect(() => {
     if (selectedInventoryId && currentUser?.id) {
+      // Inicializar o estágio atual
+      const stage = getCurrentCountStage();
+      setCurrentCountStage(stage);
+      
       // Primeiro, tentar carregar do localStorage
       const localData = loadFromLocalStorage();
       if (localData.length > 0) {
         setCountedProducts(localData);
       }
     }
-  }, [selectedInventoryId, currentUser?.id]);
+  }, [selectedInventoryId, currentUser?.id, inventories]);
 
   // Sincronizar com dados do servidor quando disponíveis
   useEffect(() => {
@@ -290,7 +302,8 @@ export default function MobileCounting() {
             locationName: location?.name || '',
             hasSerialControl: true,
             serialNumbers: group.serialNumbers,
-            totalSerialCount: group.serialNumbers.length
+            totalSerialCount: group.serialNumbers.length,
+            countStage: currentCountStage
           });
         }
       });
@@ -315,6 +328,17 @@ export default function MobileCounting() {
       });
     }
   }, [userSerialReadings, products, locations, currentUser?.id]);
+
+  // Detectar mudanças no estágio de contagem e limpar lista quando necessário
+  useEffect(() => {
+    const newStage = getCurrentCountStage();
+    if (currentCountStage !== newStage) {
+      // Limpar produtos contados quando muda o estágio
+      setCountedProducts([]);
+      clearLocalStorage();
+      setCurrentCountStage(newStage);
+    }
+  }, [selectedInventoryId, inventories, currentCountStage]);
 
   // Salvar no localStorage sempre que countedProducts mudar
   useEffect(() => {
@@ -513,6 +537,23 @@ export default function MobileCounting() {
         title: "Local de estoque obrigatório",
         description:
           "Selecione um local de estoque antes de adicionar produtos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar se o produto já foi registrado neste estágio de contagem
+    const currentStage = getCurrentCountStage();
+    const existingProduct = countedProducts.find(
+      (p) => p.productId === selectedProduct.id && 
+           p.locationId === selectedLocationId &&
+           p.manualQuantity !== undefined
+    );
+    
+    if (existingProduct) {
+      toast({
+        title: "Produto já registrado",
+        description: `${selectedProduct.name} já foi registrado no ${getStageLabel(currentStage)} com quantidade ${existingProduct.manualQuantity}. Não é possível sobrescrever a quantidade.`,
         variant: "destructive",
       });
       return;
@@ -752,6 +793,7 @@ export default function MobileCounting() {
             locationName: "",
             hasSerialControl: false,
             manualQuantity: quantity,
+            countStage: currentCountStage,
           },
         ];
       }
@@ -1461,9 +1503,17 @@ export default function MobileCounting() {
                         <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-tight">
                           {product.productName}
                         </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          SKU: {product.productSku}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            SKU: {product.productSku}
+                          </p>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-xs px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                          >
+                            {getStageLabel(product.countStage)}
+                          </Badge>
+                        </div>
                       </div>
                       
                       {/* Ações do Card - Botões maiores para touch */}
