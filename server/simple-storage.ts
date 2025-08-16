@@ -2511,6 +2511,28 @@ import type {
                 RETURN;
             END;
 
+            -- VERIFICAR SE EXISTE REGISTRO NA INVENTORY_ITEMS
+            DECLARE @InventoryItemId INT;
+            SELECT @InventoryItemId = id 
+            FROM inventory_items 
+            WHERE inventoryId = @InventoryId 
+            AND productId = @ProductId 
+            AND (locationId = @LocationId OR (locationId IS NULL AND @LocationId IS NULL));
+
+            IF @InventoryItemId IS NULL
+            BEGIN
+                -- Criar novo registro na inventory_items
+                INSERT INTO inventory_items (
+                    inventoryId, productId, locationId, expectedQuantity, 
+                    status, createdAt, updatedAt
+                )
+                VALUES (
+                    @InventoryId, @ProductId, @LocationId, 0,
+                    ''PENDING'', GETDATE(), GETDATE()
+                );
+                SET @InventoryItemId = SCOPE_IDENTITY();
+            END;
+
             -- INCREMENTAR CONTAGEM NA TABELA INVENTORY_ITEMS
             DECLARE @SQL NVARCHAR(MAX);
             SET @SQL = N''UPDATE inventory_items 
@@ -2518,11 +2540,9 @@ import type {
                     '' + @CountStage + ''By = NULL,
                     '' + @CountStage + ''At = GETDATE(),
                     updatedAt = GETDATE()
-                WHERE inventoryId = @InventoryId 
-                AND productId = @ProductId 
-                AND (locationId = @LocationId OR (locationId IS NULL AND @LocationId IS NULL))'';
+                WHERE id = @InventoryItemId'';
 
-            EXEC sp_executesql @SQL, N''@InventoryId INT, @ProductId INT, @LocationId INT'', @InventoryId, @ProductId, @LocationId;
+            EXEC sp_executesql @SQL, N''@InventoryItemId INT'', @InventoryItemId;
         END
         ')
       `;

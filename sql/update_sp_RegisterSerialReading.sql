@@ -1,5 +1,5 @@
--- Update stored procedure sp_RegisterSerialReading to include inventory_items count increment
--- This addresses the issue where serial readings weren't updating the main inventory count
+-- Update stored procedure sp_RegisterSerialReading to handle location discrepancies
+-- When a serial is found in a different location, create a new record instead of updating existing one
 
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_RegisterSerialReading')
 BEGIN
@@ -13,25 +13,31 @@ CREATE PROCEDURE sp_RegisterSerialReading
     @InventoryId INT,
     @SerialNumber NVARCHAR(255),
     @CountStage NVARCHAR(10),
-    @UserId INT
+    @UserId INT,
+    @ScannedLocationId INT = NULL -- Nova localização onde o serial foi encontrado
 AS
 BEGIN
     SET NOCOUNT ON;
     DECLARE @ProductId INT;
+    DECLARE @OriginalLocationId INT;
     DECLARE @LocationId INT;
     DECLARE @RowsUpdated INT;
+    DECLARE @ExistingRecordId INT;
     
     -- Verificar se série existe no inventário
-    SELECT @ProductId = productId, @LocationId = locationId
+    SELECT @ExistingRecordId = id, @ProductId = productId, @OriginalLocationId = locationId
     FROM inventory_serial_items 
     WHERE inventoryId = @InventoryId 
     AND serialNumber = @SerialNumber;
+    
+    -- Determinar a localização a ser usada
+    SET @LocationId = ISNULL(@ScannedLocationId, @OriginalLocationId);
     
     IF @ProductId IS NULL
     BEGIN
         -- Série não encontrada no inventário esperado
         -- Verificar se existe em stock_items
-        SELECT @ProductId = si.productId, @LocationId = si.locationId
+        SELECT @ProductId = si.productId, @LocationId = ISNULL(@ScannedLocationId, si.locationId)
         FROM stock_items si
         JOIN products p ON si.productId = p.id
         WHERE si.serialNumber = @SerialNumber
@@ -50,8 +56,9 @@ BEGIN
                 0, 'EXTRA', GETDATE(), GETDATE()
             FROM stock_items si
             WHERE si.serialNumber = @SerialNumber
-            AND si.productId = @ProductId
-            AND si.locationId = @LocationId;
+            AND si.productId = @ProductId;
+            
+            SET @ExistingRecordId = SCOPE_IDENTITY();
         END
         ELSE
         BEGIN
@@ -59,6 +66,29 @@ BEGIN
             RAISERROR('Número de série não encontrado no sistema', 16, 1);
             RETURN;
         END;
+    END
+    ELSE
+    BEGIN
+        -- Série existe no inventário
+        -- Verificar se há divergência de localização
+        IF @ScannedLocationId IS NOT NULL AND @ScannedLocationId != @OriginalLocationId
+        BEGIN
+            -- Localização diferente - criar novo registro para a nova localização
+            INSERT INTO inventory_serial_items (
+                inventoryId, stockItemId, serialNumber, productId, locationId, 
+                expectedStatus, status, createdAt, updatedAt
+            )
+            SELECT 
+                @InventoryId, si.id, @SerialNumber, @ProductId, @ScannedLocationId,
+                0, 'EXTRA', GETDATE(), GETDATE()
+            FROM stock_items si
+            WHERE si.serialNumber = @SerialNumber
+            AND si.productId = @ProductId;
+            
+            SET @ExistingRecordId = SCOPE_IDENTITY();
+            SET @LocationId = @ScannedLocationId;
+        END
+        -- Se não há divergência, usar o registro existente
     END;
     
     -- Atualizar inventory_serial_items com informações da contagem
@@ -78,8 +108,7 @@ BEGIN
         count4_at = CASE WHEN @CountStage = 'count4' THEN GETDATE() ELSE count4_at END,
         status = 'FOUND',
         updatedAt = GETDATE()
-    WHERE inventoryId = @InventoryId 
-    AND serialNumber = @SerialNumber;
+    WHERE id = @ExistingRecordId;
 
     SET @RowsUpdated = @@ROWCOUNT;
     
@@ -149,4 +178,4 @@ END;
 
 GO
 
-PRINT 'Procedure sp_RegisterSerialReading atualizada com incremento de contagem em inventory_items';
+PRINT 'Procedure sp_RegisterSerialReading atualizada para lidar com divergências de localização';
