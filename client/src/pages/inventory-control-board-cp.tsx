@@ -46,9 +46,10 @@ interface CountIndicatorProps {
   countBy?: string;
   countAt?: number;
   stage: 'C1' | 'C2' | 'C3' | 'C4';
+  getUserName?: (userId: string | number) => string;
 }
 
-const CountIndicator = ({ found, countBy, countAt, stage }: CountIndicatorProps) => {
+const CountIndicator = ({ found, countBy, countAt, stage, getUserName }: CountIndicatorProps) => {
   const hasCount = found !== undefined;
 
   return (
@@ -62,9 +63,9 @@ const CountIndicator = ({ found, countBy, countAt, stage }: CountIndicatorProps)
       {hasCount ? (
         <div className="text-center">
           <div className="font-bold text-sm">{found ? 'Encontrado' : 'Não Encontrado'}</div>
-          {countBy && false && (
+          {countBy && (
             <div className="text-xs text-muted-foreground">
-              {countBy}
+              Por: {getUserName ? getUserName(countBy) : countBy}
             </div>
           )}
         </div>
@@ -135,6 +136,10 @@ export default function InventoryControlBoardCP() {
     queryKey: ["/api/locations"],
   });
 
+  const { data: users, refetch: refetchUsers } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+  });
+
   const getProductBySku = (productId: number) => {
     const product = products?.find(p => p.id === productId);
     return product ? `${product.sku} - ${product.name}` : `Product ${productId}`;
@@ -142,6 +147,12 @@ export default function InventoryControlBoardCP() {
 
   const getLocationName = (locationId: number) => {
     return locations?.find(l => l.id === locationId)?.name || `Location ${locationId}`;
+  };
+
+  const getUserName = (userId: string | number) => {
+    if (!userId) return '';
+    const user = users?.find(u => u.id.toString() === userId.toString());
+    return user ? user.username : `User ${userId}`;
   };
 
   const filteredItems = serialItems?.filter(item => {
@@ -376,6 +387,7 @@ export default function InventoryControlBoardCP() {
                               countBy={item.count1_by}
                               countAt={item.count1_at}
                               stage="C1"
+                              getUserName={getUserName}
                             />
                           </TableCell>
                           <TableCell>
@@ -384,6 +396,7 @@ export default function InventoryControlBoardCP() {
                               countBy={item.count2_by}
                               countAt={item.count2_at}
                               stage="C2"
+                              getUserName={getUserName}
                             />
                           </TableCell>
                           <TableCell>
@@ -392,6 +405,7 @@ export default function InventoryControlBoardCP() {
                               countBy={item.count3_by}
                               countAt={item.count3_at}
                               stage="C3"
+                              getUserName={getUserName}
                             />
                           </TableCell>
                           <TableCell>
@@ -400,6 +414,7 @@ export default function InventoryControlBoardCP() {
                               countBy={item.count4_by}
                               countAt={item.count4_at}
                               stage="C4"
+                              getUserName={getUserName}
                             />
                           </TableCell>
                           <TableCell>
