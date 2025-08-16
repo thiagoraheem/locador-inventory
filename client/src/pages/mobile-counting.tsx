@@ -647,7 +647,7 @@ export default function MobileCounting() {
   };
 
   // Função auxiliar para registrar a leitura de série
-  const registerSerialReading = async (serialNumber: string, productInfo: any) => {
+  const registerSerialReading = async (serialNumber: string, productInfo: any, scannedLocationId?: number) => {
     try {
       const response = await fetch(
         `/api/inventories/${selectedInventoryId}/serial-reading`,
@@ -658,7 +658,7 @@ export default function MobileCounting() {
           body: JSON.stringify({
             serialNumber: serialNumber,
             countStage: `count${getCurrentCountStage()}`,
-            scannedLocationId: productInfo.locationId, // Incluir o local onde a série foi encontrada
+            scannedLocationId: scannedLocationId || selectedLocationId, // Usar o local onde o usuário está fazendo a contagem
           }),
         },
       );
@@ -697,14 +697,14 @@ export default function MobileCounting() {
 
     setIsLoading(true);
     try {
-      // Registrar a leitura no local correto
+      // Registrar a leitura no local onde o usuário realmente encontrou o item
       await registerSerialReading(pendingSerialData.serialNumber, {
         productId: pendingSerialData.productId,
         productName: pendingSerialData.productName,
         productSku: pendingSerialData.productSku,
         locationId: pendingSerialData.actualLocationId,
         locationName: pendingSerialData.actualLocationName,
-      });
+      }, selectedLocationId); // Passar o local onde o usuário encontrou o item
 
       // Limpar dados pendentes
       setShowLocationDialog(false);
