@@ -77,18 +77,7 @@ export default function InventoryCounts() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Auto-focus on first input when table loads or items change
-  useEffect(() => {
-    if (filteredItems.length > 0 && selectedInventoryId && canPerformCounting(selectedInv?.status || "")) {
-      const timer = setTimeout(() => {
-        if (firstInputRef.current) {
-          firstInputRef.current.focus();
-        }
-      }, 200);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [filteredItems.length, selectedInventoryId, selectedInv?.status]);
+
 
   // Fetch all inventories
   const { data: inventories } = useQuery<Inventory[]>({
@@ -240,6 +229,19 @@ export default function InventoryCounts() {
       return searchMatch;
     });
   }, [currentItems, products, locations, debouncedSearchTerm, statusFilter, currentStage]);
+
+  // Auto-focus on first input when table loads or items change
+  useEffect(() => {
+    if (filteredItems.length > 0 && selectedInventoryId && canPerformCounting(selectedInv?.status || "")) {
+      const timer = setTimeout(() => {
+        if (firstInputRef.current) {
+          firstInputRef.current.focus();
+        }
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [filteredItems.length, selectedInventoryId, selectedInv?.status]);
 
   // Get final quantity status
   const getFinalQuantityStatus = (item: InventoryItem) => {
