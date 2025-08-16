@@ -789,9 +789,7 @@ export async function registerInventoryRoutes(app: Express) {
     }
   });
 
-  // Importar rotas de integração
-  const { addIntegrationRoutes } = await import("../routes-integration");
-  addIntegrationRoutes(app, getStorage, isAuthenticated);
+  // Rotas de integração removidas
 
   // ===== ROTAS PARA CONTROLE DE PATRIMÔNIO POR NÚMERO DE SÉRIE =====
 
