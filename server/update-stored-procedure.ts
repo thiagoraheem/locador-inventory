@@ -26,24 +26,24 @@ const config = {
     let pool: sql.ConnectionPool | null = null;
   
   try {
-    console.log('Conectando ao SQL Server...');
+    // Conectando ao SQL Server
     pool = await sql.connect(config);
-    console.log('Conectado com sucesso!');
+    // Conectado com sucesso
 
     // Read the SQL file
     const sqlFilePath = path.join(__dirname, '..', 'sql', 'update_sp_RegisterSerialReading.sql');
     const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
 
-    console.log('Executando atualização da stored procedure...');
+    // Executando atualização da stored procedure
     
     // Execute the SQL to update the stored procedure
     await pool.request().query(sqlContent);
     
-    console.log('✓ Stored procedure sp_RegisterSerialReading atualizada com sucesso!');
-    console.log('✓ Agora a procedure irá incrementar as contagens na tabela inventory_items');
+    // Stored procedure sp_RegisterSerialReading atualizada com sucesso
+    // Agora a procedure irá incrementar as contagens na tabela inventory_items
     
   } catch (error) {
-    console.error('Erro ao atualizar stored procedure:', error);
+    // Erro ao atualizar stored procedure
     process.exit(1);
   } finally {
       if (pool) {
@@ -65,11 +65,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   updateStoredProcedure()
     .then(() => {
-      console.log('Atualização concluída com sucesso!');
+      // Atualização concluída com sucesso
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Falha na atualização:', error);
+      // Falha na atualização
       process.exit(1);
     });
 }

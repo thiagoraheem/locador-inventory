@@ -18,7 +18,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const result = await testRunner.testSerialControlFlow();
       res.json(result);
     } catch (error) {
-      console.error("Error running serial control test:", error);
+      // Error running serial control test
       res.status(500).json({ message: "Failed to run serial control test" });
     }
   });
@@ -33,7 +33,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const result = await testRunner.testManualQuantityFlow();
       res.json(result);
     } catch (error) {
-      console.error("Error running manual quantity test:", error);
+      // Error running manual quantity test
       res.status(500).json({ message: "Failed to run manual quantity test" });
     }
   });
@@ -48,7 +48,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const result = await testRunner.testDiscrepancyHandling();
       res.json(result);
     } catch (error) {
-      console.error("Error running discrepancy test:", error);
+      // Error running discrepancy test
       res.status(500).json({ message: "Failed to run discrepancy test" });
     }
   });
@@ -63,7 +63,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const result = await testRunner.testLargeVolumePerformance();
       res.json(result);
     } catch (error) {
-      console.error("Error running performance test:", error);
+      // Error running performance test
       res.status(500).json({ message: "Failed to run performance test" });
     }
   });
@@ -81,7 +81,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       
       res.json(product);
     } catch (error) {
-      console.error("Error searching product by SKU:", error);
+      // Error searching product by SKU
       res.status(500).json({ message: "Failed to search product" });
     }
   });
@@ -173,7 +173,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
             added: true
           });
         } catch (error) {
-          console.error("Error creating inventory item:", error);
+          // Error creating inventory item
           return res.status(500).json({ 
             message: "Falha ao adicionar produto ao inventário" 
           });
@@ -225,13 +225,13 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
           updated: true
         });
       } catch (error) {
-        console.error("Error updating inventory count:", error);
+        // Error updating inventory count
         res.status(500).json({ 
           message: "Falha ao atualizar contagem no inventário" 
         });
       }
     } catch (error) {
-      console.error("Error registering manual count:", error);
+      // Error registering manual count
       res.status(500).json({ message: "Failed to register manual count" });
     }
   });
@@ -255,7 +255,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching patrimonio stats:", error);
+      // Error fetching patrimonio stats
       res.status(500).json({ message: "Failed to fetch patrimonio stats" });
     }
   });
@@ -290,7 +290,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       
       res.json(report);
     } catch (error) {
-      console.error("Error generating audit report:", error);
+      // Error generating audit report
       res.status(500).json({ message: "Failed to generate audit report" });
     }
   });
@@ -324,7 +324,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         });
       }
     } catch (error) {
-      console.error("Error exporting inventory data:", error);
+      // Error exporting inventory data
       res.status(500).json({ message: "Failed to export inventory data" });
     }
   });
@@ -355,7 +355,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         });
       }
     } catch (error) {
-      console.error("Error updating ERP stock:", error);
+      // Error updating ERP stock
       res.status(500).json({ 
         success: false, 
         message: "Erro interno ao atualizar estoque" 
@@ -402,7 +402,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         });
       }
     } catch (error) {
-      console.error("Error updating ERP stock list:", error);
+      // Error updating ERP stock list
       res.status(500).json({ 
         success: false, 
         message: "Erro interno ao atualizar lista de estoque" 
@@ -423,7 +423,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
       const status = await erpService.validateInventoryForMigration(inventoryId, userId);
       res.json(status);
     } catch (error) {
-      console.error("Error checking ERP status:", error);
+      // Error checking ERP status
       res.status(500).json({ 
         inventoryId: parseInt(req.params.id),
         canMigrate: false,
@@ -451,7 +451,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         res.status(400).json(result);
       }
     } catch (error) {
-      console.error("Error migrating inventory to ERP:", error);
+      // Error migrating inventory to ERP
       res.status(500).json({ 
         success: false, 
         message: "Erro interno durante migração para ERP",
@@ -475,7 +475,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         timestamp: Date.now()
       });
     } catch (error) {
-      console.error("Error validating ERP connection:", error);
+      // Error validating ERP connection
       res.status(500).json({
         connected: false,
         message: "Erro ao validar conexão ERP",
@@ -497,7 +497,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         message: "Schema ERP verificado e corrigido com sucesso"
       });
     } catch (error) {
-      console.error("Error fixing ERP schema:", error);
+      // Error fixing ERP schema
       res.status(500).json({
         success: false,
         message: "Erro ao corrigir schema ERP",
@@ -531,7 +531,7 @@ export function addIntegrationRoutes(app: express.Application, getStorage: () =>
         });
       }
     } catch (error) {
-      console.error("Error freezing/unfreezing ERP stock:", error);
+      // Error freezing/unfreezing ERP stock
       res.status(500).json({ 
         success: false, 
         message: "Erro interno ao congelar/descongelar estoque" 

@@ -28,9 +28,9 @@ export async function analyzeDatabaseStructure() {
       ORDER BY TABLE_TYPE, TABLE_NAME
     `);
 
-    console.log('\n=== TABELAS E VIEWS DISPONÍVEIS ===');
+    // Tabelas e views disponíveis
     for (const table of tablesResult.recordset) {
-      console.log(`${table.tableType}: ${table.tableName}`);
+      // ${table.tableType}: ${table.tableName}
     }
 
     // Analyze specific views/tables
@@ -50,25 +50,25 @@ export async function analyzeDatabaseStructure() {
         `);
 
         if (columnsResult.recordset.length > 0) {
-          console.log(`\n=== ESTRUTURA DA ${tableName.toUpperCase()} ===`);
+          // Estrutura da tabela
           for (const column of columnsResult.recordset) {
-            console.log(`  ${column.columnName}: ${column.dataType}${column.maxLength ? `(${column.maxLength})` : ''} ${column.isNullable === 'YES' ? 'NULL' : 'NOT NULL'}`);
+            // ${column.columnName}: ${column.dataType}
           }
 
           // Get sample data
           const sampleResult = await pool.request().query(`SELECT TOP 3 * FROM ${tableName}`);
           if (sampleResult.recordset.length > 0) {
-            console.log(`\n=== DADOS DE EXEMPLO (${tableName.toUpperCase()}) ===`);
-            console.log(JSON.stringify(sampleResult.recordset[0], null, 2));
+            // Dados de exemplo
+            // JSON.stringify(sampleResult.recordset[0], null, 2)
           }
         }
       } catch (error) {
-        console.log(`${tableName}: Não encontrada ou sem acesso`);
+        // Tabela não encontrada ou sem acesso
       }
     }
 
   } catch (error) {
-    console.error('Erro na análise:', error);
+    // Erro na análise
   }
 }
 

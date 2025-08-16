@@ -3,10 +3,10 @@ import { getSqlServerPool } from './db';
 
 export async function setupSqlServerDatabase() {
   try {
-    console.log('🔗 Connecting to SQL Server...');
+    // Connecting to SQL Server
     const pool = await getSqlServerPool();
     
-    console.log('✅ Connected to SQL Server');
+    // Connected to SQL Server
     
     // Create tables script
     const createTablesScript = `
@@ -213,14 +213,14 @@ FOREIGN KEY (count4By) REFERENCES users(id)
       );
     `;
 
-    console.log('📝 Creating database tables...');
+    // Creating database tables
     const request = pool.request();
     await request.query(createTablesScript);
     
-    console.log('✅ Database tables created successfully');
+    // Database tables created successfully
 
     // Insert default data
-    console.log('📊 Inserting default data...');
+    // Inserting default data
     
     // Check if admin user exists
     const adminCheck = await pool.request().query("SELECT COUNT(*) as count FROM users WHERE username = 'admin'");
@@ -232,7 +232,7 @@ FOREIGN KEY (count4By) REFERENCES users(id)
         INSERT INTO users (email, username, password, firstName, lastName, role, isActive, createdAt, updatedAt)
 VALUES ('admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'admin', 1, GETDATE(), GETDATE())
       `);
-      console.log('👤 Admin user created (username: admin, password: password)');
+      // Admin user created (username: admin, password: password)
     }
 
     // Insert default inventory types
@@ -243,7 +243,7 @@ VALUES ('admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'adm
         ('Contagem Geral', 'Contagem completa do estoque', 1),
         ('Contagem Cíclica', 'Contagem por categoria ou localização', 1)
       `);
-      console.log('📋 Default inventory types created');
+      // Default inventory types created
     }
 
     // Insert default category
@@ -253,7 +253,7 @@ VALUES ('admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'adm
         INSERT INTO categories (name, description, isActive, createdAt, updatedAt) 
         VALUES ('Geral', 'Categoria geral', 1, GETDATE(), GETDATE())
       `);
-      console.log('📂 Default category created');
+      // Default category created
     }
 
     // Insert default location
@@ -263,14 +263,14 @@ VALUES ('admin@example.com', 'admin', '${hashedPassword}', 'Admin', 'User', 'adm
         INSERT INTO locations (code, name, description, isActive, createdAt, updatedAt) 
         VALUES ('EST001', 'Estoque Principal', 'Localização principal do estoque', 1, GETDATE(), GETDATE())
       `);
-      console.log('📍 Default location created');
+      // Default location created
     }
 
-    console.log('🎉 SQL Server database setup completed successfully!');
+    // SQL Server database setup completed successfully
     return true;
     
   } catch (error) {
-    console.error('❌ Error setting up SQL Server database:', error);
+    // Error setting up SQL Server database
     throw error;
   }
 }
@@ -280,15 +280,15 @@ export async function testSqlServerConnection() {
   try {
     const pool = await getSqlServerPool();
     const result = await pool.request().query('SELECT @@VERSION as version');
-    console.log('📋 SQL Server version:', result.recordset[0].version);
+    // SQL Server version logged
     
     // Test user count
     const userCount = await pool.request().query('SELECT COUNT(*) as count FROM users');
-    console.log('👥 Users in database:', userCount.recordset[0].count);
+    // Users in database logged
     
     return true;
   } catch (error) {
-    console.error('❌ SQL Server connection test failed:', error);
+    // SQL Server connection test failed
     return false;
   }
 }

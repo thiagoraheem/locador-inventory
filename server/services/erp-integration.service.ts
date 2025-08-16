@@ -87,7 +87,7 @@ export class ERPIntegrationService {
       };
 
     } catch (error) {
-      console.error('Erro ao validar inventário para migração:', error);
+      // Erro ao validar inventário para migração
       return {
         inventoryId,
         canMigrate: false,
@@ -155,7 +155,7 @@ export class ERPIntegrationService {
       return migrationResult;
 
     } catch (error) {
-      console.error('Erro ao migrar inventário para ERP:', error);
+      // Erro ao migrar inventário para ERP
       return {
         success: false,
         message: "Erro interno durante migração",
@@ -167,7 +167,7 @@ export class ERPIntegrationService {
   // Enviar dados para ERP real
   private async sendToERP(items: ERPStockUpdateRequest[]): Promise<ERPMigrationResponse> {
     try {
-      console.log('Enviando para ERP:', items);
+      // Enviando para ERP
       
       // Fazer chamada real para o endpoint do ERP usando a própria API interna
       const response = await this.callERPBatchUpdate(items);
@@ -186,7 +186,7 @@ export class ERPIntegrationService {
         };
       }
     } catch (error) {
-      console.error('Erro na integração ERP:', error);
+      // Erro na integração ERP
       return {
         success: false,
         message: `Erro na integração ERP: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
@@ -213,7 +213,7 @@ export class ERPIntegrationService {
         };
       }
     } catch (error) {
-      console.error('Erro na chamada do ERP:', error);
+      // Erro na chamada do ERP
       return {
         success: false,
         message: `Erro na chamada ERP: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
@@ -230,7 +230,7 @@ export class ERPIntegrationService {
   // Atualizar item individual no estoque (endpoint /api/Estoque/atualizar)
   async updateStock(request: ERPStockUpdateRequest): Promise<boolean> {
     try {
-      console.log('🔄 Atualizando estoque individual no ERP:', request);
+      // Atualizando estoque individual no ERP
       
       // Usar configuração centralizada da API externa
       const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
@@ -246,20 +246,20 @@ export class ERPIntegrationService {
       });
       
       if (!response.ok) {
-        console.error(`❌ ERP API Error: ${response.status} ${response.statusText}`);
+        // ERP API Error
         const errorText = await response.text();
-        console.error('❌ ERP Error details:', errorText);
+        // ERP Error details
         return false;
       }
       
       const result = await response.json();
-      console.log('✅ ERP Response:', result);
+      // ERP Response
       return result.success === true;
       
     } catch (error) {
-      console.error('❌ Erro ao conectar com ERP externo:', error);
+      // Erro ao conectar com ERP externo
       // Em caso de erro de conexão, ainda simular para não quebrar o fluxo
-      console.log('⚠️  FALLBACK: Erro de conexão, simulando sucesso');
+      // FALLBACK: Erro de conexão, simulando sucesso
       return true;
     }
   }
@@ -267,17 +267,17 @@ export class ERPIntegrationService {
   // Atualizar lista de itens no estoque (endpoint /api/Estoque/atualizar-lista) 
   async updateStockList(requests: ERPStockUpdateRequest[]): Promise<boolean> {
     try {
-      console.log('🔄 Atualizando lista de estoque no ERP:', requests.length, 'itens');
+      // Atualizando lista de estoque no ERP
       
       // Usar configuração centralizada da API externa
       const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
       const erpToken = process.env.ERP_API_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IkFkbWluaXN0cmFkb3IgZG8gU2lzdGVtYSIsImVtYWlsIjoidGhpYWdvLnJhaGVlbUBnbWFpbC5jb20iLCJsb2dpbiI6ImFkbWluIiwianRpIjoiMDIzZWVjZDMtZDAzMS00NDdlLWFiNjctMjg3NjYzNDUzODMwIiwiZXhwIjoxNzQzODE2MDc5LCJpc3MiOiJMb2NhZG9yQXBpIiwiYXVkIjoiTG9jYWRvckNsaWVudHMifQ.58pXY7wz_7HJrot0rhM8gS1PcSTXnItYEm9Hl_gym84';
       
       // Log dos itens que serão enviados
-      console.log('📋 Itens para envio ao ERP:');
-      requests.forEach((item, index) => {
-        console.log(`   ${index + 1}. ${item.codProduto} -> Qtd: ${item.quantidade}, Local: ${item.localEstoque}`);
-      });
+      // Itens para envio ao ERP
+    requests.forEach((item, index) => {
+      // Item para envio ao ERP
+    });
       
       const response = await fetch(`${erpUrl}/api/Estoque/atualizar-lista`, {
         method: 'PATCH',
@@ -289,22 +289,22 @@ export class ERPIntegrationService {
       });
       
       if (!response.ok) {
-        console.error(`❌ ERP API Error: ${response.status} ${response.statusText}`);
+        // ERP API Error
         const errorText = await response.text();
-        console.error('❌ ERP Error details:', errorText);
+        // ERP Error details
         return false;
       }
       
       const result = await response.json();
-      console.log('✅ ERP Batch Response:', result);
-      console.log('🕒 Timestamp da operação:', new Date().toISOString());
+      // ERP Batch Response
+        // Timestamp da operação
       
       return result.success === true;
       
     } catch (error) {
-      console.error('❌ Erro ao conectar com ERP externo:', error);
+      // Erro ao conectar com ERP externo
       // Em caso de erro de conexão, ainda simular para não quebrar o fluxo
-      console.log('⚠️  FALLBACK: Erro de conexão, simulando sucesso');
+      // FALLBACK: Erro de conexão, simulando sucesso
       return true;
     }
   }
@@ -312,7 +312,7 @@ export class ERPIntegrationService {
   // Congelar/descongelar estoque no ERP (endpoint /api/Estoque/congelar)
   async freezeStock(freeze: boolean): Promise<boolean> {
     try {
-      console.log(`🔒 ${freeze ? 'Congelando' : 'Descongelando'} estoque no ERP`);
+      // Congelando/Descongelando estoque no ERP
       
       // Usar configuração centralizada da API externa
       const erpUrl = process.env.VITE_API_BASE_URL || 'http://54.232.194.197:5001';
@@ -327,18 +327,18 @@ export class ERPIntegrationService {
       });
       
       if (!response.ok) {
-        console.error(`❌ ERP Freeze API Error: ${response.status} ${response.statusText}`);
+        // ERP Freeze API Error
         const errorText = await response.text();
-        console.error('❌ ERP Freeze Error details:', errorText);
+        // ERP Freeze Error details
         return false;
       }
       
       const result = await response.json();
-      console.log(`✅ ERP Freeze Response:`, result);
+      // ERP Freeze Response
       return result.success === true;
       
     } catch (error) {
-      console.error('❌ Erro ao congelar/descongelar estoque no ERP:', error);
+      // Erro ao congelar/descongelar estoque no ERP
       // Em caso de erro de conexão, retornar false para indicar falha
       return false;
     }
@@ -350,7 +350,7 @@ export class ERPIntegrationService {
       // Implementar teste de conectividade com ERP
       return true;
     } catch (error) {
-      console.error('Erro ao validar conexão ERP:', error);
+      // Erro ao validar conexão ERP
       return false;
     }
   }
@@ -361,18 +361,18 @@ export class ERPIntegrationService {
     try {
       await this.ensureERPColumns();
     } catch (error) {
-      console.warn('Aviso: Erro ao verificar colunas ERP:', error);
+      // Aviso: Erro ao verificar colunas ERP
     }
 
     // Marcar como migrado
-    console.log(`Marcando inventário ${inventoryId} como migrado por usuário ${userId}`);
+    // Marcando inventário como migrado
     await this.storage.markInventoryAsMigrated(inventoryId, userId);
   }
 
   // Garantir que colunas ERP existem
   private async ensureERPColumns(): Promise<void> {
     // Esta função garante que as colunas ERP foram adicionadas à tabela inventories
-    console.log('Verificando colunas ERP na tabela inventories...');
+    // Verificando colunas ERP na tabela inventories
     await this.storage.ensureERPColumns();
   }
 }

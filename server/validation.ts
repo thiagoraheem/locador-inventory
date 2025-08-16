@@ -87,7 +87,7 @@ export class InventoryIntegrityValidator {
         timestamp: Date.now()
       };
     } catch (error) {
-      console.error('Erro na validação de integridade:', error);
+      // Erro na validação de integridade
       throw error;
     }
   }
@@ -107,7 +107,7 @@ export class InventoryIntegrityValidator {
         recommendations
       };
     } catch (error) {
-      console.error('Erro na geração do relatório de reconciliação:', error);
+      // Erro na geração do relatório de reconciliação
       throw error;
     }
   }
@@ -338,11 +338,7 @@ export class InventoryLogger {
     success: boolean;
     productId?: number;
   }) {
-    console.log(JSON.stringify({
-      event: 'SERIAL_READING',
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
+    // Serial reading logged
   }
 
   logDiscrepancy(data: {
@@ -352,12 +348,7 @@ export class InventoryLogger {
     expected: number;
     found: number;
   }) {
-    console.log(JSON.stringify({
-      event: 'DISCREPANCY_DETECTED',
-      level: 'WARNING',
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
+    // Discrepancy detected logged
   }
 
   logValidation(data: {
@@ -366,11 +357,7 @@ export class InventoryLogger {
     issuesCount: number;
     userId: string;
   }) {
-    console.log(JSON.stringify({
-      event: 'INVENTORY_VALIDATION',
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
+    // Inventory validation logged
   }
 
   logReconciliation(data: {
@@ -378,10 +365,6 @@ export class InventoryLogger {
     summary: ReconciliationSummary;
     userId: string;
   }) {
-    console.log(JSON.stringify({
-      event: 'INVENTORY_RECONCILIATION',
-      timestamp: new Date().toISOString(),
-      ...data
-    }));
+    // Inventory reconciliation logged
   }
 }

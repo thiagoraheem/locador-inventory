@@ -77,7 +77,7 @@ export default function Stock() {
     stockItems.forEach((item) => {
       // Verificações de segurança para evitar erros
       if (!item.product || !item.location) {
-        console.warn('Item de estoque com dados incompletos:', item);
+        // Item de estoque com dados incompletos
         return;
       }
       

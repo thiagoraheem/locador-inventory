@@ -36,7 +36,7 @@ export const getSqlServerPool = async () => {
   if (!sqlServerPool) {
     sqlServerPool = new sql.ConnectionPool(sqlServerConfig);
     await sqlServerPool.connect();
-    console.log('Connected to SQL Server database');
+    // Connected to SQL Server database
   }
   return sqlServerPool;
 };

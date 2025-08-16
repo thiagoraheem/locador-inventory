@@ -72,11 +72,7 @@ export default function ProductSearchCombobox({
       );
 
       if (!response.ok) {
-        console.error(
-          "❌ Erro na busca:",
-          response.status,
-          response.statusText,
-        );
+        // Erro na busca
         if (response.status === 404) {
           return []; // Return empty array instead of throwing for 404
         }

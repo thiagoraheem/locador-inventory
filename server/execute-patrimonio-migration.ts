@@ -28,10 +28,10 @@ async function executeMigration() {
   let pool: sql.ConnectionPool | null = null;
   
   try {
-    console.log('Conectando ao banco SQL Server...');
+    // Conectando ao banco SQL Server
     pool = new sql.ConnectionPool(sqlServerConfig);
     await pool.connect();
-    console.log('Conectado com sucesso!');
+    // Conectado com sucesso
 
     // Ler o arquivo SQL
     const sqlFilePath = path.join(__dirname, 'patrimonio-schema-migration.sql');
@@ -43,25 +43,25 @@ async function executeMigration() {
       .map(batch => batch.trim())
       .filter(batch => batch.length > 0);
 
-    console.log(`Executando ${cleanBatches.length} batches...`);
+    // Executando batches
 
     for (let i = 0; i < cleanBatches.length; i++) {
       const batch = cleanBatches[i];
       try {
-        console.log(`Executando batch ${i + 1}/${cleanBatches.length}...`);
+        // Executando batch
         
         const request = pool.request();
         await request.query(batch);
         
-        console.log(`✓ Batch ${i + 1} executado com sucesso`);
+        // Batch executado com sucesso
       } catch (batchError: any) {
-        console.error(`✗ Erro no batch ${i + 1}:`, batchError.message);
+        // Erro no batch
         
         // Ignorar erros de objetos que já existem
         if (batchError.message.includes('already exists') || 
             batchError.message.includes('já existe') ||
             batchError.message.includes('There is already an object')) {
-          console.log(`⚠ Ignorando erro - objeto já existe`);
+          // Ignorando erro - objeto já existe
           continue;
         } else {
           throw batchError;
@@ -69,7 +69,7 @@ async function executeMigration() {
       }
     }
 
-    console.log('\n=== VALIDAÇÃO PÓS-MIGRAÇÃO ===');
+    // Validação pós-migração
     
     // Validar se as tabelas foram criadas
     const tablesCheck = await pool.request().query(`
@@ -78,7 +78,7 @@ async function executeMigration() {
       WHERE TABLE_NAME IN ('inventory_serial_items')
     `);
     
-    console.log('Tabelas criadas:', tablesCheck.recordset.map(r => r.TABLE_NAME));
+    // Tabelas criadas verificadas
     
     // Validar se as colunas foram adicionadas
     const columnsCheck = await pool.request().query(`
@@ -88,7 +88,7 @@ async function executeMigration() {
       OR (TABLE_NAME = 'inventory_items' AND COLUMN_NAME IN ('serialItemsCount', 'serialItemsFound', 'serialItemsMissing', 'hasSerialDiscrepancy'))
     `);
     
-    console.log('Colunas adicionadas:', columnsCheck.recordset);
+    // Colunas adicionadas verificadas
     
     // Validar índices
     const indexCheck = await pool.request().query(`
@@ -98,7 +98,7 @@ async function executeMigration() {
       OR name = 'IX_products_serial_control'
     `);
     
-    console.log('Índices criados:', indexCheck.recordset.map(r => r.name));
+    // Índices criados verificados
     
     // Validar procedures
     const proceduresCheck = await pool.request().query(`
@@ -107,7 +107,7 @@ async function executeMigration() {
       WHERE name LIKE 'sp_%Serial%'
     `);
     
-    console.log('Procedures criadas:', proceduresCheck.recordset.map(r => r.name));
+    // Procedures criadas verificadas
     
     // Verificar produtos com controle de série
     const serialControlCheck = await pool.request().query(`
@@ -116,18 +116,17 @@ async function executeMigration() {
       WHERE hasSerialControl = 1
     `);
     
-    console.log(`Produtos com controle de série: ${serialControlCheck.recordset[0].count}`);
+    // Produtos com controle de série verificados
 
-    console.log('\n✅ Migração concluída com sucesso!');
+    // Migração concluída com sucesso
     
   } catch (error: any) {
-    console.error('\n❌ Erro na migração:', error.message);
-    console.error('Stack trace:', error.stack);
+    // Erro na migração
     process.exit(1);
   } finally {
     if (pool) {
       await pool.close();
-      console.log('Conexão fechada.');
+      // Conexão fechada
     }
   }
 }

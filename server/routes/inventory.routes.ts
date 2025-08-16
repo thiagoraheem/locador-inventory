@@ -42,7 +42,7 @@ export async function registerInventoryRoutes(app: Express) {
 
       res.json(inventory);
     } catch (error) {
-      console.error("Error updating inventory:", error as Error);
+      // Error updating inventory
       res.status(500).json({ message: "Failed to update inventory" });
     }
   });
@@ -73,7 +73,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Inventory closed successfully" });
       } catch (error) {
-        console.error("Error closing inventory:", error as Error);
+        // Error closing inventory
         res.status(500).json({ message: "Failed to close inventory" });
       }
     },
@@ -87,7 +87,7 @@ export async function registerInventoryRoutes(app: Express) {
       const items = await storage.getInventoryItemsWithDetails(inventoryId);
       res.json(items);
     } catch (error) {
-      console.error("Error fetching inventory items:", error);
+      // Error fetching inventory items
       res.status(500).json({ message: "Failed to fetch inventory items" });
     }
   });
@@ -101,7 +101,7 @@ export async function registerInventoryRoutes(app: Express) {
         const counts = await storage.getCounts();
         res.json(counts);
       } catch (error) {
-        console.error("Error fetching counts:", error as Error);
+        // Error fetching counts
         res.status(500).json({ message: "Failed to fetch counts" });
       }
     },
@@ -129,7 +129,7 @@ export async function registerInventoryRoutes(app: Express) {
 
       res.status(201).json(count);
     } catch (error) {
-      console.error("Error creating count:", error as Error);
+      // Error creating count
       res.status(500).json({ message: "Failed to create count" });
     }
   });
@@ -165,7 +165,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.status(201).json(inventory);
       } catch (error) {
-        console.error("Error creating advanced inventory:", error as Error);
+        // Error creating advanced inventory
         res.status(500).json({
           message: "Failed to create advanced inventory",
           details: (error as Error).message,
@@ -209,7 +209,7 @@ export async function registerInventoryRoutes(app: Express) {
         );
         res.json({ message: "Inventory status updated successfully" });
       } catch (error) {
-        console.error("Error updating inventory status:", error as Error);
+        // Error updating inventory status
         res.status(500).json({
           message: "Failed to update inventory status",
           details: (error as Error).message,
@@ -230,7 +230,7 @@ export async function registerInventoryRoutes(app: Express) {
         const stats = await storage.getInventoryStats(inventoryId);
         res.json(stats);
       } catch (error) {
-        console.error("Error fetching inventory stats:", error as Error);
+        // Error fetching inventory stats
         res.status(500).json({
           message: "Failed to fetch inventory statistics",
           details: (error as Error).message,
@@ -260,7 +260,7 @@ export async function registerInventoryRoutes(app: Express) {
           res.json([]);
         }
       } catch (error) {
-        console.error("Error fetching inventory serial items:", error as Error);
+        // Error fetching inventory serial items
         res.status(500).json({
           message: "Failed to fetch inventory serial items",
           details: (error as Error).message,
@@ -293,7 +293,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Count 1 updated successfully" });
       } catch (error) {
-        console.error("Error updating count 1:", error as Error);
+        // Error updating count 1
         res.status(500).json({
           message: "Failed to update count 1",
           details: (error as Error).message,
@@ -325,7 +325,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Count 2 updated successfully" });
       } catch (error) {
-        console.error("Error updating count 2:", error as Error);
+        // Error updating count 2
         res.status(500).json({
           message: "Failed to update count 2",
           details: (error as Error).message,
@@ -357,7 +357,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Count 3 updated successfully" });
       } catch (error) {
-        console.error("Error updating count 3:", error as Error);
+        // Error updating count 3
         res.status(500).json({
           message: "Failed to update count 3",
           details: (error as Error).message,
@@ -404,7 +404,7 @@ export async function registerInventoryRoutes(app: Express) {
           finalQuantity: quantity,
         });
       } catch (error) {
-        console.error("Error updating count4:", error);
+        // Error updating count4
         res.status(500).json({ message: "Failed to update count4" });
       }
     },
@@ -479,7 +479,7 @@ export async function registerInventoryRoutes(app: Express) {
           confirmations,
         });
       } catch (error) {
-        console.error("Error confirming all items:", error);
+        // Error confirming all items
         res.status(500).json({ message: "Failed to confirm all items" });
       }
     },
@@ -496,7 +496,7 @@ export async function registerInventoryRoutes(app: Express) {
         const stockItems = await storage.getInventoryStockItems(inventoryId);
         res.json(stockItems);
       } catch (error) {
-        console.error("Error fetching inventory stock items:", error as Error);
+        // Error fetching inventory stock items
         res.status(500).json({
           message: "Failed to fetch inventory stock items",
           details: (error as Error).message,
@@ -538,7 +538,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Stock item count updated successfully" });
       } catch (error) {
-        console.error("Error updating stock item count:", error as Error);
+        // Error updating stock item count
         res.status(500).json({
           message: "Failed to update stock item count",
           details: (error as Error).message,
@@ -597,7 +597,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Counting started successfully", newStatus });
       } catch (error) {
-        console.error("Error starting counting:", error);
+        // Error starting counting
         res.status(500).json({ message: "Failed to start counting" });
       }
     },
@@ -655,7 +655,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Counting finished successfully", newStatus });
       } catch (error) {
-        console.error("Error finishing counting:", error);
+        // Error finishing counting
         res.status(500).json({ message: "Failed to finish counting" });
       }
     },
@@ -694,15 +694,12 @@ export async function registerInventoryRoutes(app: Express) {
             metadata: JSON.stringify({ reason }),
           });
         } catch (auditError) {
-          console.warn(
-            "Failed to create audit log for inventory cancellation:",
-            auditError,
-          );
+          // Failed to create audit log for inventory cancellation
         }
 
         res.json({ message: "Inventory cancelled successfully" });
       } catch (error) {
-        console.error("Error cancelling inventory:", error);
+        // Error cancelling inventory
         res.status(500).json({ message: "Failed to cancel inventory" });
       }
     },
@@ -740,15 +737,12 @@ export async function registerInventoryRoutes(app: Express) {
           metadata: JSON.stringify({ deletedAt: new Date().toISOString() }),
         });
       } catch (auditError) {
-        console.warn(
-          "Failed to create audit log for inventory deletion:",
-          auditError,
-        );
+        // Failed to create audit log for inventory deletion
       }
 
       res.json({ message: "Inventory deleted successfully" });
     } catch (error) {
-      console.error("Error deleting inventory:", error);
+      // Error deleting inventory
       res.status(500).json({ message: "Failed to delete inventory" });
     }
   });
@@ -779,7 +773,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json({ message: "Serial items initialized successfully" });
       } catch (error) {
-        console.error("Error initializing serial items:", error);
+        // Error initializing serial items
         res.status(500).json({ message: "Failed to initialize serial items" });
       }
     },
@@ -814,7 +808,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json(result);
       } catch (error) {
-        console.error("Error registering serial reading:", error);
+        // Error registering serial reading
         res.status(500).json({ message: "Failed to register serial reading" });
       }
     },
@@ -830,7 +824,7 @@ export async function registerInventoryRoutes(app: Express) {
         const result = await storage.updateStoredProcedure();
         res.json(result);
       } catch (error) {
-        console.error("Error updating stored procedure:", error);
+        // Error updating stored procedure
         res.status(500).json({
           success: false,
           message: "Failed to update stored procedure",
@@ -861,7 +855,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json(items);
       } catch (error) {
-        console.error("Error fetching inventory serial items:", error);
+        // Error fetching inventory serial items
         res.status(500).json({ message: "Failed to fetch serial items" });
       }
     },
@@ -878,7 +872,7 @@ export async function registerInventoryRoutes(app: Express) {
         await storage.removeDuplicateSerialItems(inventoryId);
         res.json({ message: "Duplicate serial items removed successfully" });
       } catch (error) {
-        console.error("Error removing duplicate serial items:", error);
+        // Error removing duplicate serial items
         res.status(500).json({ message: "Failed to remove duplicate serial items" });
       }
     },
@@ -909,7 +903,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json(updatedItem);
       } catch (error) {
-        console.error("Error updating serial item:", error);
+        // Error updating serial item
         res.status(500).json({ message: "Failed to update serial item" });
       }
     },
@@ -927,7 +921,7 @@ export async function registerInventoryRoutes(app: Express) {
         const history = await storage.getSerialHistory(serialNumber);
         res.json(history);
       } catch (error) {
-        console.error("Error fetching serial history:", error);
+        // Error fetching serial history
         res.status(500).json({ message: "Failed to fetch serial history" });
       }
     },
@@ -944,7 +938,7 @@ export async function registerInventoryRoutes(app: Express) {
         const exists = await storage.validateSerialExists(serialNumber);
         res.json({ exists, serialNumber });
       } catch (error) {
-        console.error("Error validating serial:", error);
+        // Error validating serial
         res.status(500).json({ message: "Failed to validate serial number" });
       }
     },
@@ -962,7 +956,7 @@ export async function registerInventoryRoutes(app: Express) {
           await storage.getDivergentInventoryItems(inventoryId);
         res.json(divergentItems);
       } catch (error) {
-        console.error("Error fetching divergent inventory items:", error);
+        // Error fetching divergent inventory items
         res
           .status(500)
           .json({ message: "Failed to fetch divergent inventory items" });
@@ -1010,7 +1004,7 @@ export async function registerInventoryRoutes(app: Express) {
             : `${itemsWithoutFinalQuantity.length} items still need final quantity validation`,
         });
       } catch (error) {
-        console.error("Error validating inventory closure:", error);
+        // Error validating inventory closure
         res
           .status(500)
           .json({ message: "Failed to validate inventory closure" });
@@ -1061,7 +1055,7 @@ export async function registerInventoryRoutes(app: Express) {
           message: "Test inventory created successfully",
         });
       } catch (error) {
-        console.error("Error creating test inventory:", error);
+        // Error creating test inventory
         res.status(500).json({ message: "Failed to create test inventory" });
       }
     },
@@ -1107,7 +1101,7 @@ export async function registerInventoryRoutes(app: Express) {
 
       res.json(result);
     } catch (error) {
-      console.error(`Error running scenario ${req.body.scenarioId}:`, error);
+      // Error running scenario
       res.status(500).json({
         scenarioId: req.body.scenarioId,
         passed: false,
@@ -1132,7 +1126,7 @@ export async function registerInventoryRoutes(app: Express) {
 
         res.json(results);
       } catch (error) {
-        console.error("Error validating permissions:", error);
+        // Error validating permissions
         res.status(500).json({ message: "Failed to validate permissions" });
       }
     },
@@ -1198,7 +1192,7 @@ export async function registerInventoryRoutes(app: Express) {
           scenarioId,
         });
       } catch (error) {
-        console.error("Error running test scenario:", error);
+        // Error running test scenario
         res.status(500).json({ message: "Failed to run test scenario" });
       }
     },
@@ -1212,7 +1206,7 @@ export async function registerInventoryRoutes(app: Express) {
         const results = await validatePermissions(storage, req.user);
         res.json({ results });
       } catch (error) {
-        console.error("Error validating permissions:", error);
+        // Error validating permissions
         res.status(500).json({ message: "Failed to validate permissions" });
       }
     },
@@ -1223,7 +1217,7 @@ export async function registerInventoryRoutes(app: Express) {
       const results = await validateStatusTransitions(storage);
       res.json({ results });
     } catch (error) {
-      console.error("Error validating status transitions:", error);
+      // Error validating status transitions
       res
         .status(500)
         .json({ message: "Failed to validate status transitions" });
@@ -1271,7 +1265,7 @@ export async function registerInventoryRoutes(app: Express) {
         duration: Date.now() - startTime,
       });
     } catch (error) {
-      console.error("Error running all tests:", error);
+      // Error running all tests
       res.status(500).json({ message: "Failed to run all tests" });
     }
   });

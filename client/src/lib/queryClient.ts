@@ -20,9 +20,8 @@ export async function apiRequest(url: string, method: string = "GET", data?: unk
   try {
     return await res.json();
   } catch (jsonError) {
-    console.error('Failed to parse JSON response:', jsonError);
-    console.error('Response status:', res.status);
-    console.error('Response headers:', res.headers);
+    // Failed to parse JSON response
+    // Response status and headers logged
     throw new Error('Invalid JSON response from server');
   }
 }

@@ -366,7 +366,7 @@ export default function MobileCounting() {
       setSelectedProduct(null);
       setQuantityInput(1);
     } catch (error) {
-      console.error("Erro ao adicionar produto:", error);
+      // Erro ao adicionar produto
       toast({
         title: "Erro ao adicionar",
         description:
@@ -403,7 +403,7 @@ export default function MobileCounting() {
       setShowConfirmDialog(false);
       setPendingAddData(null);
     } catch (error) {
-      console.error("Erro ao confirmar adição:", error);
+      // Erro ao confirmar adição
       toast({
         title: "Erro ao adicionar",
         description:

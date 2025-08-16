@@ -28,12 +28,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Middleware to check if user has Mesa de Controle access for audit mode operations
   app.post("/api/setup-sqlserver", async (req, res) => {
     try {
-      console.log("🔧 Setting up SQL Server database...");
+      // Setting up SQL Server database
       const { setupSqlServerDatabase } = await import("../setup-sqlserver");
       await setupSqlServerDatabase();
       res.json({ message: "SQL Server database setup completed successfully" });
     } catch (error) {
-      console.error("Error setting up SQL Server:", error as Error);
+      // Error setting up SQL Server
       res.status(500).json({
         error: "Failed to setup SQL Server database",
         details: (error as Error).message,
@@ -44,14 +44,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Database test endpoint
   app.get("/api/test-database", async (req, res) => {
     try {
-      console.log("🔍 Testing SQL Server connection...");
+      // Testing SQL Server connection
       const { testSqlServerConnection } = await import("../setup-sqlserver");
       const connected = await testSqlServerConnection();
 
       if (connected) {
         storage = await getStorage();
         const stats = await storage.getDashboardStats();
-        console.log("📊 Database stats:", stats);
+        // Database stats logged
 
         res.json({
           connected: true,
@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(500).json({ error: "SQL Server connection failed" });
       }
     } catch (error) {
-      console.error("SQL Server connection error:", error as Error);
+      // SQL Server connection error
       res.status(500).json({
         error: "Database connection failed",
         details: (error as Error).message,
@@ -73,20 +73,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Fix inventory schema endpoint
   app.post("/api/fix-inventory-schema", async (req, res) => {
     try {
-      console.log("🔧 Fixing inventory table schema...");
+      // Fixing inventory table schema
       storage = await getStorage();
 
       // Execute the schema fix using SimpleStorage method
       await storage.fixInventorySchema();
 
-      console.log("✅ Inventory schema fixed successfully");
+      // Inventory schema fixed successfully
       res.json({
         message: "Inventory schema fixed successfully",
         details:
           "Added selectedLocationIds, selectedCategoryIds, predictedEndDate, and isToBlockSystem columns",
       });
     } catch (error) {
-      console.error("Error fixing inventory schema:", error as Error);
+      // Error fixing inventory schema
       res.status(500).json({
         error: "Failed to fix inventory schema",
         details: (error as Error).message,
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await storage.getDashboardStats();
       res.json(stats);
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
+      // Error fetching dashboard stats
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
     }
   });
@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      // Error fetching categories
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locations = await storage.getLocations();
       res.json(locations);
     } catch (error) {
-      console.error("Error fetching locations:", error as Error);
+      // Error fetching locations
       res.status(500).json({ message: "Failed to fetch locations" });
     }
   });
@@ -143,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stock = await storage.getStock();
       res.json(stock);
     } catch (error) {
-      console.error("Error fetching stock:", error as Error);
+      // Error fetching stock
       res.status(500).json({ message: "Failed to fetch stock" });
     }
   });
@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const logs = await auditRepository.findAll();
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching audit logs:", error as Error);
+      // Error fetching audit logs
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
@@ -167,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companies = await storage.getCompanies();
       res.json(companies);
     } catch (error) {
-      console.error("Error fetching companies:", error as Error);
+      // Error fetching companies
       res.status(500).json({ message: "Failed to fetch companies" });
     }
   });
@@ -179,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stockItems = await storage.getStockItems();
       res.json(stockItems);
     } catch (error) {
-      console.error("Error fetching stock items:", error as Error);
+      // Error fetching stock items
       res.status(500).json({ message: "Failed to fetch stock items" });
     }
   });

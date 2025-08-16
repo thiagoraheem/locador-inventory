@@ -96,7 +96,7 @@ export class InventoryController {
       try {
         await storage.createInventorySerialItems(inventory.id);
       } catch (serialError) {
-        console.warn("Failed to create serial items:", serialError);
+        // Failed to create serial items
       }
     }
 

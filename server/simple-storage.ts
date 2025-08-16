@@ -628,7 +628,7 @@ import type {
     `;
 
     await this.pool.request().query(schemaFixes);
-    console.log("✅ Inventory schema fixed successfully");
+    // Inventory schema fixed successfully
   }
 
   async createUser(user: InsertUser): Promise<User> {
@@ -1690,14 +1690,7 @@ import type {
         const difference = item.difference || 0;
         const totalImpact = costValue > 0 ? difference * costValue : 0;
         
-        console.log('Divergent item processed:', {
-          id: item.id,
-          productSku: item.productSku,
-          rawCostValue: item.costValue,
-          parsedCostValue: costValue,
-          difference: difference,
-          totalImpact: totalImpact
-        });
+        // Divergent item processed
         
         return {
           id: item.id,
@@ -2051,7 +2044,7 @@ import type {
         totalInventories: inventoriesResult.recordset[0].count,
       };
     } catch (error) {
-      console.error("Error getting dashboard stats:", error);
+      // Error getting dashboard stats
       throw error;
     }
   }
@@ -2082,7 +2075,7 @@ import type {
 
   // Criar itens de série para inventário
   async createInventorySerialItems(inventoryId: number): Promise<void> {
-    console.log(`📋 Creating serial items for inventory ${inventoryId}...`);
+    // Creating serial items for inventory
 
     try {
       // First, remove any existing duplicates for this inventory
@@ -2126,14 +2119,14 @@ import type {
         `);
 
     } catch (error) {
-      console.error("❌ Error creating inventory serial items:", error);
+      // Error creating inventory serial items
       throw error;
     }
   }
 
   // Remove duplicate serial items for an inventory
   async removeDuplicateSerialItems(inventoryId: number): Promise<void> {
-    console.log(`🧹 Removing duplicate serial items for inventory ${inventoryId}...`);
+    // Removing duplicate serial items for inventory
     
     try {
       await this.pool.request().input("inventoryId", sql.Int, inventoryId)
@@ -2154,9 +2147,9 @@ import type {
           );
         `);
       
-      console.log(`✅ Duplicate serial items removed for inventory ${inventoryId}`);
+      // Duplicate serial items removed for inventory
     } catch (error) {
-      console.error("❌ Error removing duplicate serial items:", error);
+      // Error removing duplicate serial items
       throw error;
     }
   }
@@ -2419,7 +2412,7 @@ import type {
           "Stored procedure atualizada com sucesso! Agora os números de série incrementam a contagem na tabela inventory_items.",
       };
     } catch (error: any) {
-      console.error("Error updating stored procedure:", error);
+      // Error updating stored procedure
       return {
         success: false,
         message: `Erro ao atualizar stored procedure: ${error.message}`,
@@ -2465,7 +2458,7 @@ import type {
           ${locationCondition}
         `);
     } catch (error) {
-      console.error("Error incrementing inventory item count:", error);
+      // Error incrementing inventory item count
       // Don't throw error to avoid breaking the serial reading process
     }
   }
@@ -2659,12 +2652,10 @@ import type {
         ORDER BY p.name
       `);
 
-      console.log(
-        `✅ Found ${result.recordset.length} products with serial control info`,
-      );
+      // Products with serial control info found
       return result.recordset;
     } catch (error) {
-      console.error("❌ Error fetching products with serial control:", error);
+      // Error fetching products with serial control
       throw error;
     }
   }
@@ -2674,7 +2665,7 @@ import type {
       const request = this.pool.request();
       const searchPattern = `%${searchTerm.toLowerCase()}%`;
 
-      console.log(`Searching products with term: "${searchTerm}"`);
+      // Searching products with term
 
       const result = await request
         .input("searchTerm", searchPattern)
@@ -2703,12 +2694,10 @@ import type {
             p.name
         `);
 
-      console.log(
-        `Search for "${searchTerm}" returned ${result.recordset.length} results`,
-      );
+      // Search returned results
       return result.recordset;
     } catch (error) {
-      console.error("Error searching products:", error);
+      // Error searching products
       throw error;
     }
   }
@@ -2855,7 +2844,7 @@ import type {
       };
     } catch (error) {
       // Log error but don't throw - audit log shouldn't break main functionality
-      console.warn("Warning: Failed to create audit log:", error);
+      // Warning: Failed to create audit log
       return {
         id: 0,
         userId: 0,
@@ -2892,21 +2881,21 @@ import type {
       // Adicionar colunas se não existirem
       if (!existingColumns.includes('erpMigrated')) {
         await this.pool.request().query('ALTER TABLE inventories ADD erpMigrated BIT DEFAULT 0');
-        console.log('✅ Coluna erpMigrated adicionada à tabela inventories');
+        // Coluna erpMigrated adicionada à tabela inventories
       }
       
       if (!existingColumns.includes('erpMigratedAt')) {
         await this.pool.request().query('ALTER TABLE inventories ADD erpMigratedAt DATETIME2 NULL');
-        console.log('✅ Coluna erpMigratedAt adicionada à tabela inventories');
+        // Coluna erpMigratedAt adicionada à tabela inventories
       }
       
       if (!existingColumns.includes('erpMigratedBy')) {
         await this.pool.request().query('ALTER TABLE inventories ADD erpMigratedBy INT NULL');
-        console.log('✅ Coluna erpMigratedBy adicionada à tabela inventories');
+        // Coluna erpMigratedBy adicionada à tabela inventories
       }
       
     } catch (error) {
-      console.error('❌ Erro ao verificar/criar colunas ERP:', error);
+      // Erro ao verificar/criar colunas ERP
       throw error;
     }
   }
@@ -2934,10 +2923,10 @@ import type {
         .input('updatedAt', now)
         .query(updateQuery);
         
-      console.log(`✅ Inventário ${inventoryId} marcado como migrado para ERP`);
+      // Inventário marcado como migrado para ERP
       
     } catch (error) {
-      console.error('❌ Erro ao marcar inventário como migrado:', error);
+      // Erro ao marcar inventário como migrado
       throw error;
     }
   }

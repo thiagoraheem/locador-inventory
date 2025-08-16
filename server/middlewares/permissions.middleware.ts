@@ -40,7 +40,7 @@ export const requireAuditMode: RequestHandler = async (req: any, res, next) => {
 
     next();
   } catch (error) {
-    console.error("Error verifying audit mode:", error);
+    // Error verifying audit mode
     res.status(500).json({ message: "Failed to verify audit mode" });
   }
 };

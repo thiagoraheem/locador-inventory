@@ -237,7 +237,7 @@ export default function InventoryFinalReportPage() {
         description: "O relatório foi gerado com sucesso",
       });
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      // Error generating PDF
       toast({
         title: "Erro ao gerar PDF",
         description: "Ocorreu um erro ao gerar o PDF. Tente novamente.",

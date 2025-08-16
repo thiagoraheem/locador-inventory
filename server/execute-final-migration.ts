@@ -27,13 +27,13 @@ async function executeFinalMigration() {
   let pool: sql.ConnectionPool | null = null;
   
   try {
-    console.log('Conectando ao banco SQL Server...');
+    // Conectando ao banco SQL Server
     pool = new sql.ConnectionPool(sqlServerConfig);
     await pool.connect();
-    console.log('Conectado com sucesso!');
+    // Conectado com sucesso
 
     // Passo 1: Criar tabela inventory_serial_items
-    console.log('\n=== CRIANDO TABELA inventory_serial_items ===');
+    // Criando tabela inventory_serial_items
     try {
       await pool.request().query(`
         IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'inventory_serial_items')
@@ -86,14 +86,14 @@ async function executeFinalMigration() {
             PRINT 'Tabela inventory_serial_items já existe';
         END
       `);
-      console.log('✓ Tabela inventory_serial_items processada');
+      // Tabela inventory_serial_items processada
     } catch (error: any) {
-      console.log('❌ Erro na criação da tabela:', error.message);
+      // Erro na criação da tabela
       throw error;
     }
 
     // Passo 2: Criar índices
-    console.log('\n=== CRIANDO ÍNDICES ===');
+    // Criando índices
     const indexes = [
       { name: 'IX_inventory_serial_items_inventory_product', sql: 'CREATE INDEX IX_inventory_serial_items_inventory_product ON inventory_serial_items (inventoryId, productId)' },
       { name: 'IX_inventory_serial_items_serial_number', sql: 'CREATE INDEX IX_inventory_serial_items_serial_number ON inventory_serial_items (serialNumber)' },
@@ -114,14 +114,14 @@ async function executeFinalMigration() {
               PRINT 'Índice ${index.name} já existe';
           END
         `);
-        console.log(`✓ Índice ${index.name} processado`);
+        // Índice processado
       } catch (error: any) {
-        console.log(`⚠ Erro no índice ${index.name}:`, error.message);
+        // Erro no índice
       }
     }
 
     // Passo 3: Criar view para reconciliação
-    console.log('\n=== CRIANDO VIEW DE RECONCILIAÇÃO ===');
+    // Criando view de reconciliação
     try {
       await pool.request().query(`
         IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_inventory_reconciliation')
@@ -155,13 +155,13 @@ async function executeFinalMigration() {
         
         PRINT 'View vw_inventory_reconciliation criada';
       `);
-      console.log('✓ View de reconciliação criada');
+      // View de reconciliação criada
     } catch (error: any) {
-      console.log('⚠ Erro na criação da view:', error.message);
+      // Erro na criação da view
     }
 
     // Passo 4: Criar stored procedures
-    console.log('\n=== CRIANDO STORED PROCEDURES ===');
+    // Criando stored procedures
     
     // Procedure para inicializar itens de série
     try {
@@ -213,9 +213,9 @@ async function executeFinalMigration() {
             SELECT @@ROWCOUNT as itemsCreated;
         END
       `);
-      console.log('✓ Procedure sp_CreateInventorySerialItems criada');
+      // Procedure sp_CreateInventorySerialItems criada
     } catch (error: any) {
-      console.log('⚠ Erro na procedure de criação:', error.message);
+      // Erro na procedure de criação
     }
 
     // Procedure para registrar leitura de série
@@ -333,12 +333,12 @@ async function executeFinalMigration() {
                 @LocationId as locationId;
         END
       `);
-      console.log('✓ Procedure sp_RegisterSerialReading criada');
+      // Procedure sp_RegisterSerialReading criada
     } catch (error: any) {
-      console.log('⚠ Erro na procedure de leitura:', error.message);
+      // Erro na procedure de leitura
     }
 
-    console.log('\n=== VALIDAÇÃO FINAL ===');
+    // Validação final
     
     // Validar criação da tabela
     const tableCheck = await pool.request().query(`
@@ -346,7 +346,7 @@ async function executeFinalMigration() {
       FROM INFORMATION_SCHEMA.TABLES 
       WHERE TABLE_NAME = 'inventory_serial_items'
     `);
-    console.log(`✓ Tabela inventory_serial_items: ${tableCheck.recordset[0].count ? 'CRIADA' : 'NÃO CRIADA'}`);
+    // Tabela inventory_serial_items verificada
     
     // Validar índices
     const indexCount = await pool.request().query(`
@@ -354,7 +354,7 @@ async function executeFinalMigration() {
       FROM sys.indexes 
       WHERE name LIKE 'IX_inventory_serial_items%'
     `);
-    console.log(`✓ Índices criados: ${indexCount.recordset[0].count}`);
+    // Índices verificados
     
     // Validar procedures
     const procCount = await pool.request().query(`
@@ -362,7 +362,7 @@ async function executeFinalMigration() {
       FROM sys.procedures 
       WHERE name IN ('sp_CreateInventorySerialItems', 'sp_RegisterSerialReading')
     `);
-    console.log(`✓ Procedures criadas: ${procCount.recordset[0].count}`);
+    // Procedures verificadas
     
     // Testar estrutura básica
     const columnCount = await pool.request().query(`
@@ -370,24 +370,24 @@ async function executeFinalMigration() {
       FROM INFORMATION_SCHEMA.COLUMNS 
       WHERE TABLE_NAME = 'inventory_serial_items'
     `);
-    console.log(`✓ Colunas na tabela: ${columnCount.recordset[0].count}`);
+    // Colunas verificadas
 
-    console.log('\n🎉 MIGRAÇÃO DE PATRIMÔNIO CONCLUÍDA COM SUCESSO!');
-    console.log('\n📋 Resumo das implementações:');
-    console.log('✓ Tabela inventory_serial_items criada');
-    console.log('✓ Índices de performance implementados'); 
-    console.log('✓ View de reconciliação criada');
-    console.log('✓ Stored procedures para operações principais');
-    console.log('✓ Estrutura preparada para controle por número de série');
-    console.log('\n🚀 Próximo passo: Implementar APIs backend');
+    // Migração de patrimônio concluída com sucesso
+  // Resumo das implementações:
+  // - Tabela inventory_serial_items criada
+  // - Índices de performance implementados
+  // - View de reconciliação criada
+  // - Stored procedures para operações principais
+  // - Estrutura preparada para controle por número de série
+  // Próximo passo: Implementar APIs backend
     
   } catch (error: any) {
-    console.error('\n❌ Erro na migração:', error.message);
+    // Erro na migração
     process.exit(1);
   } finally {
     if (pool) {
       await pool.close();
-      console.log('Conexão fechada.');
+      // Conexão fechada
     }
   }
 }

@@ -23,7 +23,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     (req as any).user = user;
     next();
   } catch (error) {
-    console.error("Auth error:", error);
+    // Auth error
     return res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -34,7 +34,7 @@ router.get('/check-ip', async (req, res) => {
       const data = await response.json();
       externalIP = data.ip;
     } catch (externalError) {
-      console.error('⚠️ Não foi possível obter o IP externo:', externalError);
+      // Não foi possível obter o IP externo
     }
     
     res.json({
@@ -44,7 +44,7 @@ router.get('/check-ip', async (req, res) => {
       message: 'Estes são os IPs da máquina onde o aplicativo está sendo executado'
     });
   } catch (error) {
-    console.error('❌ Erro ao verificar IP:', error);
+    // Erro ao verificar IP
     res.status(500).json({
       success: false,
       error: 'Erro ao verificar IP de saída'
