@@ -46,6 +46,17 @@ import {
   Trash2,
   RefreshCcw,
   Eye,
+  Menu,
+  Settings,
+  BarChart3,
+  History,
+  Home,
+  MapPin,
+  User,
+  Scan,
+  Plus,
+  Minus,
+  X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
@@ -57,6 +68,12 @@ import type {
   Location,
 } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from "@/components/ui/drawer";
+import { Command, CommandDialog, CommandInput, CommandList, CommandItem, CommandGroup } from "@/components/ui/command";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Interface para produtos contados na nova estrutura dual
 interface CountedProduct {
@@ -141,6 +158,13 @@ export default function MobileCounting() {
   } | null>(null);
   
   // Estados para diálogo de confirmação de local diferente
+  
+  // Novos estados para melhorias mobile
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isCommandOpen, setIsCommandOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [countingProgress, setCountingProgress] = useState(0);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [pendingSerialData, setPendingSerialData] = useState<{
     serialNumber: string;
@@ -334,6 +358,21 @@ export default function MobileCounting() {
         return `${stage}ª Contagem`;
     }
   };
+
+  // Calcular progresso da contagem
+  const calculateProgress = () => {
+    if (!selectedInventoryDetails?.items) return 0;
+    
+    const totalItems = selectedInventoryDetails.items.length;
+    const countedItems = countedProducts.length;
+    
+    return totalItems > 0 ? Math.round((countedItems / totalItems) * 100) : 0;
+  };
+
+  // Atualizar progresso quando produtos contados mudarem
+  useEffect(() => {
+    setCountingProgress(calculateProgress());
+  }, [countedProducts, selectedInventoryDetails]);
 
   // Função para leitura de número de série
   const handleSerialScan = async () => {
@@ -876,38 +915,103 @@ export default function MobileCounting() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-950 p-4">
-      {/* Header */}
-      <div className="text-white mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-blue-700 dark:hover:bg-blue-800"
-            onClick={() => window.history.back()}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          {/* Botão Sair - apenas para usuários Contador */}
-          {(currentUser?.profile === "Contador" ||
-            currentUser?.profile === "contador" ||
-            currentUser?.role === "Contador" ||
-            currentUser?.role === "contador") && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white border-white/50 bg-transparent hover:bg-white/20 hover:border-white hover:text-white focus:text-white"
-              onClick={() => logoutMutation.mutate()}
-              disabled={logoutMutation.isPending}
-            >
-              <LogOut className="h-4 w-4 mr-2 text-white" />
-              <span className="text-white">
-                {logoutMutation.isPending ? "Saindo..." : "Sair"}
-              </span>
-            </Button>
-          )}
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold">Contagem Mobile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 dark:from-blue-800 dark:to-blue-950 
+                    portrait:px-3 portrait:py-2 landscape:px-2 landscape:py-1 
+                    sm:portrait:px-4 sm:portrait:py-3 sm:landscape:px-3 sm:landscape:py-2
+                    md:px-6 md:py-4">
+      {/* Header com Progress e Drawer */}
+      <div className="bg-white/10 backdrop-blur-sm border-b border-white/20 sticky top-0 z-40">
+        <div className="flex items-center justify-between p-4">
+          {/* Menu Drawer */}
+          <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <DrawerTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[80vh]">
+              <DrawerHeader>
+                <DrawerTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  {currentUser?.name || "Usuário"}
+                </DrawerTitle>
+              </DrawerHeader>
+              <ScrollArea className="flex-1 px-4">
+                <div className="space-y-2 pb-4">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-12"
+                    onClick={() => {
+                      window.location.href = "/dashboard";
+                      setIsDrawerOpen(false);
+                    }}
+                  >
+                    <Home className="h-5 w-5" />
+                    Dashboard
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-12"
+                    onClick={() => {
+                      window.location.href = "/inventory-control-board";
+                      setIsDrawerOpen(false);
+                    }}
+                  >
+                    <BarChart3 className="h-5 w-5" />
+                    Mesa de Controle
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-12"
+                    onClick={() => {
+                      window.location.href = "/inventory-history";
+                      setIsDrawerOpen(false);
+                    }}
+                  >
+                    <History className="h-5 w-5" />
+                    Histórico
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-12"
+                    onClick={() => {
+                      setIsSettingsOpen(true);
+                      setIsDrawerOpen(false);
+                    }}
+                  >
+                    <Settings className="h-5 w-5" />
+                    Configurações
+                  </Button>
+                  {/* Botão Sair - apenas para usuários Contador */}
+                  {(currentUser?.profile === "Contador" ||
+                    currentUser?.profile === "contador" ||
+                    currentUser?.role === "Contador" ||
+                    currentUser?.role === "contador") && (
+                    <Button
+                      variant="destructive"
+                      className="w-full justify-start gap-3 h-12 mt-4"
+                      onClick={() => {
+                        logoutMutation.mutate();
+                        setIsDrawerOpen(false);
+                      }}
+                      disabled={logoutMutation.isPending}
+                    >
+                      <LogOut className="h-5 w-5" />
+                      {logoutMutation.isPending ? "Saindo..." : "Sair"}
+                    </Button>
+                  )}
+                </div>
+              </ScrollArea>
+            </DrawerContent>
+          </Drawer>
+
+          {/* Título e Usuário */}
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-lg md:text-xl font-bold text-white">Contagem Mobile</h1>
             {currentUser && (
               <p className="text-sm text-blue-200 mt-1">
                 Usuário: {currentUser.name || currentUser.username}
@@ -925,132 +1029,217 @@ export default function MobileCounting() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Inventory Selection */}
-        <Card className="bg-blue-500/30 border-blue-400 dark:bg-blue-800/30 dark:border-blue-700 backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="text-white">
-                <label className="block text-sm font-medium mb-2">
-                  Inventário:
-                </label>
-                <Select
-                  value={selectedInventoryId?.toString() || ""}
-                  onValueChange={(value) =>
-                    setSelectedInventoryId(Number(value))
-                  }
+          {/* Botões de Ação */}
+          <div className="flex items-center gap-2">
+            {/* Busca Command */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 hidden md:flex"
+              onClick={() => setIsCommandOpen(true)}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Configurações Sheet */}
+            <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
                 >
-                  <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeInventories.map((inventory) => (
-                      <SelectItem
-                        key={inventory.id}
-                        value={inventory.id.toString()}
-                      >
-                        {inventory.code} -{" "}
-                        {inventory.description || "Sem descrição"} -{" "}
-                        {getStageLabel(getCurrentCountStage())}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-white">
-                  <label className="block text-sm font-medium mb-2">
-                    Estágio:
-                  </label>
-                  <div className="bg-blue-700 dark:bg-blue-800 rounded px-3 py-2 text-center font-semibold">
-                    {getStageLabel(currentStage)}
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80">
+                <SheetHeader>
+                  <SheetTitle>Configurações</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6 space-y-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Progresso da Contagem</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Produtos contados:</span>
+                        <span>{countedProducts.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Total de itens:</span>
+                        <span>{selectedInventoryDetails?.items?.length || 0}</span>
+                      </div>
+                      <Progress value={countingProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground">
+                        {countingProgress}% concluído
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Ações</h4>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        clearLocalStorage();
+                        setCountedProducts([]);
+                        setIsSettingsOpen(false);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Limpar dados locais
+                    </Button>
                   </div>
                 </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
 
-                <div className="text-white">
-                  <label className="block text-sm font-medium mb-2">
-                    Local de Estoque: <span className="text-red-300">*</span>
-                  </label>
-                  <Select
-                    value={selectedLocationId?.toString() || ""}
-                    onValueChange={(value) =>
-                      setSelectedLocationId(value ? Number(value) : null)
-                    }
-                  >
-                    <SelectTrigger
-                      className={`bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white ${!selectedLocationId ? "border-red-400" : ""}`}
-                    >
-                      <SelectValue placeholder="Selecione um local..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {locations
-                        ?.filter((location) => {
-                          // Se não há inventário selecionado ou o inventário não tem locais selecionados, mostrar todos
-                          if (
-                            !selectedInventoryDetails ||
-                            !selectedInventoryDetails.selectedLocationIds ||
-                            selectedInventoryDetails.selectedLocationIds
-                              .length === 0
-                          ) {
-                            return true;
-                          }
-                          // Filtrar apenas os locais selecionados na criação do inventário
-                          return selectedInventoryDetails.selectedLocationIds.includes(
-                            location.id,
-                          );
-                        })
-                        .map((location) => (
-                          <SelectItem
-                            key={location.id}
-                            value={location.id.toString()}
-                          >
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {!selectedLocationId && (
-                    <p className="text-red-300 text-xs mt-1">
-                      Local obrigatório para realizar contagem
-                    </p>
-                  )}
-                </div>
-              </div>
+        {/* Progress Bar */}
+        {selectedInventoryId && (
+          <div className="px-4 pb-3">
+            <div className="flex items-center justify-between text-xs text-white/80 mb-1">
+              <span>{getStageLabel(currentStage)}</span>
+              <span>{countedProducts.length} / {selectedInventoryDetails?.items?.length || 0} itens</span>
             </div>
-          </CardContent>
-        </Card>
+            <Progress 
+              value={countingProgress} 
+              className="h-2 bg-white/20" 
+            />
+          </div>
+        )}
       </div>
 
-      {/* Interface Dual */}
-      <div className="space-y-4 mb-6">
-        {/* Tabs para alternar entre métodos */}
-        <div className="grid grid-cols-2 gap-2">
+      <>
+        {/* Inventory Selection */}
+        <Card className="bg-blue-500/30 border-blue-400 dark:bg-blue-800/30 dark:border-blue-700 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="text-white">
+                  <label className="block text-sm font-medium mb-2">
+                    Inventário:
+                  </label>
+                  <Select
+                    value={selectedInventoryId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setSelectedInventoryId(Number(value))
+                    }
+                  >
+                    <SelectTrigger className="bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeInventories.map((inventory) => (
+                        <SelectItem
+                          key={inventory.id}
+                          value={inventory.id.toString()}
+                        >
+                          {inventory.code} -{" "}
+                          {inventory.description || "Sem descrição"} -{" "}
+                          {getStageLabel(getCurrentCountStage())}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-white">
+                    <label className="block text-sm font-medium mb-2">
+                      Estágio:
+                    </label>
+                    <div className="bg-blue-700 dark:bg-blue-800 rounded px-3 py-2 text-center font-semibold">
+                      {getStageLabel(currentStage)}
+                    </div>
+                  </div>
+
+                  <div className="text-white">
+                    <label className="block text-sm font-medium mb-2">
+                      Local de Estoque: <span className="text-red-300">*</span>
+                    </label>
+                    <Select
+                      value={selectedLocationId?.toString() || ""}
+                      onValueChange={(value) =>
+                        setSelectedLocationId(value ? Number(value) : null)
+                      }
+                    >
+                      <SelectTrigger
+                        className={`bg-blue-700 border-blue-600 dark:bg-blue-800 dark:border-blue-700 text-white ${!selectedLocationId ? "border-red-400" : ""}`}
+                      >
+                        <SelectValue placeholder="Selecione um local..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations
+                          ?.filter((location) => {
+                            // Se não há inventário selecionado ou o inventário não tem locais selecionados, mostrar todos
+                            if (
+                              !selectedInventoryDetails ||
+                              !selectedInventoryDetails.selectedLocationIds ||
+                              selectedInventoryDetails.selectedLocationIds
+                                .length === 0
+                            ) {
+                              return true;
+                            }
+                            // Filtrar apenas os locais selecionados na criação do inventário
+                            return selectedInventoryDetails.selectedLocationIds.includes(
+                              location.id,
+                            );
+                          })
+                          .map((location) => (
+                            <SelectItem
+                              key={location.id}
+                              value={location.id.toString()}
+                            >
+                              {location.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    {!selectedLocationId && (
+                      <p className="text-red-300 text-xs mt-1">
+                        Local obrigatório para realizar contagem
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+        <div className="space-y-4 mb-6 portrait:space-y-3 landscape:space-y-2 sm:space-y-4">
+          {/* Tabs otimizadas para touch - Botões maiores e mais espaçados */}
+          <div className="grid grid-cols-2 gap-3">
           <Button
             variant={activeTab === "serial" ? "default" : "outline"}
             onClick={() => setActiveTab("serial")}
-            className={`flex items-center gap-2 ${
+            size="lg"
+            className={`flex items-center justify-center gap-3 h-14 text-base font-medium transition-all duration-200 ${
               activeTab === "serial"
-                ? "bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
-                : "bg-white/20 text-white border-white/30 hover:bg-white/30"
+                ? "bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white shadow-lg scale-105"
+                : "bg-white/20 text-white border-white/30 hover:bg-white/30 hover:scale-102"
             }`}
           >
-            <Barcode className="h-4 w-4" />
-            Leitura de Série
+            <Barcode className="h-5 w-5" />
+            <span className="hidden sm:inline">Leitura de Série</span>
+            <span className="sm:hidden">Série</span>
           </Button>
           <Button
             variant={activeTab === "sku" ? "default" : "outline"}
             onClick={() => setActiveTab("sku")}
-            className={`flex items-center gap-2 ${
+            size="lg"
+            className={`flex items-center justify-center gap-3 h-14 text-base font-medium transition-all duration-200 ${
               activeTab === "sku"
-                ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white"
-                : "bg-white/20 text-white border-white/30 hover:bg-white/30"
+                ? "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white shadow-lg scale-105"
+                : "bg-white/20 text-white border-white/30 hover:bg-white/30 hover:scale-102"
             }`}
           >
-            <Search className="h-4 w-4" />
-            Busca por SKU
+            <Search className="h-5 w-5" />
+            <span className="hidden sm:inline">Busca por SKU</span>
+            <span className="sm:hidden">SKU</span>
           </Button>
+          </div>
         </div>
 
         {/* Campo de leitura de série */}
@@ -1078,12 +1267,16 @@ export default function MobileCounting() {
                   disabled={
                     !serialInput.trim() || isLoading || !selectedLocationId
                   }
-                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 h-12 px-6 text-base font-medium"
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    "Ler"
+                    <>
+                      <Scan className="h-5 w-5 mr-2" />
+                      Ler
+                    </>
                   )}
                 </Button>
               </div>
@@ -1168,12 +1361,16 @@ export default function MobileCounting() {
                       isLoading ||
                       !selectedLocationId
                     }
-                    className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 flex-1"
+                    size="lg"
+                    className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 flex-1 h-12 text-base font-medium"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      "Registrar"
+                      <>
+                        <Plus className="h-5 w-5 mr-2" />
+                        Registrar
+                      </>
                     )}
                   </Button>
                 </div>
@@ -1207,7 +1404,7 @@ export default function MobileCounting() {
             </CardContent>
           </Card>
         )}
-      </div>
+      </>
 
       {/* Lista de Produtos Contados */}
       <Card className="bg-white">
@@ -1251,95 +1448,107 @@ export default function MobileCounting() {
               <p className="text-sm">Use os métodos de entrada acima</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {countedProducts.map((product, index) => (
-                <div
+                <Card
                   key={`${product.productId}-${index}`}
-                  className="border rounded-lg p-4 dark:border-gray-700"
+                  className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                        {product.productName}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        SKU: {product.productSku}
-                      </p>
-                    </div>
-
-                    <div className="flex-1">
-                      {/* Informações de contagem */}
-                      <div className="mt-2 space-y-1">
-                        {product.hasSerialControl ? (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className="text-xs bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
-                              >
-                                <Barcode className="h-3 w-3 mr-1" />
-                                Séries: {product.totalSerialCount}
-                              </Badge>
-                            </div>
-
-                            {/* Lista de séries lidas */}
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {product.serialNumbers
-                                ?.slice(0, 5)
-                                .map((serial, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {serial}
-                                  </Badge>
-                                ))}
-                              {(product.serialNumbers?.length || 0) > 5 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{(product.serialNumbers?.length || 0) - 5}{" "}
-                                  mais
-                                </Badge>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="text-xs bg-green-50 dark:bg-green-950 dark:border-green-800"
-                            >
-                              <Package className="h-3 w-3 mr-1" />
-                              Quantidade: {product.manualQuantity}
-                            </Badge>
-                          </div>
-                        )}
+                  <CardContent className="p-4">
+                    {/* Header do Card */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-tight">
+                          {product.productName}
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          SKU: {product.productSku}
+                        </p>
+                      </div>
+                      
+                      {/* Ações do Card - Botões maiores para touch */}
+                      <div className="flex gap-2 ml-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 w-10 p-0 text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setCountedProducts((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            )
+                          }
+                          className="h-10 w-10 p-0 text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/50"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setCountedProducts((prev) =>
-                            prev.filter((_, i) => i !== index),
-                          )
-                        }
-                        className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    {/* Informações de Contagem */}
+                    <div className="space-y-3">
+                      {product.hasSerialControl ? (
+                        <>
+                          {/* Badge de Contagem de Séries */}
+                          <div className="flex items-center justify-between">
+                            <Badge
+                              variant="outline"
+                              className="text-sm px-3 py-1 bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
+                            >
+                              <Barcode className="h-4 w-4 mr-2" />
+                              {product.totalSerialCount} {product.totalSerialCount === 1 ? 'série' : 'séries'}
+                            </Badge>
+                          </div>
+
+                          {/* Lista de Séries - Layout otimizado para mobile */}
+                          {product.serialNumbers && product.serialNumbers.length > 0 && (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Números de Série:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {product.serialNumbers
+                                  ?.slice(0, 6)
+                                  .map((serial, idx) => (
+                                    <Badge
+                                      key={idx}
+                                      variant="secondary"
+                                      className="text-xs px-2 py-1 font-mono"
+                                    >
+                                      {serial}
+                                    </Badge>
+                                  ))}
+                                {(product.serialNumbers?.length || 0) > 6 && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs px-2 py-1 bg-white dark:bg-gray-700"
+                                  >
+                                    +{(product.serialNumbers?.length || 0) - 6} mais
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <Badge
+                            variant="outline"
+                            className="text-sm px-3 py-1 bg-green-50 dark:bg-green-950 dark:border-green-800"
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            Qtd: {product.manualQuantity}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
@@ -1419,6 +1628,95 @@ export default function MobileCounting() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Command Dialog para busca inteligente */}
+      <CommandDialog open={isCommandOpen} onOpenChange={setIsCommandOpen}>
+        <CommandInput 
+          placeholder="Buscar produtos, locais ou ações..." 
+          value={commandQuery}
+          onValueChange={setCommandQuery}
+        />
+        <CommandList>
+          <CommandGroup heading="Produtos">
+            {products
+              ?.filter(product => 
+                product.name.toLowerCase().includes(commandQuery.toLowerCase()) ||
+                product.sku.toLowerCase().includes(commandQuery.toLowerCase())
+              )
+              .slice(0, 5)
+              .map((product) => (
+                <CommandItem
+                  key={product.id}
+                  onSelect={() => {
+                    setSelectedProduct({
+                      id: product.id,
+                      sku: product.sku,
+                      name: product.name,
+                      categoryName: product.categoryName || '',
+                      hasSerialControl: product.hasSerialControl
+                    });
+                    setActiveTab('sku');
+                    setIsCommandOpen(false);
+                    setCommandQuery('');
+                  }}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>{product.name}</span>
+                    <span className="text-xs text-muted-foreground">{product.sku}</span>
+                  </div>
+                </CommandItem>
+              ))
+            }
+          </CommandGroup>
+          
+          <CommandGroup heading="Locais">
+            {locations
+              ?.filter(location => 
+                location.name.toLowerCase().includes(commandQuery.toLowerCase())
+              )
+              .slice(0, 3)
+              .map((location) => (
+                <CommandItem
+                  key={location.id}
+                  onSelect={() => {
+                    setSelectedLocationId(location.id);
+                    setIsCommandOpen(false);
+                    setCommandQuery('');
+                  }}
+                >
+                  <MapPin className="mr-2 h-4 w-4" />
+                  {location.name}
+                </CommandItem>
+              ))
+            }
+          </CommandGroup>
+          
+          <CommandGroup heading="Ações">
+            <CommandItem
+              onSelect={() => {
+                clearLocalStorage();
+                setCountedProducts([]);
+                setIsCommandOpen(false);
+                setCommandQuery('');
+              }}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Limpar dados locais
+            </CommandItem>
+            <CommandItem
+              onSelect={() => {
+                setActiveTab('serial');
+                setIsCommandOpen(false);
+                setCommandQuery('');
+              }}
+            >
+              <Scan className="mr-2 h-4 w-4" />
+              Ir para Scanner
+            </CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }
