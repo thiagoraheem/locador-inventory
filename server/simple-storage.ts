@@ -3128,7 +3128,7 @@ import type {
             .input('locationId', locationId)
             .query(serialsQuery);
           
-          console.log(`Serials found for product ${serialProduct.productId} at location ${locationId}:`, serialsResult.recordset);
+
           
           // Criar inventory_serial_items apenas se houver seriais
           if (serialsResult.recordset && serialsResult.recordset.length > 0) {
@@ -3156,7 +3156,7 @@ import type {
               .query(insertSerialQuery);
             }
           } else {
-            console.log(`No serials found for product ${serialProduct.productId} at location ${locationId}`);
+
           }
         }
       }
