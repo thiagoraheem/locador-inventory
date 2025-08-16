@@ -2400,8 +2400,9 @@ import type {
       .input("serialNumber", sql.NVarChar, request.serialNumber)
       .input("countStage", sql.NVarChar, request.countStage)
       .input("userId", sql.Int, userId)
+      .input("scannedLocationId", sql.Int, request.scannedLocationId || null)
       .query(
-        "EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId",
+        "EXEC sp_RegisterSerialReading @InventoryId, @SerialNumber, @CountStage, @UserId, @ScannedLocationId",
       );
 
     // Note: Count increment should now be handled by the updated stored procedure

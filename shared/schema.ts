@@ -332,6 +332,7 @@ export interface InventoryItemWithSerial extends InventoryItem {
 export interface SerialReadingRequest {
   serialNumber: string;
   countStage: 'count1' | 'count2' | 'count3' | 'count4';
+  scannedLocationId?: number; // Localização onde o serial foi encontrado
 }
 
 export interface SerialReadingResponse {
@@ -480,6 +481,7 @@ export const insertAuditLogSchema = z.object({
 export const serialReadingRequestSchema = z.object({
   serialNumber: z.string().min(1),
   countStage: z.enum(['count1', 'count2', 'count3', 'count4']),
+  scannedLocationId: z.number().optional(), // Localização onde o serial foi encontrado
 });
 
 export const serialReadingResponseSchema = z.object({

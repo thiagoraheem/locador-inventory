@@ -658,6 +658,7 @@ export default function MobileCounting() {
           body: JSON.stringify({
             serialNumber: serialNumber,
             countStage: `count${getCurrentCountStage()}`,
+            scannedLocationId: productInfo.locationId, // Incluir o local onde a série foi encontrada
           }),
         },
       );
