@@ -1049,10 +1049,7 @@ export default function MobileCounting() {
                   value={selectedProduct}
                   onSelect={(product) => {
                     setSelectedProduct(product);
-                    // Auto-adicionar se quantidade já estiver definida
-                    if (product && quantityInput >= 0) {
-                      handleAddSelectedProduct();
-                    }
+                    // Removido o auto-registro - agora só registra quando clicar no botão
                   }}
                   placeholder="Buscar por SKU/Descrição..."
                   className="w-full"
