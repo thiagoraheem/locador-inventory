@@ -1973,13 +1973,20 @@ import type {
           p.sku,
           p.name as productName,
           p.description as productDescription,
+          p.categoryId,
+          COALESCE(c.name, 'Sem categoria') as categoryName,
           l.code as locationCode,
           l.name as locationName
         FROM inventory_items ii
         LEFT JOIN products p ON ii.productId = p.id
+        LEFT JOIN categories c ON p.categoryId = c.id
         LEFT JOIN locations l ON ii.locationId = l.id
         WHERE ii.inventoryId = @inventoryId
-        ORDER BY p.sku, l.code
+        ORDER BY 
+          CASE WHEN c.name IS NULL THEN 1 ELSE 0 END,
+          COALESCE(c.name, 'Sem categoria'), 
+          p.name, 
+          l.code
       `);
 
     return result.recordset.map((item) => ({
@@ -1999,7 +2006,8 @@ import type {
         sku: item.sku || "N/A",
         name: item.productName || "Produto não encontrado",
         description: item.productDescription || "Sem descrição",
-        categoryId: 0,
+        categoryId: item.categoryId || null,
+        categoryName: item.categoryName || "Sem categoria",
         costValue: 0,
         isActive: false,
         createdAt: Date.now(),

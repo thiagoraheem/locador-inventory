@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, MapPin, Package, Tags, Search, FileText, BarChart3, Clock, User } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Package, Tags, Search, FileText, BarChart3, Clock, User, ChevronDown, ChevronRight, Expand, Minimize, Archive } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link } from "wouter";
 import type { Inventory, InventoryItem, Product, Location, Category, InventorySerialItem } from "@shared/schema";
 
@@ -15,6 +16,33 @@ export default function InventoryDetails() {
   const [, params] = useRoute("/inventories/:id/details");
   const inventoryId = parseInt(params?.id || "0");
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  // Função para alternar expansão de categoria
+  const toggleCategoryExpansion = (categoryName: string) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryName]: !prev[categoryName]
+    }));
+  };
+
+  // Função para obter estado inicial de expansão
+  const getInitialExpansionState = (categoryName: string) => {
+    if (expandedCategories.hasOwnProperty(categoryName)) {
+      return expandedCategories[categoryName];
+    }
+    // Por padrão, "Sem categoria" começa colapsada, outras expandidas
+    return categoryName !== 'Sem categoria';
+  };
+
+  // Função para expandir/colapsar todas as categorias
+  const toggleAllCategories = (expand: boolean) => {
+    const newState: Record<string, boolean> = {};
+    sortedCategories.forEach(categoryName => {
+      newState[categoryName] = expand;
+    });
+    setExpandedCategories(newState);
+  };
 
   // Fetch inventory details
   const { data: inventory, isLoading: inventoryLoading } = useQuery<Inventory & { type: any; createdByUser: any }>({
@@ -93,8 +121,27 @@ export default function InventoryDetails() {
   const filteredItems = inventoryItems.filter(item =>
     (item.product?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.product?.sku || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.location?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+    (item.location?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.product?.categoryName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Group items by category and sort
+  const groupedByCategory = filteredItems.reduce((acc, item) => {
+    const categoryName = item.product?.categoryName || 'Sem categoria';
+    if (!acc[categoryName]) {
+      acc[categoryName] = [];
+    }
+    acc[categoryName].push(item);
+    return acc;
+  }, {} as Record<string, typeof filteredItems>);
+
+  // Sort categories alphabetically and products within each category
+  const sortedCategories = Object.keys(groupedByCategory).sort();
+  sortedCategories.forEach(categoryName => {
+    groupedByCategory[categoryName].sort((a, b) => 
+      (a.product?.name || '').localeCompare(b.product?.name || '')
+    );
+  });
 
   // Group serial items by product
   const serialItemsByProduct = serialItems.reduce((acc, item) => {
@@ -185,10 +232,10 @@ export default function InventoryDetails() {
 
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Tags className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                  <Tags className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
               <div>
                 <p className="text-sm text-muted-foreground">Categorias Selecionadas</p>
                 <p className="text-2xl font-bold">{selectedCategories.length}</p>
@@ -451,101 +498,182 @@ export default function InventoryDetails() {
                       className="pl-9 w-64"
                     />
                   </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleAllCategories(true)}
+                      className="text-xs"
+                    >
+                      <Expand className="h-3 w-3 mr-1" />
+                      Expandir Todas
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleAllCategories(false)}
+                      className="text-xs"
+                    >
+                      <Minimize className="h-3 w-3 mr-1" />
+                      Colapsar Todas
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Qtd. Esperada</TableHead>
-                      <TableHead>Números de Série</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {itemsLoading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell colSpan={6}>
-                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : filteredItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? "Nenhum produto encontrado com o termo pesquisado" : "Nenhum produto no inventário"}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredItems.map((item) => {
-                        const productSerials = serialItemsByProduct[item.productId] || [];
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{item.product?.name || 'Produto não encontrado'}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {item.product?.description || 'Sem descrição'}
-                                </p>
-                              </div>
-                            </TableCell>
-                            <TableCell className="font-mono text-sm">
-                              {item.product?.sku || 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {item.location?.name || 'Local não encontrado'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {item.expectedQuantity}
-                            </TableCell>
-                            <TableCell>
-                              {productSerials.length > 0 ? (
-                                <div className="space-y-1">
-                                  <Badge variant="secondary" className="text-xs">
-                                    {productSerials.length} séries
-                                  </Badge>
-                                  <div className="flex flex-wrap gap-1">
-                                    {productSerials.slice(0, 3).map((serial, idx) => (
-                                      <Badge key={idx} variant="outline" className="text-xs font-mono">
-                                        {serial.serialNumber}
-                                      </Badge>
-                                    ))}
-                                    {productSerials.length > 3 && (
-                                      <Badge variant="outline" className="text-xs">
-                                        +{productSerials.length - 3} mais
-                                      </Badge>
-                                    )}
-                                  </div>
+              {itemsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-48"></div>
+                      <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>{searchTerm ? "Nenhum produto encontrado com o termo pesquisado" : "Nenhum produto no inventário"}</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {sortedCategories.map((categoryName) => {
+                    const categoryItems = groupedByCategory[categoryName];
+                    const uniqueProducts = new Set(categoryItems.map(item => item.productId)).size;
+                    const isExpanded = getInitialExpansionState(categoryName);
+                    
+                    return (
+                      <Collapsible key={categoryName} open={isExpanded} onOpenChange={() => toggleCategoryExpansion(categoryName)}>
+                        <div className="space-y-3">
+                          {/* Category Header */}
+                          <CollapsibleTrigger className="w-full">
+                            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border hover:bg-muted/70 transition-colors cursor-pointer">
+                              <div className="flex items-center gap-3">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <div className={`p-2 rounded-lg ${
+                                   categoryName === 'Sem categoria' 
+                                     ? 'bg-orange-100 dark:bg-orange-900/30' 
+                                     : 'bg-purple-100 dark:bg-purple-900/30'
+                                 }`}>
+                                   {categoryName === 'Sem categoria' ? (
+                                     <Archive className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                                   ) : (
+                                     <Tags className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                   )}
+                                 </div>
+                                 <div>
+                                   <h3 className={`text-lg font-semibold ${
+                                     categoryName === 'Sem categoria'
+                                       ? 'text-orange-700 dark:text-orange-300'
+                                       : ''
+                                   }`}>{categoryName}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'itens'} • {uniqueProducts} {uniqueProducts === 1 ? 'produto distinto' : 'produtos distintos'}
+                                  </p>
                                 </div>
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                  Sem controle de série
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={item.status === "PENDING" ? "secondary" : "default"}
-                                className="text-xs"
-                              >
-                                {item.status === "PENDING" ? "Pendente" : item.status}
+                              </div>
+                              <Badge variant="outline" className="text-sm px-3 py-1">
+                                {uniqueProducts} {uniqueProducts === 1 ? 'produto' : 'produtos'}
                               </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                            </div>
+                          </CollapsibleTrigger>
+                          
+                          <CollapsibleContent>
+                            {/* Products Table */}
+                            <div className="rounded-md border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Produto</TableHead>
+                                <TableHead>SKU</TableHead>
+                                <TableHead>Local</TableHead>
+                                <TableHead>Qtd. Esperada</TableHead>
+                                <TableHead>Números de Série</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {categoryItems.map((item) => {
+                                const productSerials = serialItemsByProduct[item.productId] || [];
+                                return (
+                                  <TableRow key={item.id}>
+                                    <TableCell>
+                                      <div>
+                                        <p className="font-medium">{item.product?.name || 'Produto não encontrado'}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          {item.product?.description || 'Sem descrição'}
+                                        </p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {item.product?.sku || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="text-xs">
+                                        {item.location?.name || 'Local não encontrado'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {item.expectedQuantity}
+                                    </TableCell>
+                                    <TableCell>
+                                      {productSerials.length > 0 ? (
+                                        <div className="space-y-1">
+                                          <Badge variant="secondary" className="text-xs">
+                                            {productSerials.length} séries
+                                          </Badge>
+                                          <div className="flex flex-wrap gap-1">
+                                            {productSerials.slice(0, 3).map((serial, idx) => (
+                                              <Badge key={idx} variant="outline" className="text-xs font-mono">
+                                                {serial.serialNumber}
+                                              </Badge>
+                                            ))}
+                                            {productSerials.length > 3 && (
+                                              <Badge variant="outline" className="text-xs">
+                                                +{productSerials.length - 3} mais
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <Badge variant="secondary" className="text-xs">
+                                          Sem controle de série
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge 
+                                        variant={item.status === "PENDING" ? "secondary" : "default"}
+                                        className="text-xs"
+                                      >
+                                        {item.status === "PENDING" ? "Pendente" : item.status}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                            </div>
+                            
+                            {/* Category Footer */}
+                            <div className="flex justify-end p-3 bg-muted/30 rounded-lg border-t">
+                              <div className="text-sm text-muted-foreground">
+                                <strong>{uniqueProducts}</strong> {uniqueProducts === 1 ? 'produto distinto' : 'produtos distintos'} nesta categoria
+                              </div>
+                            </div>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
