@@ -527,6 +527,71 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  // Register manual count for inventory
+  app.post(
+    "/api/inventories/:id/manual-count",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        const { productId, locationId, quantity, countStage } = req.body;
+
+        // Validate required fields
+        if (!productId || !locationId || quantity === null || quantity === undefined || !countStage) {
+          return res.status(400).json({ 
+            message: "Missing required fields: productId, locationId, quantity, countStage" 
+          });
+        }
+
+        // Validate quantity is a number and >= 0
+        if (typeof quantity !== "number" || quantity < 0) {
+          return res.status(400).json({ 
+            message: "Quantity must be a number greater than or equal to 0" 
+          });
+        }
+
+        storage = await getStorage();
+
+        // Check if inventory exists
+        const inventory = await storage.getInventory(inventoryId);
+        if (!inventory) {
+          return res.status(404).json({ message: "Inventory not found" });
+        }
+
+        // Register the manual count
+        const result = await storage.registerManualCount({
+          inventoryId,
+          productId,
+          locationId,
+          quantity,
+          countStage,
+          userId: req.user.id
+        });
+
+        // Create audit log
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "REGISTER_MANUAL_COUNT",
+          entityType: "inventory_item",
+          entityId: `${inventoryId}-${productId}-${locationId}`,
+          newValues: JSON.stringify({ productId, locationId, quantity, countStage }),
+          metadata: JSON.stringify({ timestamp: Date.now() })
+        });
+
+        res.json({ 
+          message: "Manual count registered successfully",
+          result 
+        });
+      } catch (error) {
+        console.error("Error registering manual count:", error);
+        res.status(500).json({ 
+          message: "Failed to register manual count",
+          details: (error as Error).message 
+        });
+      }
+    },
+  );
+
   // Get stock items for inventory (patrimônio control)
   app.get(
     "/api/inventories/:id/stock-items",

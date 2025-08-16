@@ -1468,6 +1468,113 @@ import type {
       `);
   }
 
+  async registerManualCount(data: {
+    inventoryId: number;
+    productId: number;
+    locationId: number;
+    quantity: number;
+    countStage: string;
+    userId: number;
+  }): Promise<any> {
+    const { inventoryId, productId, locationId, quantity, countStage, userId } = data;
+    
+    // First, check if inventory item exists
+    const checkRequest = this.pool.request();
+    const existingItem = await checkRequest
+      .input("inventoryId", inventoryId)
+      .input("productId", productId)
+      .input("locationId", locationId)
+      .query(`
+        SELECT id FROM inventory_items 
+        WHERE inventoryId = @inventoryId 
+        AND productId = @productId 
+        AND locationId = @locationId
+      `);
+
+    let itemId: number;
+    
+    if (existingItem.recordset.length === 0) {
+      // Create new inventory item if it doesn't exist
+      const createRequest = this.pool.request();
+      const newItem = await createRequest
+        .input("inventoryId", inventoryId)
+        .input("productId", productId)
+        .input("locationId", locationId)
+        .input("stockQuantity", 0)
+        .input("status", "pending")
+        .input("createdAt", new Date())
+        .input("updatedAt", new Date())
+        .query(`
+          INSERT INTO inventory_items (inventoryId, productId, locationId, stockQuantity, status, createdAt, updatedAt)
+          OUTPUT INSERTED.id
+          VALUES (@inventoryId, @productId, @locationId, @stockQuantity, @status, @createdAt, @updatedAt)
+        `);
+      
+      itemId = newItem.recordset[0].id;
+    } else {
+      itemId = existingItem.recordset[0].id;
+    }
+
+    // Update the appropriate count based on countStage
+    const updateRequest = this.pool.request();
+    const countedByStr = userId.toString();
+    const now = new Date();
+    
+    let updateQuery = "";
+    
+    switch (countStage) {
+      case "1":
+      case "count1":
+        updateQuery = `
+          UPDATE inventory_items 
+          SET count1 = @quantity, count1By = @countedBy, count1At = @countedAt, updatedAt = @updatedAt
+          WHERE id = @itemId
+        `;
+        break;
+      case "2":
+      case "count2":
+        updateQuery = `
+          UPDATE inventory_items 
+          SET count2 = @quantity, count2By = @countedBy, count2At = @countedAt, updatedAt = @updatedAt
+          WHERE id = @itemId
+        `;
+        break;
+      case "3":
+      case "count3":
+        updateQuery = `
+          UPDATE inventory_items 
+          SET count3 = @quantity, count3By = @countedBy, count3At = @countedAt, updatedAt = @updatedAt
+          WHERE id = @itemId
+        `;
+        break;
+      case "4":
+      case "count4":
+        updateQuery = `
+          UPDATE inventory_items 
+          SET count4 = @quantity, count4By = @countedBy, count4At = @countedAt, 
+              finalQuantity = @quantity, status = 'confirmed', updatedAt = @updatedAt
+          WHERE id = @itemId
+        `;
+        break;
+      default:
+        throw new Error(`Invalid count stage: ${countStage}`);
+    }
+
+    await updateRequest
+      .input("itemId", itemId)
+      .input("quantity", quantity)
+      .input("countedBy", countedByStr)
+      .input("countedAt", now)
+      .input("updatedAt", now)
+      .query(updateQuery);
+
+    return {
+      success: true,
+      itemId,
+      message: "Manual count registered successfully"
+    };
+  }
+
   // Generate comprehensive final report for inventory
   async getInventoryFinalReport(
     inventoryId: number,

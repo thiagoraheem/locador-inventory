@@ -510,11 +510,11 @@ export default function MobileCounting() {
       quantityInput < 0 ||
       !selectedInventoryId
     ) {
-      /*toast({
+      toast({
         title: "Dados incompletos",
-        description: "Selecione um produto e informe uma quantidade válida",
+        description: "Selecione um produto e informe uma quantidade válida (maior ou igual a 0)",
         variant: "destructive",
-      });*/
+      });
       return;
     }
 
