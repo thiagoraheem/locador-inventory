@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -55,6 +55,7 @@ import SelectedInventoryInfo from "@/components/selected-inventory-info";
 
 export default function InventoryCounts() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
   const { selectedInventoryId, setSelectedInventoryId } =
@@ -62,9 +63,32 @@ export default function InventoryCounts() {
   const [countValues, setCountValues] = useState<{
     [itemId: number]: number | string;
   }>({});
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Debounce search term for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Auto-focus on first input when table loads or items change
+  useEffect(() => {
+    if (filteredItems.length > 0 && selectedInventoryId && canPerformCounting(selectedInv?.status || "")) {
+      const timer = setTimeout(() => {
+        if (firstInputRef.current) {
+          firstInputRef.current.focus();
+        }
+      }, 200);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [filteredItems.length, selectedInventoryId, selectedInv?.status]);
 
   // Fetch all inventories
   const { data: inventories } = useQuery<Inventory[]>({
@@ -186,15 +210,21 @@ export default function InventoryCounts() {
     ? getCurrentCountStage(selectedInv.status)
     : 1;
 
-  // Filter items based on search term and status
-  const filteredItems =
-    currentItems?.filter((item) => {
+  // Optimized filtering with memoization for better performance
+  const filteredItems = useMemo(() => {
+    if (!currentItems) return [];
+    
+    return currentItems.filter((item) => {
       const product = products?.find((p) => p.id === item.productId);
       const location = locations?.find((l) => l.id === item.locationId);
-      const searchMatch =
-        product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        location?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      
+      // Enhanced search matching - case insensitive and includes partial matches
+      const searchLower = debouncedSearchTerm.toLowerCase().trim();
+      const searchMatch = !searchLower || 
+        product?.name?.toLowerCase().includes(searchLower) ||
+        product?.sku?.toLowerCase().includes(searchLower) ||
+        product?.description?.toLowerCase().includes(searchLower) ||
+        location?.name?.toLowerCase().includes(searchLower) ||
         false;
 
       if (statusFilter === "all") {
@@ -208,7 +238,8 @@ export default function InventoryCounts() {
       }
 
       return searchMatch;
-    }) || [];
+    });
+  }, [currentItems, products, locations, debouncedSearchTerm, statusFilter, currentStage]);
 
   // Get final quantity status
   const getFinalQuantityStatus = (item: InventoryItem) => {
@@ -319,6 +350,13 @@ export default function InventoryCounts() {
       ...prev,
       [itemId]: "",
     }));
+    
+    // Focus on the first input after successful count
+    setTimeout(() => {
+      if (firstInputRef.current) {
+        firstInputRef.current.focus();
+      }
+    }, 100);
   };
 
   const getStageLabel = (stage: number) => {
@@ -407,9 +445,10 @@ export default function InventoryCounts() {
                       <span className="text-sm font-medium">Buscar Item</span>
                     </div>
                     <Input
-                      placeholder="Nome do produto, SKU ou local..."
+                      placeholder="Nome, descrição, SKU do produto ou local..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </CardContent>
@@ -571,6 +610,7 @@ export default function InventoryCounts() {
                               </TableCell>
                               <TableCell>
                                 <Input
+                                  ref={index === 0 ? firstInputRef : null}
                                   type="number"
                                   min="0"
                                   step="0.01"
@@ -588,13 +628,17 @@ export default function InventoryCounts() {
                                       [item.id]: e.target.value,
                                     }))
                                   }
-                                  className="w-32 border-primary/40 focus:border-primary"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && countValue && countValue !== '') {
+                                      handleSaveCount(item.id, currentStage);
+                                    }
+                                  }}
+                                  className="w-32 border-primary/40 focus:border-primary transition-all duration-200"
                                   disabled={
                                     !canPerformCounting(
                                       selectedInv?.status || "",
                                     )
                                   }
-                                  autoFocus
                                 />
                               </TableCell>
                               <TableCell>
