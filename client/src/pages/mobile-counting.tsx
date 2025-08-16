@@ -139,6 +139,18 @@ export default function MobileCounting() {
     quantity: number;
     locationId: number;
   } | null>(null);
+  
+  // Estados para diálogo de confirmação de local diferente
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [pendingSerialData, setPendingSerialData] = useState<{
+    serialNumber: string;
+    productId: number;
+    productName: string;
+    productSku: string;
+    actualLocationId: number;
+    actualLocationName: string;
+    expectedLocationId: number;
+  } | null>(null);
 
   const { toast } = useToast();
 
@@ -373,11 +385,20 @@ export default function MobileCounting() {
       if (result.success) {
         // Verificar se o item está no local selecionado (se houver filtro)
         if (selectedLocationId && result.locationId !== selectedLocationId) {
-          toast({
-            title: "Local incorreto",
-            description: `Este item pertence a outro local de estoque. Local esperado: ${locations?.find((l) => l.id === selectedLocationId)?.name}`,
-            variant: "destructive",
+          // Mostrar diálogo de confirmação para local diferente
+          const expectedLocation = locations?.find((l) => l.id === selectedLocationId);
+          setPendingSerialData({
+            serialNumber: serialInput.trim(),
+            productId: result.productId,
+            productName: result.productName,
+            productSku: result.productSku,
+            actualLocationId: result.locationId,
+            actualLocationName: result.locationName,
+            expectedLocationId: selectedLocationId
           });
+          setShowLocationDialog(true);
+          setSerialInput("");
+          setIsLoading(false);
           return;
         }
 
@@ -556,6 +577,71 @@ export default function MobileCounting() {
   const handleCancelAdd = () => {
     setShowConfirmDialog(false);
     setPendingAddData(null);
+  };
+
+  // Função para confirmar leitura em local diferente
+  const handleConfirmLocationReading = async () => {
+    if (!pendingSerialData || !selectedInventoryId) return;
+
+    setIsLoading(true);
+    try {
+      // Fazer nova chamada à API sem filtro de localização para registrar a leitura
+      const response = await fetch(
+        `/api/inventories/${selectedInventoryId}/serial-reading`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            serialNumber: pendingSerialData.serialNumber,
+            countStage: `count${getCurrentCountStage()}`,
+            // Não enviar locationFilter para permitir leitura em qualquer local
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Adicionar à lista de produtos contados com o local real
+        addSerialToProduct(
+          pendingSerialData.productId,
+          pendingSerialData.productName,
+          pendingSerialData.productSku,
+          pendingSerialData.serialNumber,
+          pendingSerialData.actualLocationId,
+          pendingSerialData.actualLocationName,
+        );
+
+        // Atualizar histórico
+        setRecentScans((prev) => [pendingSerialData.serialNumber, ...prev.slice(0, 4)]);
+
+        toast({
+          title: "Série registrada",
+          description: `${pendingSerialData.productName} - ${pendingSerialData.serialNumber} (${pendingSerialData.actualLocationName})`,
+        });
+
+        // Limpar dados pendentes
+        setShowLocationDialog(false);
+        setPendingSerialData(null);
+      } else {
+        throw new Error(result.message || "Falha ao registrar número de série");
+      }
+    } catch (error) {
+      toast({
+        title: "Erro na leitura",
+        description: error instanceof Error ? error.message : "Falha ao registrar número de série",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Função para cancelar leitura de local diferente
+  const handleCancelLocationReading = () => {
+    setShowLocationDialog(false);
+    setPendingSerialData(null);
   };
 
   // Função para adicionar produto por série à lista
@@ -1291,6 +1377,44 @@ export default function MobileCounting() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               Confirmar Inclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de Confirmação para Local Diferente */}
+      <AlertDialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-blue-500" />
+              Item em local diferente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              O número de série <strong>{pendingSerialData?.serialNumber}</strong> do produto{" "}
+              <strong>{pendingSerialData?.productName}</strong> (SKU: {pendingSerialData?.productSku})
+              pertence ao local <strong>{pendingSerialData?.actualLocationName}</strong>,
+              mas você selecionou o local{" "}
+              <strong>{locations?.find(l => l.id === pendingSerialData?.expectedLocationId)?.name}</strong>.
+              <br />
+              <br />
+              Deseja continuar com a leitura no local atual do item ou cancelar para
+              ajustar o local selecionado?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelLocationReading} disabled={isLoading}>
+              Cancelar Leitura
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLocationReading}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Continuar Leitura
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
