@@ -17,7 +17,7 @@ const sqlServerConfig = {
   user: DB_USER,
   password: DB_PASSWORD,
   options: {
-    encrypt: true,
+    encrypt: false,
     trustServerCertificate: NODE_ENV !== 'production',
     connectTimeout: 720000,
     requestTimeout: 720000,
