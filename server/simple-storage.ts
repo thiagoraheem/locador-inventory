@@ -2183,6 +2183,53 @@ import type {
     }));
   }
 
+  // Buscar itens de série por usuário
+  async getInventorySerialItemsByUser(
+    inventoryId: number,
+    userId: number,
+    productId?: number,
+  ): Promise<InventorySerialItem[]> {
+    const request = this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("userId", sql.Int, userId);
+
+    let whereClause = `WHERE inventoryId = @inventoryId 
+        AND (
+          (count1_found = 1 AND count1_by = @userId) OR
+          (count2_found = 1 AND count2_by = @userId) OR
+          (count3_found = 1 AND count3_by = @userId) OR
+          (count4_found = 1 AND count4_by = @userId)
+        )`;
+
+    if (productId) {
+      request.input("productId", sql.Int, productId);
+      whereClause += ` AND productId = @productId`;
+    }
+
+    const result = await request.query(`
+        SELECT 
+          id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
+          count1_found, count2_found, count3_found, count4_found,
+          count1_by, count2_by, count3_by, count4_by,
+          count1_at, count2_at, count3_at, count4_at,
+          status, notes, finalStatus, createdAt, updatedAt
+        FROM inventory_serial_items 
+        ${whereClause}
+        ORDER BY serialNumber
+      `);
+
+    return result.recordset.map((row) => ({
+      ...row,
+      createdAt: new Date(row.createdAt).getTime(),
+      updatedAt: new Date(row.updatedAt).getTime(),
+      count1_at: row.count1_at ? new Date(row.count1_at).getTime() : undefined,
+      count2_at: row.count2_at ? new Date(row.count2_at).getTime() : undefined,
+      count3_at: row.count3_at ? new Date(row.count3_at).getTime() : undefined,
+      count4_at: row.count4_at ? new Date(row.count4_at).getTime() : undefined,
+    }));
+  }
+
   // Buscar itens de série por produto
   async getInventorySerialItemsByProduct(
     inventoryId: number,

@@ -93,6 +93,40 @@ export default function MobileCounting() {
     useState<SearchedProduct | null>(null);
   const [quantityInput, setQuantityInput] = useState<number>(1);
   const [countedProducts, setCountedProducts] = useState<CountedProduct[]>([]);
+
+  // Chave para localStorage baseada no inventário e usuário
+  const getStorageKey = () => {
+    return `mobile-counting-${selectedInventoryId}-${currentUser?.id || 'anonymous'}`;
+  };
+
+  // Salvar dados no localStorage
+  const saveToLocalStorage = (products: CountedProduct[]) => {
+    if (selectedInventoryId && currentUser?.id) {
+      localStorage.setItem(getStorageKey(), JSON.stringify(products));
+    }
+  };
+
+  // Carregar dados do localStorage
+  const loadFromLocalStorage = (): CountedProduct[] => {
+    if (selectedInventoryId && currentUser?.id) {
+      const stored = localStorage.getItem(getStorageKey());
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (error) {
+          console.error('Erro ao carregar dados do localStorage:', error);
+        }
+      }
+    }
+    return [];
+  };
+
+  // Limpar dados do localStorage
+  const clearLocalStorage = () => {
+    if (selectedInventoryId && currentUser?.id) {
+      localStorage.removeItem(getStorageKey());
+    }
+  };
   const [activeTab, setActiveTab] = useState<"serial" | "sku">("serial");
   const [isLoading, setIsLoading] = useState(false);
   const [recentScans, setRecentScans] = useState<string[]>([]);
@@ -134,6 +168,21 @@ export default function MobileCounting() {
     enabled: !!selectedInventoryId,
   });
 
+  // Fetch user's serial readings for current inventory
+  const { data: userSerialReadings } = useQuery<any[]>({
+    queryKey: ["/api/inventories", selectedInventoryId, "serial-items", "user", currentUser?.id],
+    queryFn: async () => {
+      if (!selectedInventoryId || !currentUser?.id) return [];
+      const response = await fetch(
+        `/api/inventories/${selectedInventoryId}/serial-items?userId=${currentUser.id}`,
+        { credentials: "include" }
+      );
+      if (!response.ok) throw new Error('Failed to fetch user serial readings');
+      return response.json();
+    },
+    enabled: !!selectedInventoryId && !!currentUser?.id,
+  });
+
   // Get active inventories that can be counted
   const activeInventories =
     inventories?.filter((inv) =>
@@ -146,7 +195,95 @@ export default function MobileCounting() {
   useEffect(() => {
     // Reset selected location when inventory changes
     setSelectedLocationId(null);
+    // Limpar produtos contados quando trocar de inventário
+    setCountedProducts([]);
+    // Limpar dados antigos do localStorage
+    if (selectedInventoryId && currentUser?.id) {
+      clearLocalStorage();
+    }
   }, [selectedInventoryId]);
+
+  // Carregar dados persistidos na inicialização
+  useEffect(() => {
+    if (selectedInventoryId && currentUser?.id) {
+      // Primeiro, tentar carregar do localStorage
+      const localData = loadFromLocalStorage();
+      if (localData.length > 0) {
+        setCountedProducts(localData);
+      }
+    }
+  }, [selectedInventoryId, currentUser?.id]);
+
+  // Sincronizar com dados do servidor quando disponíveis
+  useEffect(() => {
+    if (userSerialReadings && userSerialReadings.length > 0 && products) {
+      const serverProducts: CountedProduct[] = [];
+      const currentStage = getCurrentCountStage();
+      
+      // Agrupar leituras por produto
+      const groupedReadings = userSerialReadings.reduce((acc, reading) => {
+        // Verificar se a leitura é do estágio atual
+        const isCurrentStage = reading[`count${currentStage}_found`] && 
+                              reading[`count${currentStage}_by`] == currentUser?.id;
+        
+        if (isCurrentStage) {
+          const key = `${reading.productId}-${reading.locationId}`;
+          if (!acc[key]) {
+            acc[key] = {
+              productId: reading.productId,
+              locationId: reading.locationId,
+              serialNumbers: []
+            };
+          }
+          acc[key].serialNumbers.push(reading.serialNumber);
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Converter para CountedProduct
+      Object.values(groupedReadings).forEach((group: any) => {
+        const product = products.find(p => p.id === group.productId);
+        const location = locations?.find(l => l.id === group.locationId);
+        
+        if (product) {
+          serverProducts.push({
+            productId: group.productId,
+            productName: product.name,
+            productSku: product.sku,
+            locationId: group.locationId,
+            locationName: location?.name || '',
+            hasSerialControl: true,
+            serialNumbers: group.serialNumbers,
+            totalSerialCount: group.serialNumbers.length
+          });
+        }
+      });
+
+      // Mesclar com dados locais, priorizando dados do servidor
+      setCountedProducts(prevLocal => {
+        const merged = [...serverProducts];
+        
+        // Adicionar produtos locais que não estão no servidor
+        prevLocal.forEach(localProduct => {
+          const existsInServer = serverProducts.some(sp => 
+            sp.productId === localProduct.productId && 
+            sp.locationId === localProduct.locationId
+          );
+          
+          if (!existsInServer) {
+            merged.push(localProduct);
+          }
+        });
+        
+        return merged;
+      });
+    }
+  }, [userSerialReadings, products, locations, currentUser?.id]);
+
+  // Salvar no localStorage sempre que countedProducts mudar
+  useEffect(() => {
+    saveToLocalStorage(countedProducts);
+  }, [countedProducts, selectedInventoryId, currentUser?.id]);
 
   // Get current counting stage based on inventory status
   const getCurrentCountStage = () => {
@@ -685,6 +822,11 @@ export default function MobileCounting() {
           )}
           <div className="flex-1">
             <h1 className="text-2xl font-bold">Contagem Mobile</h1>
+            {currentUser && (
+              <p className="text-sm text-blue-200 mt-1">
+                Usuário: {currentUser.name || currentUser.username}
+              </p>
+            )}
             {selectedInventory?.status === "count3_open" && (
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="destructive" className="text-xs">
@@ -996,7 +1138,10 @@ export default function MobileCounting() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setCountedProducts([])}
+                onClick={() => {
+                  setCountedProducts([]);
+                  clearLocalStorage();
+                }}
                 disabled={countedProducts.length === 0}
                 className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/50"
               >

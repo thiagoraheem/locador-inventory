@@ -844,14 +844,28 @@ export async function registerInventoryRoutes(app: Express) {
         const productId = req.query.productId
           ? parseInt(req.query.productId as string)
           : undefined;
+        const userId = req.query.userId
+          ? parseInt(req.query.userId as string)
+          : undefined;
 
         storage = await getStorage();
-        const items = productId
-          ? await storage.getInventorySerialItemsByProduct(
-              inventoryId,
-              productId,
-            )
-          : await storage.getInventorySerialItems(inventoryId);
+        
+        let items;
+        if (userId) {
+          // Buscar itens filtrados por usuário
+          items = await storage.getInventorySerialItemsByUser(
+            inventoryId,
+            userId,
+            productId
+          );
+        } else if (productId) {
+          items = await storage.getInventorySerialItemsByProduct(
+            inventoryId,
+            productId,
+          );
+        } else {
+          items = await storage.getInventorySerialItems(inventoryId);
+        }
 
         res.json(items);
       } catch (error) {
