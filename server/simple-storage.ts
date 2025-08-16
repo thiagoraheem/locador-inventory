@@ -2977,4 +2977,211 @@ import type {
       throw error;
     }
   }
+
+  // Adicionar novas categorias a um inventário existente
+  async addCategoriesToInventory(
+    inventoryId: number,
+    newCategoryIds: number[],
+    userId: number
+  ): Promise<void> {
+    const transaction = this.pool.transaction();
+    
+    try {
+      await transaction.begin();
+      
+      // Verificar se o inventário existe e está aberto
+      const inventoryQuery = `
+        SELECT id, status, selectedCategoryIds, selectedLocationIds
+        FROM inventories 
+        WHERE id = @inventoryId
+      `;
+      
+      const inventoryResult = await transaction
+        .request()
+        .input('inventoryId', inventoryId)
+        .query(inventoryQuery);
+        
+      if (inventoryResult.recordset.length === 0) {
+        throw new Error('Inventário não encontrado');
+      }
+      
+      const inventory = inventoryResult.recordset[0];
+      
+      // Permitir adicionar categorias até a 2ª contagem
+      const allowedStatuses = ['open', 'count1_open', 'count1_closed', 'count2_open'];
+      if (!allowedStatuses.includes(inventory.status)) {
+        throw new Error('Só é possível adicionar categorias a inventários até a 2ª contagem');
+      }
+      
+      // Parse das categorias e localizações já selecionadas
+      const currentCategoryIds = JSON.parse(inventory.selectedCategoryIds || '[]');
+      const selectedLocationIds = JSON.parse(inventory.selectedLocationIds || '[]');
+      
+      // Filtrar apenas categorias que ainda não estão no inventário
+      const categoriesToAdd = newCategoryIds.filter(id => !currentCategoryIds.includes(id));
+      
+      if (categoriesToAdd.length === 0) {
+        throw new Error('Todas as categorias selecionadas já estão incluídas no inventário');
+      }
+      
+      // Atualizar selectedCategoryIds no inventário
+      const updatedCategoryIds = [...currentCategoryIds, ...categoriesToAdd];
+      
+      const updateInventoryQuery = `
+        UPDATE inventories 
+        SET 
+          selectedCategoryIds = @selectedCategoryIds,
+          updatedAt = @updatedAt
+        WHERE id = @inventoryId
+      `;
+      
+      await transaction
+        .request()
+        .input('inventoryId', inventoryId)
+        .input('selectedCategoryIds', JSON.stringify(updatedCategoryIds))
+        .input('updatedAt', new Date())
+        .query(updateInventoryQuery);
+      
+      // Criar inventory_items para produtos das novas categorias
+      for (const categoryId of categoriesToAdd) {
+        for (const locationId of selectedLocationIds) {
+          // Buscar produtos da categoria que têm estoque na localização
+          const stockQuery = `
+            SELECT DISTINCT p.id as productId, s.quantity as stockQuantity
+            FROM products p
+            INNER JOIN stock s ON p.id = s.productId
+            WHERE p.categoryId = @categoryId 
+              AND s.locationId = @locationId
+              AND s.quantity > 0
+          `;
+          
+          const stockResult = await transaction
+            .request()
+            .input('categoryId', categoryId)
+            .input('locationId', locationId)
+            .query(stockQuery);
+          
+          // Criar inventory_item para cada produto encontrado
+          for (const stockItem of stockResult.recordset) {
+            const insertItemQuery = `
+              INSERT INTO inventory_items (
+                inventoryId, productId, locationId, expectedQuantity,
+                count1, count2, count3, count4, finalQuantity, difference,
+                status, createdAt, updatedAt
+              )
+              VALUES (
+                @inventoryId, @productId, @locationId, @expectedQuantity,
+                NULL, NULL, NULL, NULL, NULL, NULL,
+                'pending', @createdAt, @updatedAt
+              )
+            `;
+            
+            await transaction
+              .request()
+              .input('inventoryId', inventoryId)
+              .input('productId', stockItem.productId)
+              .input('locationId', locationId)
+              .input('expectedQuantity', stockItem.stockQuantity)
+              .input('createdAt', new Date())
+              .input('updatedAt', new Date())
+              .query(insertItemQuery);
+          }
+        }
+      }
+      
+      // Criar serial items para produtos com controle de série das novas categorias
+      const serialProductsQuery = `
+        SELECT DISTINCT p.id as productId
+        FROM products p
+        WHERE p.categoryId IN (${categoriesToAdd.map(() => '?').join(',')})
+          AND p.hasSerialControl = 1
+      `;
+      
+      const serialProductsResult = await transaction
+        .request()
+        .query(serialProductsQuery.replace(/\?/g, () => {
+          const categoryId = categoriesToAdd.shift();
+          return categoryId?.toString() || '0';
+        }));
+      
+      // Reset categoriesToAdd para usar novamente
+      const resetCategoriesToAdd = newCategoryIds.filter(id => !currentCategoryIds.includes(id));
+      
+      for (const serialProduct of serialProductsResult.recordset) {
+        for (const locationId of selectedLocationIds) {
+          // Buscar números de série do produto na localização usando tabelas base
+          const serialsQuery = `
+            SELECT 
+              ES.id as stockItemId, 
+              ES.NumSerie as serialNumber
+            FROM Locador..tbl_EstoqueSerial ES
+            INNER JOIN Locador..tbl_Produtos P ON P.CodProduto = ES.CodProduto
+            LEFT JOIN Locador..tbl_ProdutoSerial PS ON PS.NumSerie = ES.NumSerie
+            WHERE P.id = @productId 
+              AND ES.CodLocalizacao = @locationId 
+              AND ISNULL(PS.FlgAtivo, 1) = 1
+          `;
+          
+          const serialsResult = await transaction
+            .request()
+            .input('productId', serialProduct.productId)
+            .input('locationId', locationId)
+            .query(serialsQuery);
+          
+          console.log(`Serials found for product ${serialProduct.productId} at location ${locationId}:`, serialsResult.recordset);
+          
+          // Criar inventory_serial_items apenas se houver seriais
+          if (serialsResult.recordset && serialsResult.recordset.length > 0) {
+            for (const serial of serialsResult.recordset) {
+            const insertSerialQuery = `
+              INSERT INTO inventory_serial_items (
+                inventoryId, stockItemId, productId, locationId, serialNumber,
+                status, createdAt, updatedAt
+              )
+              VALUES (
+                @inventoryId, @stockItemId, @productId, @locationId, @serialNumber,
+                'pending', @createdAt, @updatedAt
+              )
+            `;
+            
+            await transaction
+              .request()
+              .input('inventoryId', inventoryId)
+              .input('stockItemId', serial.stockItemId)
+              .input('productId', serialProduct.productId)
+              .input('locationId', locationId)
+              .input('serialNumber', serial.serialNumber)
+              .input('createdAt', new Date())
+              .input('updatedAt', new Date())
+              .query(insertSerialQuery);
+            }
+          } else {
+            console.log(`No serials found for product ${serialProduct.productId} at location ${locationId}`);
+          }
+        }
+      }
+      
+      // Log da ação
+      const auditLogQuery = `
+        INSERT INTO audit_logs (userId, action, entityType, entityId, metadata, timestamp)
+        VALUES (@userId, @action, @entityType, @entityId, @metadata, @timestamp)
+      `;
+      
+      await transaction
+        .request()
+        .input('userId', userId)
+        .input('action', 'add_categories')
+        .input('entityType', 'inventory')
+        .input('entityId', inventoryId.toString())
+        .input('metadata', JSON.stringify({ addedCategoryIds: resetCategoriesToAdd }))
+        .input('timestamp', new Date())
+        .query(auditLogQuery);
+      
+      await transaction.commit();
+      
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
 }

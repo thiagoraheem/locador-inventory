@@ -18,6 +18,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Table,
   TableBody,
   TableCell,
@@ -44,6 +54,7 @@ import {
   BarChart3,
   AlertTriangle,
   Calendar,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // Temporary type definitions - replace with actual shared schema
@@ -53,6 +64,7 @@ interface Inventory {
   description?: string;
   status: string;
   startDate: number;
+  selectedCategoryIds?: string | number[];
 }
 
 interface InventoryItem {
@@ -155,6 +167,8 @@ export default function InventoryControlBoard() {
   const [editingCount4, setEditingCount4] = useState<{
     [itemId: number]: number | string;
   }>({});
+  const [isAddCategoriesModalOpen, setIsAddCategoriesModalOpen] = useState(false);
+  const [selectedCategoriesToAdd, setSelectedCategoriesToAdd] = useState<number[]>([]);
 
   const { toast } = useToast();
 
@@ -475,6 +489,55 @@ export default function InventoryControlBoard() {
     onError: (error) => {
       toast({
         title: "Erro ao excluir inventário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation to add categories to inventory
+  const addCategoriesMutation = useMutation({
+    mutationFn: async ({
+      inventoryId,
+      categoryIds,
+    }: {
+      inventoryId: number;
+      categoryIds: number[];
+    }) => {
+      const response = await fetch(`/api/inventories/${inventoryId}/categories`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ categoryIds }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add categories");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Categorias adicionadas",
+        description: "As categorias foram adicionadas ao inventário com sucesso",
+      });
+      setIsAddCategoriesModalOpen(false);
+      setSelectedCategoriesToAdd([]);
+      queryClient.invalidateQueries({
+        queryKey: [`/api/inventories/${selectedInventoryId}`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/inventories/${selectedInventoryId}/stats`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/inventories/${selectedInventoryId}/items`],
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro ao adicionar categorias",
         description: error.message,
         variant: "destructive",
       });
@@ -841,6 +904,40 @@ export default function InventoryControlBoard() {
     );
   };
 
+  // Get categories that are not yet included in the inventory
+  const getAvailableCategories = () => {
+    if (!categories || !selectedInventory) return [];
+    
+    // Parse selectedCategoryIds from the inventory
+    let selectedCategoryIds: number[] = [];
+    try {
+      if (selectedInventory.selectedCategoryIds) {
+        selectedCategoryIds = typeof selectedInventory.selectedCategoryIds === 'string' 
+          ? JSON.parse(selectedInventory.selectedCategoryIds)
+          : selectedInventory.selectedCategoryIds;
+      }
+    } catch (error) {
+      console.error('Error parsing selectedCategoryIds:', error);
+    }
+    
+    return categories.filter(category => !selectedCategoryIds.includes(category.id));
+  };
+
+  // Handle adding categories to inventory
+  const handleAddCategories = () => {
+    if (!selectedInventoryId || selectedCategoriesToAdd.length === 0) return;
+    
+    addCategoriesMutation.mutate({
+      inventoryId: selectedInventoryId,
+      categoryIds: selectedCategoriesToAdd,
+    });
+  };
+
+  // Check if inventory can have categories added (up to 2nd count)
+  const canAddCategories = (status: string) => {
+    return ["open", "count1_open", "count1_closed", "count2_open"].includes(status);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header Compacto */}
@@ -937,6 +1034,72 @@ export default function InventoryControlBoard() {
                   <Package className="h-3 w-3" />
                   Relatório 3ª Contagem
                 </Button>
+              )}
+
+              {canAddCategories(selectedInventory.status) && getAvailableCategories().length > 0 && (
+                <Dialog open={isAddCategoriesModalOpen} onOpenChange={setIsAddCategoriesModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1 text-purple-600 hover:text-purple-700"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Adicionar Categorias
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Categorias ao Inventário</DialogTitle>
+                      <DialogDescription>
+                        Selecione as categorias que deseja adicionar ao inventário {selectedInventory.code}.
+                        Os produtos dessas categorias serão incluídos automaticamente.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="max-h-60 overflow-y-auto space-y-2">
+                        {getAvailableCategories().map((category) => (
+                          <div key={category.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`category-${category.id}`}
+                              checked={selectedCategoriesToAdd.includes(category.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedCategoriesToAdd(prev => [...prev, category.id]);
+                                } else {
+                                  setSelectedCategoriesToAdd(prev => prev.filter(id => id !== category.id));
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`category-${category.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {category.name}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddCategoriesModalOpen(false);
+                          setSelectedCategoriesToAdd([]);
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        onClick={handleAddCategories}
+                        disabled={selectedCategoriesToAdd.length === 0 || addCategoriesMutation.isPending}
+                      >
+                        {addCategoriesMutation.isPending ? "Adicionando..." : "Adicionar Categorias"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
             </div>
           )}

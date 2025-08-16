@@ -47,6 +47,48 @@ export async function registerInventoryRoutes(app: Express) {
     }
   });
 
+  // Add categories to existing inventory
+  app.put("/api/inventories/:id/categories", isAuthenticated, async (req: any, res) => {
+    try {
+      storage = await getStorage();
+      const inventoryId = parseInt(req.params.id);
+      const { categoryIds } = req.body;
+
+      if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+        return res.status(400).json({ message: "categoryIds deve ser um array não vazio" });
+      }
+
+      // Validar se todas as categoryIds são números
+      const validCategoryIds = categoryIds.filter(id => typeof id === 'number' && id > 0);
+      if (validCategoryIds.length !== categoryIds.length) {
+        return res.status(400).json({ message: "Todas as categoryIds devem ser números válidos" });
+      }
+
+      await storage.addCategoriesToInventory(inventoryId, validCategoryIds, req.user.id);
+
+      res.json({ 
+        message: "Categorias adicionadas com sucesso ao inventário",
+        addedCategoryIds: validCategoryIds
+      });
+    } catch (error) {
+      console.error('Erro ao adicionar categorias ao inventário:', error);
+      
+      if (error.message === 'Inventário não encontrado') {
+        return res.status(404).json({ message: error.message });
+      }
+      
+      if (error.message === 'Só é possível adicionar categorias a inventários até a 2ª contagem') {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      if (error.message === 'Todas as categorias selecionadas já estão incluídas no inventário') {
+        return res.status(400).json({ message: error.message });
+      }
+      
+      res.status(500).json({ message: "Erro interno do servidor ao adicionar categorias" });
+    }
+  });
+
   app.post(
     "/api/inventories/:id/close",
     isAuthenticated,
