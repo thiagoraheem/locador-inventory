@@ -691,7 +691,7 @@ import type {
       const existingUser = await this.pool
         .request()
         .input("username", sql.VarChar, updates.username)
-        .input("currentId", sql.VarChar, id)
+        .input("currentId", sql.Int, id)
         .query(
           "SELECT id FROM users WHERE username = @username AND id != @currentId",
         );
@@ -773,7 +773,7 @@ import type {
   async deleteUser(id: number): Promise<void> {
     await this.pool
       .request()
-      .input("id", sql.VarChar, id)
+      .input("id", sql.Int, id)
       .query(
         "UPDATE users SET isActive = 0, updatedAt = GETDATE() WHERE id = @id",
       );

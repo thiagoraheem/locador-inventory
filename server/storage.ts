@@ -29,6 +29,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
+  deleteUser(id: number): Promise<void>;
   upsertUser(user: InsertUser & { id: number }): Promise<User>;
 
   // Category operations
@@ -243,6 +244,10 @@ export class MemStorage implements IStorage {
       this.users.set(user.id, user);
       return user;
     }
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    this.users.delete(id);
   }
 
   // Category operations

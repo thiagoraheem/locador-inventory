@@ -127,6 +127,13 @@ export class SqlServerStorage implements IStorage {
     }
   }
 
+  async deleteUser(id: number): Promise<void> {
+    await this.query(
+      'UPDATE users SET isActive = 0 WHERE id = @id',
+      { id }
+    );
+  }
+
   // Category operations
   async getCategories(): Promise<Category[]> {
     return this.query<Category>('SELECT * FROM categories WHERE isActive = 1 ORDER BY name');
