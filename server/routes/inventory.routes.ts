@@ -821,6 +821,30 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  // Obter informações de número de série sem registrar leitura
+  app.post(
+    "/api/inventories/:id/serial-info",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const inventoryId = parseInt(req.params.id);
+        const validatedData = serialReadingRequestSchema.parse(req.body);
+
+        storage = await getStorage();
+        const result = await storage.getSerialInfo(
+          inventoryId,
+          validatedData,
+          (req.session as any).userId || 1,
+        );
+
+        res.json(result);
+      } catch (error) {
+        // Error getting serial info
+        res.status(500).json({ message: "Failed to get serial info" });
+      }
+    },
+  );
+
   // Registrar leitura de número de série
   app.post(
     "/api/inventories/:id/serial-reading",

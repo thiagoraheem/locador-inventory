@@ -429,8 +429,10 @@ export default function MobileCounting() {
 
     setIsLoading(true);
     try {
+      // Primeiro, apenas verificar se a série existe e obter informações do produto
+      // sem registrar a leitura ainda
       const response = await fetch(
-        `/api/inventories/${selectedInventoryId}/serial-reading`,
+        `/api/inventories/${selectedInventoryId}/serial-info`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -465,23 +467,8 @@ export default function MobileCounting() {
           return;
         }
 
-        // Adicionar à lista de produtos contados
-        addSerialToProduct(
-          result.productId,
-          result.productName,
-          result.productSku,
-          serialInput.trim(),
-          result.locationId,
-          result.locationName,
-        );
-
-        // Atualizar histórico
-        setRecentScans((prev) => [serialInput.trim(), ...prev.slice(0, 4)]);
-
-        toast({
-          title: "Série registrada",
-          description: `${result.productName} - ${serialInput} (${result.locationName})`,
-        });
+        // Se o local está correto, registrar a leitura imediatamente
+        await registerSerialReading(serialInput.trim(), result);
       } else if (result.alreadyRead) {
         toast({
           title: "Série já registrada",
@@ -659,13 +646,9 @@ export default function MobileCounting() {
     setPendingAddData(null);
   };
 
-  // Função para confirmar leitura em local diferente
-  const handleConfirmLocationReading = async () => {
-    if (!pendingSerialData || !selectedInventoryId) return;
-
-    setIsLoading(true);
+  // Função auxiliar para registrar a leitura de série
+  const registerSerialReading = async (serialNumber: string, productInfo: any) => {
     try {
-      // Fazer nova chamada à API sem filtro de localização para registrar a leitura
       const response = await fetch(
         `/api/inventories/${selectedInventoryId}/serial-reading`,
         {
@@ -673,9 +656,8 @@ export default function MobileCounting() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            serialNumber: pendingSerialData.serialNumber,
+            serialNumber: serialNumber,
             countStage: `count${getCurrentCountStage()}`,
-            // Não enviar locationFilter para permitir leitura em qualquer local
           }),
         },
       );
@@ -683,30 +665,49 @@ export default function MobileCounting() {
       const result = await response.json();
 
       if (result.success) {
-        // Adicionar à lista de produtos contados com o local real
+        // Adicionar à lista de produtos contados
         addSerialToProduct(
-          pendingSerialData.productId,
-          pendingSerialData.productName,
-          pendingSerialData.productSku,
-          pendingSerialData.serialNumber,
-          pendingSerialData.actualLocationId,
-          pendingSerialData.actualLocationName,
+          productInfo.productId,
+          productInfo.productName,
+          productInfo.productSku,
+          serialNumber,
+          productInfo.locationId,
+          productInfo.locationName,
         );
 
         // Atualizar histórico
-        setRecentScans((prev) => [pendingSerialData.serialNumber, ...prev.slice(0, 4)]);
+        setRecentScans((prev) => [serialNumber, ...prev.slice(0, 4)]);
 
         toast({
           title: "Série registrada",
-          description: `${pendingSerialData.productName} - ${pendingSerialData.serialNumber} (${pendingSerialData.actualLocationName})`,
+          description: `${productInfo.productName} - ${serialNumber} (${productInfo.locationName})`,
         });
-
-        // Limpar dados pendentes
-        setShowLocationDialog(false);
-        setPendingSerialData(null);
       } else {
         throw new Error(result.message || "Falha ao registrar número de série");
       }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Função para confirmar leitura em local diferente
+  const handleConfirmLocationReading = async () => {
+    if (!pendingSerialData || !selectedInventoryId) return;
+
+    setIsLoading(true);
+    try {
+      // Registrar a leitura no local correto
+      await registerSerialReading(pendingSerialData.serialNumber, {
+        productId: pendingSerialData.productId,
+        productName: pendingSerialData.productName,
+        productSku: pendingSerialData.productSku,
+        locationId: pendingSerialData.actualLocationId,
+        locationName: pendingSerialData.actualLocationName,
+      });
+
+      // Limpar dados pendentes
+      setShowLocationDialog(false);
+      setPendingSerialData(null);
     } catch (error) {
       toast({
         title: "Erro na leitura",

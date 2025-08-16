@@ -2269,6 +2269,74 @@ import type {
     }));
   }
 
+  // Verificar informações de número de série sem registrar leitura
+  async getSerialInfo(
+    inventoryId: number,
+    request: SerialReadingRequest,
+    userId: Number,
+  ): Promise<SerialReadingResponse> {
+    // Verificar se série existe
+    const product = await this.findProductBySerial(request.serialNumber);
+    if (!product) {
+      return {
+        success: false,
+        newSerial: true,
+        message: "Número de série não encontrado no sistema",
+      };
+    }
+
+    // Verificar se já foi lida neste estágio
+    const existingReading = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("serialNumber", sql.NVarChar, request.serialNumber).query(`
+        SELECT * FROM inventory_serial_items 
+        WHERE inventoryId = @inventoryId 
+        AND serialNumber = @serialNumber
+        AND ${request.countStage}_found = 1
+      `);
+
+    if (existingReading.recordset.length > 0) {
+      return {
+        success: false,
+        alreadyRead: true,
+        productId: product.id,
+        productName: product.name,
+        message: "Número de série já foi lido neste estágio",
+      };
+    }
+
+    // Obter informações do produto para identificar o local
+    const serialItemInfo = await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .input("serialNumber", sql.NVarChar, request.serialNumber).query(`
+        SELECT isi.productId, isi.locationId, l.name as locationName
+        FROM inventory_serial_items isi
+        LEFT JOIN locations l ON isi.locationId = l.id
+        WHERE isi.inventoryId = @inventoryId 
+        AND isi.serialNumber = @serialNumber
+      `);
+
+    let locationId: number | undefined;
+    let locationName: string | undefined;
+    if (serialItemInfo.recordset.length > 0) {
+      locationId = serialItemInfo.recordset[0].locationId;
+      locationName = serialItemInfo.recordset[0].locationName;
+    }
+
+    // Retornar informações sem registrar a leitura
+    return {
+      success: true,
+      productId: product.id,
+      productName: product.name,
+      productSku: product.sku,
+      locationId: locationId,
+      locationName: locationName,
+      message: "Informações da série obtidas com sucesso",
+    };
+  }
+
   // Registrar leitura de número de série
   async registerSerialReading(
     inventoryId: number,

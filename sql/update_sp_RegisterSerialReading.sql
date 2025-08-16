@@ -89,8 +89,32 @@ BEGIN
         RETURN;
     END;
     
-    -- CRITICAL: Incrementar contagem na tabela inventory_items
-    -- Esta é a funcionalidade que estava faltando
+    -- CRITICAL: Verificar se existe registro na inventory_items para o produto no local encontrado
+    -- Se não existir, criar um novo registro
+    DECLARE @InventoryItemId INT;
+    
+    SELECT @InventoryItemId = id 
+    FROM inventory_items 
+    WHERE inventoryId = @InventoryId 
+    AND productId = @ProductId 
+    AND locationId = @LocationId;
+    
+    IF @InventoryItemId IS NULL
+    BEGIN
+        -- Criar novo registro na inventory_items para o produto no local onde foi encontrado
+        INSERT INTO inventory_items (
+            inventoryId, productId, locationId, expectedQuantity, 
+            status, createdAt, updatedAt
+        )
+        VALUES (
+            @InventoryId, @ProductId, @LocationId, 0,
+            'PENDING', GETDATE(), GETDATE()
+        );
+        
+        SET @InventoryItemId = SCOPE_IDENTITY();
+    END;
+    
+    -- Incrementar contagem na tabela inventory_items
     DECLARE @CountColumn NVARCHAR(50);
     DECLARE @CountByColumn NVARCHAR(50);
     DECLARE @CountAtColumn NVARCHAR(50);
@@ -108,13 +132,11 @@ BEGIN
             ' + @CountByColumn + ' = NULL,
             ' + @CountAtColumn + ' = GETDATE(),
             updatedAt = GETDATE()
-        WHERE inventoryId = @InventoryId 
-        AND productId = @ProductId 
-        AND (locationId = @LocationId OR (locationId IS NULL AND @LocationId IS NULL))';
+        WHERE id = @InventoryItemId';
     
     EXEC sp_executesql @SQL, 
-        N'@InventoryId INT, @ProductId INT, @LocationId INT', 
-        @InventoryId, @ProductId, @LocationId;
+        N'@InventoryItemId INT', 
+        @InventoryItemId;
     
     -- Retornar resultado
     SELECT 
