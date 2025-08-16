@@ -121,11 +121,13 @@ export default function InventoryControlBoardCP() {
   const { data: selectedInventory, refetch: refetchInventory } = useQuery<Inventory>({
     queryKey: [`/api/inventories/${selectedInventoryId}`],
     enabled: !!selectedInventoryId,
+    refetchInterval: selectedInventoryId ? 15000 : false, // 30 seconds when inventory selected
   });
 
   const { data: serialItems, refetch: refetchSerialItems } = useQuery<InventorySerialItem[]>({
     queryKey: [`/api/inventories/${selectedInventoryId}/serial-items`],
     enabled: !!selectedInventoryId,
+    refetchInterval: selectedInventoryId ? 15000 : false, // 30 seconds when inventory selected
   });
 
   const { data: products, refetch: refetchProducts } = useQuery<Product[]>({

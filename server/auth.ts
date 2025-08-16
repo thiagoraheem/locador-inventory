@@ -20,8 +20,8 @@ export function getSession() {
     store: new MemoryStoreSession({
       checkPeriod: sessionTtl, // prune expired entries every 1 week
       max: 1000, // Limit number of sessions
-      dispose: (key: string, val: any) => {
-        console.log('[SESSION DEBUG] Session disposed:', key);
+      dispose: (key: string) => {
+        // Session disposed
       },
     }),
     resave: false,

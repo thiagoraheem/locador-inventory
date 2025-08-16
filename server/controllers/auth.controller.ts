@@ -14,9 +14,7 @@ export const login = asyncHandler(async (
 
   // Debug logs for login tracking
   if (process.env.NODE_ENV === 'development') {
-    console.log('[LOGIN DEBUG] User logged in:', user.username, 'ID:', user.id);
-    console.log('[LOGIN DEBUG] Session ID:', req.sessionID);
-    console.log('[LOGIN DEBUG] Session userId set to:', session.userId);
+    // User logged in successfully
   }
 
   res.json({ user });
