@@ -4,7 +4,16 @@ import { getStorage } from "../db";
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const session = req.session as any;
 
+  // Debug logs for session tracking
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[AUTH DEBUG] Session ID:', req.sessionID);
+    console.log('[AUTH DEBUG] User ID from session:', session.userId);
+  }
+
   if (!session.userId) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AUTH DEBUG] No userId in session');
+    }
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -13,8 +22,15 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const storage = await getStorage();
     const user = await storage.getUser(Number(session.userId));
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AUTH DEBUG] User found:', user?.username, 'Active:', user?.isActive);
+    }
+
     if (!user || !user.isActive) {
       // Clear invalid session
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AUTH DEBUG] Invalid user or inactive, destroying session');
+      }
       session.destroy(() => {});
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -24,6 +40,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     next();
   } catch (error) {
     // Auth error
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[AUTH DEBUG] Auth error:', error);
+    }
     return res.status(500).json({ message: "Internal server error" });
   }
 };
