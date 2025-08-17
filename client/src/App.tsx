@@ -22,6 +22,7 @@ import InventoryControlBoard from "@/pages/inventory-control-board";
 import InventoryControlBoardCP from "@/pages/inventory-control-board-cp";
 import InventoryAssetControl from "@/pages/inventory-asset-control";
 import ProductListingReport from "@/pages/product-listing-report";
+import InventoryDashboardPage from "@/pages/inventory-dashboard";
 import AuditLogs from "@/pages/audit-logs";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
@@ -78,6 +79,7 @@ function Router() {
           <Route path="/stock" component={Stock} />
           <Route path="/inventories" component={Inventories} />
           <Route path="/inventories/:id/details" component={InventoryDetails} />
+          <Route path="/inventory-dashboard" component={InventoryDashboardPage} />
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-control-board-cp" component={InventoryControlBoardCP} />
           <Route path="/product-listing-report" component={ProductListingReport} />

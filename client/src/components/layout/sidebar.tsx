@@ -65,6 +65,7 @@ const navigation: NavigationItem[] = [
     icon: ClipboardList,
     children: [
       { name: "Inventários", href: "/inventories", icon: ClipboardList },
+      { name: "Dashboard Analítico", href: "/inventory-dashboard", icon: BarChart3 },
       {
         name: "Contagens",
         icon: BarChart3,

@@ -1054,40 +1054,72 @@ import type {
       const expected = item.expectedQuantity || 0;
 
       let finalQuantity: number | null = null;
+      let itemStatus = 'PENDING'; // Default status
 
       // After 3rd count: finalQuantity = C3
       if (count3 !== null && count3 !== undefined) {
         finalQuantity = count3;
+        itemStatus = 'COMPLETED';
       }
       // After 2nd count: apply business rules
       else if (count1 !== null && count2 !== null) {
         // If C1 == C2 == estoque → finalQuantity = estoque
         if (count1 === count2 && count1 === expected) {
           finalQuantity = expected;
+          itemStatus = 'COMPLETED';
         }
         // If C1 == estoque OU C2 == estoque → finalQuantity = estoque
         else if (count1 === expected || count2 === expected) {
           finalQuantity = expected;
+          itemStatus = 'COMPLETED';
         }
         // If C1 == C2 ≠ estoque → finalQuantity = C2
         else if (count1 === count2 && count1 !== expected) {
           finalQuantity = count2 ?? null;
+          itemStatus = 'COMPLETED';
         }
-        // If C1 ≠ C2 ≠ estoque → finalQuantity = null (necessária 3ª contagem)
+        // If C1 ≠ C2 ≠ estoque → check special cases before requiring C3
         else if (count1 !== count2) {
-          finalQuantity = null;
+          // Special case: if expected quantity is 0 OR count2 is 0, don't require C3
+          if (expected === 0 || count2 === 0) {
+            finalQuantity = count2;
+            itemStatus = 'COMPLETED';
+          } else {
+            finalQuantity = null;
+            itemStatus = 'NEEDS_COUNT3';
+          }
         }
       }
+      // After 1st count only
+      else if (count1 !== null && count2 === null) {
+        itemStatus = 'COUNTED_C1';
+      }
+      // Item not inventoried (no counts at all) - set final quantity to 0
+      else if (count1 === null && count2 === null && count3 === null) {
+        finalQuantity = 0;
+        itemStatus = 'COMPLETED';
+      }
 
-      // Update finalQuantity in database if calculated
+      // Update finalQuantity and status in database
+      const request = this.pool.request();
       if (finalQuantity !== null) {
-        const request = this.pool.request();
         await request
           .input("id", item.id)
           .input("finalQuantity", finalQuantity)
+          .input("status", itemStatus)
           .input("updatedAt", new Date()).query(`
             UPDATE inventory_items 
-            SET finalQuantity = @finalQuantity, updatedAt = @updatedAt
+            SET finalQuantity = @finalQuantity, status = @status, updatedAt = @updatedAt
+            WHERE id = @id
+          `);
+      } else {
+        // Update only status when finalQuantity is null
+        await request
+          .input("id", item.id)
+          .input("status", itemStatus)
+          .input("updatedAt", new Date()).query(`
+            UPDATE inventory_items 
+            SET status = @status, updatedAt = @updatedAt
             WHERE id = @id
           `);
       }

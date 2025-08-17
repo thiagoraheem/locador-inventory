@@ -648,10 +648,18 @@ export default function InventoryDetails() {
                                     </TableCell>
                                     <TableCell>
                                       <Badge 
-                                        variant={item.status === "PENDING" ? "secondary" : "default"}
+                                        variant={
+                                          item.status === "PENDING" ? "outline" :
+                                          item.status === "NEEDS_COUNT3" ? "destructive" :
+                                          item.status === "COUNTED_C1" ? "secondary" :
+                                          item.status === "COMPLETED" ? "default" : "outline"
+                                        }
                                         className="text-xs"
                                       >
-                                        {item.status === "PENDING" ? "Pendente" : item.status}
+                                        {item.status === "PENDING" ? "Pendente" :
+                                         item.status === "NEEDS_COUNT3" ? "Precisa C3" :
+                                         item.status === "COUNTED_C1" ? "Contado C1" :
+                                         item.status === "COMPLETED" ? "Concluído" : item.status}
                                       </Badge>
                                     </TableCell>
                                   </TableRow>

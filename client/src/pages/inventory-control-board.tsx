@@ -746,8 +746,25 @@ export default function InventoryControlBoard() {
 
   // Função para verificar se item precisa de 3ª contagem
   const needsThirdCount = (item: InventoryItem) => {
-    const { count1, count2 } = item;
-    return count1 !== undefined && count2 !== undefined && count1 !== count2;
+    const { count1, count2, status } = item;
+    // Verifica pelo status atualizado ou pela lógica de contagens
+    return status === 'NEEDS_COUNT3' || 
+           (count1 !== undefined && count2 !== undefined && count1 !== count2);
+  };
+
+  // Função para obter o badge de status do item
+  const getItemStatusBadge = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return { variant: 'default' as const, label: 'Concluído' };
+      case 'NEEDS_COUNT3':
+        return { variant: 'destructive' as const, label: 'Precisa C3' };
+      case 'COUNTED_C1':
+        return { variant: 'secondary' as const, label: 'Contado C1' };
+      case 'PENDING':
+      default:
+        return { variant: 'outline' as const, label: 'Pendente' };
+    }
   };
 
   const filteredItems =
@@ -1553,17 +1570,9 @@ export default function InventoryControlBoard() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    variant={
-                                      item.finalQuantity !== null &&
-                                      item.finalQuantity !== undefined
-                                        ? "default"
-                                        : "destructive"
-                                    }
+                                    variant={getItemStatusBadge(item.status).variant}
                                   >
-                                    {item.finalQuantity !== null &&
-                                    item.finalQuantity !== undefined
-                                      ? "Auditado"
-                                      : "Pendente"}
+                                    {getItemStatusBadge(item.status).label}
                                   </Badge>
                                 </TableCell>
                               </TableRow>
