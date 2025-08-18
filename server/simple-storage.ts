@@ -1821,7 +1821,7 @@ import type {
         count1Items: stats.count1Items,
         count2Items: stats.count2Items,
         count3Items: stats.count3Items,
-        count4Items: stats.count4Items,
+        count4Items: stats.auditItems, // Corrigido: usar auditItems para count4Items
         auditItems: stats.auditItems,
       },
       divergentItems: divergentItems.map((item: any) => {

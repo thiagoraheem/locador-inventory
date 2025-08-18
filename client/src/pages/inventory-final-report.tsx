@@ -549,6 +549,16 @@ export default function InventoryFinalReportPage() {
                     <h4 className="font-semibold mb-3">Totais por Contagem</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between">
+                        <span className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-blue-600" />
+                          Quantidade Total de Produtos
+                        </span>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 font-semibold">
+                          {report.totalItems}
+                        </Badge>
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="flex justify-between">
                         <span>1ª Contagem (C1)</span>
                         <Badge variant="outline">{report.countingSummary.count1Items}</Badge>
                       </div>
