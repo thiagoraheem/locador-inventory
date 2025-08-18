@@ -74,10 +74,16 @@ export class SerialDiscrepancyController {
 
   // Obter resumo das divergências
   getDiscrepanciesSummary = asyncHandler(async (req: Request, res: Response) => {
-    const inventoryId = parseInt(req.params.inventoryId);
+    console.log('=== DEBUG SUMMARY ENDPOINT ===');
+    console.log('Query params:', req.query);
+    const inventoryIdStr = req.query.inventoryId as string;
+    console.log('inventoryId string:', inventoryIdStr);
+    const inventoryId = parseInt(inventoryIdStr);
+    console.log('inventoryId parsed:', inventoryId);
 
-    if (!inventoryId) {
-      return res.status(400).json({ error: 'ID do inventário é obrigatório' });
+    if (!inventoryIdStr || !inventoryId || isNaN(inventoryId)) {
+      console.log('Validation failed:', { inventoryIdStr, inventoryId, isNaN: isNaN(inventoryId) });
+      return res.status(400).json({ error: 'ID do inventário inválido' });
     }
 
     try {

@@ -1,54 +1,40 @@
 import { Router } from 'express';
 import { SerialDiscrepancyController } from '../controllers/serial-discrepancy.controller';
-import { authenticateToken } from '../middleware/auth';
+import { isAuthenticated } from '../middlewares/auth.middleware';
+import { getStorage } from '../db';
 
 const router = Router();
-const controller = new SerialDiscrepancyController();
+
+// Função helper para obter controller inicializado
+async function getController() {
+  const storage = await getStorage();
+  return new SerialDiscrepancyController(storage);
+}
 
 // Aplicar autenticação a todas as rotas
-router.use(authenticateToken);
+router.use(isAuthenticated);
 
-// GET /api/serial-discrepancies/:inventoryId - Listar divergências de um inventário
-router.get('/:inventoryId', async (req, res) => {
+// GET /api/serial-discrepancies/summary?inventoryId=X - Obter resumo das divergências
+// IMPORTANTE: Esta rota deve vir ANTES da rota /:inventoryId para evitar conflitos
+router.get('/summary', async (req, res) => {
+  console.log('=== ROUTE /summary CALLED ===');
+  console.log('Route query params:', req.query);
   try {
-    const inventoryId = parseInt(req.params.inventoryId);
-    const type = req.query.type as string;
-    const status = req.query.status as string;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
-
-    if (isNaN(inventoryId)) {
-      return res.status(400).json({ error: 'ID do inventário inválido' });
-    }
-
-    const result = await controller.listDiscrepancies({
-      inventoryId,
-      type,
-      status,
-      page,
-      limit
-    });
-
-    res.json(result);
+    const controller = await getController();
+    await controller.getDiscrepanciesSummary(req, res);
   } catch (error) {
-    console.error('Erro ao listar divergências:', error);
+    console.error('Erro ao obter resumo:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
 
-// GET /api/serial-discrepancies/:inventoryId/summary - Obter resumo das divergências
-router.get('/:inventoryId/summary', async (req, res) => {
+// GET /api/serial-discrepancies/:inventoryId - Listar divergências de um inventário
+router.get('/:inventoryId', async (req, res) => {
   try {
-    const inventoryId = parseInt(req.params.inventoryId);
-
-    if (isNaN(inventoryId)) {
-      return res.status(400).json({ error: 'ID do inventário inválido' });
-    }
-
-    const summary = await controller.getSummary(inventoryId);
-    res.json(summary);
+    const controller = await getController();
+    await controller.getDiscrepancies(req, res);
   } catch (error) {
-    console.error('Erro ao obter resumo:', error);
+    console.error('Erro ao listar divergências:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
@@ -56,6 +42,7 @@ router.get('/:inventoryId/summary', async (req, res) => {
 // POST /api/serial-discrepancies/:inventoryId/process - Processar divergências
 router.post('/:inventoryId/process', async (req, res) => {
   try {
+    const controller = await getController();
     const inventoryId = parseInt(req.params.inventoryId);
 
     if (isNaN(inventoryId)) {
@@ -73,6 +60,7 @@ router.post('/:inventoryId/process', async (req, res) => {
 // PUT /api/serial-discrepancies/:discrepancyId/resolve - Resolver divergência
 router.put('/:discrepancyId/resolve', async (req, res) => {
   try {
+    const controller = await getController();
     const discrepancyId = parseInt(req.params.discrepancyId);
     const { resolutionNotes } = req.body;
     const userId = (req as any).user?.id;
@@ -96,6 +84,7 @@ router.put('/:discrepancyId/resolve', async (req, res) => {
 // GET /api/serial-discrepancies/:inventoryId/export - Exportar divergências
 router.get('/:inventoryId/export', async (req, res) => {
   try {
+    const controller = await getController();
     const inventoryId = parseInt(req.params.inventoryId);
     const format = req.query.format as string || 'json';
 
@@ -122,6 +111,7 @@ router.get('/:inventoryId/export', async (req, res) => {
 // POST /api/serial-discrepancies/:inventoryId/migrate-to-erp - Marcar como migrado para ERP
 router.post('/:inventoryId/migrate-to-erp', async (req, res) => {
   try {
+    const controller = await getController();
     const inventoryId = parseInt(req.params.inventoryId);
     const { erpResponse } = req.body;
     const userId = (req as any).user?.id;

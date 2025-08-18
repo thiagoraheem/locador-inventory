@@ -3510,15 +3510,13 @@ import type {
 
       const row = result.recordset[0];
       return {
-        totalDiscrepancies: row.totalDiscrepancies,
-        locationMismatches: row.locationMismatches,
+        total: row.totalDiscrepancies,
+        locationMismatch: row.locationMismatches,
         notFound: row.notFound,
         unexpectedFound: row.unexpectedFound,
-        byStatus: {
-          pending: row.pending,
-          resolved: row.resolved,
-          migratedToERP: row.migratedToERP
-        }
+        pending: row.pending,
+        resolved: row.resolved,
+        migrated: row.migratedToERP
       };
     } catch (error) {
       console.error('Erro ao buscar resumo de divergências:', error);

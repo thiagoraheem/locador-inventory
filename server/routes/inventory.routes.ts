@@ -281,6 +281,50 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  // Get ERP migration status for inventory
+  app.get(
+    "/api/inventories/:id/erp-status",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ERPIntegrationService } = await import("../services/erp-integration.service.js");
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const erpService = new ERPIntegrationService(storage);
+        const status = await erpService.validateInventoryForMigration(inventoryId, req.user.id);
+        res.json(status);
+      } catch (error) {
+        // Error fetching ERP status
+        res.status(500).json({
+          message: "Failed to fetch ERP status",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
+  // Migrate inventory to ERP
+  app.post(
+    "/api/inventories/:id/migrate-to-erp",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ERPIntegrationService } = await import("../services/erp-integration.service.js");
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const erpService = new ERPIntegrationService(storage);
+        const result = await erpService.migrateInventoryToERP(inventoryId, req.user.id);
+        res.json(result);
+      } catch (error) {
+        // Error migrating to ERP
+        res.status(500).json({
+          message: "Failed to migrate inventory to ERP",
+          details: (error as Error).message,
+        });
+      }
+     },
+   );
+
 
 
   // Get serial items for inventory

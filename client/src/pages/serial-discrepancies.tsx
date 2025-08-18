@@ -69,7 +69,7 @@ interface SerialDiscrepanciesResponse {
 }
 
 export default function SerialDiscrepanciesPage() {
-  const { selectedInventoryId } = useSelectedInventory();
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -114,6 +114,11 @@ export default function SerialDiscrepanciesPage() {
     staleTime: 30000,
   });
 
+  // Query para buscar inventários
+  const { data: inventories } = useQuery<Inventory[]>({
+    queryKey: ["/api/inventories"],
+  });
+
   // Query para resumo das divergências
   const { data: summary } = useQuery<SerialDiscrepancySummary>({
     queryKey: [`/api/serial-discrepancies/summary`, selectedInventoryId],
@@ -124,6 +129,10 @@ export default function SerialDiscrepanciesPage() {
     enabled: !!selectedInventoryId,
     staleTime: 30000,
   });
+
+  const selectedInventory = inventories?.find(
+    (inv) => inv.id === selectedInventoryId,
+  );
 
   // Mutation para processar divergências
   const processDiscrepanciesMutation = useMutation({
@@ -271,9 +280,26 @@ export default function SerialDiscrepanciesPage() {
             <CardContent className="py-12 text-center">
               <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Nenhum Inventário Selecionado</h3>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
                 Selecione um inventário para visualizar as divergências de números de série
               </p>
+              {inventories && inventories.length > 0 && (
+                <Select
+                  value={selectedInventoryId?.toString() || ""}
+                  onValueChange={(value) => setSelectedInventoryId(Number(value))}
+                >
+                  <SelectTrigger className="w-full max-w-md mx-auto">
+                    <SelectValue placeholder="Selecione um inventário..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inventories.map((inventory) => (
+                      <SelectItem key={inventory.id} value={inventory.id.toString()}>
+                        {inventory.code} - {inventory.description || "Sem descrição"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -285,7 +311,7 @@ export default function SerialDiscrepanciesPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <SelectedInventoryInfo />
+        <SelectedInventoryInfo inventory={selectedInventory} />
         
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Divergências de Números de Série</h1>
