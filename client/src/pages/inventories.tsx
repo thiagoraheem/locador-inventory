@@ -42,6 +42,7 @@ import {
   Trash2,
   FileText,
   Download,
+  Shield,
 } from "lucide-react";
 import { Link } from "wouter";
 import type { Inventory } from "@shared/schema";
@@ -255,6 +256,12 @@ export default function Inventories() {
           >
             <Download className="h-4 w-4" />
           </Button>
+
+          <Link href={`/inventories/${row.id}/audit`}>
+            <Button variant="ghost" size="sm" title="Auditoria de Inventário" className="text-blue-600 hover:text-blue-700">
+              <Shield className="h-4 w-4" />
+            </Button>
+          </Link>
           
           <Link href={`/inventory-counting/${row.id}`}>
             <Button variant="ghost" size="sm" title="Abrir contagem">

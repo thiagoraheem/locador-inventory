@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ interface AuditDiscrepancy {
 
 export default function InventoryAudit() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [inventory, setInventory] = useState<any>(null);
@@ -211,7 +211,7 @@ export default function InventoryAudit() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" onClick={() => navigate(-1)}>
+        <Button variant="ghost" onClick={() => setLocation('/inventories')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
