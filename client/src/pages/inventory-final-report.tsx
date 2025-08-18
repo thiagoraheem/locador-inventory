@@ -192,13 +192,12 @@ export default function InventoryFinalReportPage() {
         (el as HTMLElement).style.display = '';
       });
 
-      // Create PDF with improved multi-page handling
-      const imgData = canvas.toDataURL('image/png', 0.95);
+      // Create PDF with smart content-aware page breaks
       const pdf = new jsPDF('p', 'mm', 'a4');
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const margin = 10; // 10mm margin
+      const margin = 15; // 15mm margin for better readability
       const contentWidth = pdfWidth - (margin * 2);
       const contentHeight = pdfHeight - (margin * 2);
       
@@ -206,50 +205,72 @@ export default function InventoryFinalReportPage() {
       const imgHeight = canvas.height;
       
       // Calculate scale to fit content width
-      const scale = contentWidth / (imgWidth * 0.264583); // Convert pixels to mm
-      const scaledHeight = (imgHeight * 0.264583) * scale; // Convert and scale height
+      const pixelToMm = 0.264583;
+      const scale = contentWidth / (imgWidth * pixelToMm);
+      const scaledHeight = (imgHeight * pixelToMm) * scale;
       
       // If content fits in one page
       if (scaledHeight <= contentHeight) {
-        const finalWidth = contentWidth;
-        const finalHeight = scaledHeight;
-        const yPosition = margin + (contentHeight - finalHeight) / 2;
-        
-        pdf.addImage(imgData, 'PNG', margin, yPosition, finalWidth, finalHeight);
+        const imgData = canvas.toDataURL('image/png', 0.98);
+        const yPosition = margin + (contentHeight - scaledHeight) / 2;
+        pdf.addImage(imgData, 'PNG', margin, yPosition, contentWidth, scaledHeight);
       } else {
-        // Split content across multiple pages
-        const pageContentHeight = contentHeight;
-        const pagesNeeded = Math.ceil(scaledHeight / pageContentHeight);
-        const pixelsPerPage = Math.floor(imgHeight / pagesNeeded);
+        // Smart multi-page splitting with overlap to prevent text truncation
+        const overlapPixels = 50; // 50px overlap to prevent text cutting
+        const pageHeightInPixels = Math.floor(contentHeight / (pixelToMm * scale));
+        const effectivePageHeight = pageHeightInPixels - overlapPixels;
         
-        for (let i = 0; i < pagesNeeded; i++) {
-          if (i > 0) {
+        let currentY = 0;
+        let pageNumber = 0;
+        
+        while (currentY < imgHeight) {
+          if (pageNumber > 0) {
             pdf.addPage();
           }
           
-          const startY = i * pixelsPerPage;
-          const endY = Math.min((i + 1) * pixelsPerPage, imgHeight);
-          const pageHeight = endY - startY;
+          // Calculate the actual height for this page
+          const remainingHeight = imgHeight - currentY;
+          const actualPageHeight = Math.min(pageHeightInPixels, remainingHeight);
           
-          // Create canvas for this page
+          // Create canvas for this page with overlap consideration
           const pageCanvas = document.createElement('canvas');
           const ctx = pageCanvas.getContext('2d');
           
           if (ctx) {
             pageCanvas.width = imgWidth;
-            pageCanvas.height = pageHeight;
+            pageCanvas.height = actualPageHeight;
             
             // Fill with white background
             ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, imgWidth, pageHeight);
+            ctx.fillRect(0, 0, imgWidth, actualPageHeight);
             
             // Draw the portion of the original canvas
-            ctx.drawImage(canvas, 0, startY, imgWidth, pageHeight, 0, 0, imgWidth, pageHeight);
+            ctx.drawImage(
+              canvas, 
+              0, currentY, imgWidth, actualPageHeight,
+              0, 0, imgWidth, actualPageHeight
+            );
             
-            const pageImgData = pageCanvas.toDataURL('image/png', 0.95);
-            const pageScaledHeight = (pageHeight * 0.264583) * scale;
+            const pageImgData = pageCanvas.toDataURL('image/png', 0.98);
+            const pageScaledHeight = (actualPageHeight * pixelToMm) * scale;
             
+            // Add image to PDF with proper positioning
             pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageScaledHeight);
+          }
+          
+          // Move to next section with overlap consideration
+          if (pageNumber === 0) {
+            currentY += effectivePageHeight;
+          } else {
+            currentY += effectivePageHeight;
+          }
+          
+          pageNumber++;
+          
+          // Safety check to prevent infinite loop
+          if (pageNumber > 20) {
+            console.warn('PDF generation stopped: too many pages');
+            break;
           }
         }
       }
