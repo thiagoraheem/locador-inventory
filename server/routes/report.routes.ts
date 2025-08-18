@@ -38,5 +38,12 @@ export function registerReportRoutes(app: Express) {
     isAuthenticated,
     reportController.getReconciliation,
   );
+
+  // Reconcile serial items
+  app.post(
+    "/api/inventories/:id/reconcile-serial",
+    isAuthenticated,
+    reportController.reconcileSerial,
+  );
 }
 

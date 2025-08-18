@@ -70,6 +70,11 @@ export class ReportService {
     const storage = await getStorage();
     return storage.getInventoryReconciliation(inventoryId);
   }
+
+  async reconcileInventorySerial(inventoryId: number) {
+    const storage = await getStorage();
+    await storage.reconcileInventorySerial(inventoryId);
+  }
 }
 
 export const reportService = new ReportService();

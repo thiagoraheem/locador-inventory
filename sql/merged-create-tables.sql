@@ -414,16 +414,28 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Atualizar status final baseado nas contagens
+    -- Atualizar status final baseado nas contagens e expectedStatus
     UPDATE inventory_serial_items
     SET finalStatus = CASE 
-        WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
-        THEN 1 ELSE 0 
+        -- Se expectedStatus = 1 (deveria estar presente)
+        WHEN expectedStatus = 1 THEN 
+            CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
+                 THEN 1 ELSE 0 END
+        -- Se expectedStatus = 0 (não deveria estar presente)
+        WHEN expectedStatus = 0 THEN 
+            CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
+                 THEN 0 ELSE 1 END
+        ELSE 0
     END,
     status = CASE 
-        WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
-        THEN 'FOUND' 
-        ELSE 'MISSING' 
+        -- Atualizar status baseado no resultado final
+        WHEN expectedStatus = 1 THEN 
+            CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
+                 THEN 'FOUND' ELSE 'MISSING' END
+        WHEN expectedStatus = 0 THEN 
+            CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
+                 THEN 'EXTRA' ELSE 'PENDING' END
+        ELSE 'PENDING'
     END
     WHERE inventoryId = @InventoryId;
     

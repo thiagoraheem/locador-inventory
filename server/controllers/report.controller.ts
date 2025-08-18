@@ -51,6 +51,12 @@ export class ReportController {
     );
     res.json(reconciliation);
   });
+
+  reconcileSerial = asyncHandler(async (req: any, res: Response) => {
+    const inventoryId = parseInt(req.params.id, 10);
+    await reportService.reconcileInventorySerial(inventoryId);
+    res.json({ message: "Serial reconciliation completed" });
+  });
 }
 
 export const reportController = new ReportController();

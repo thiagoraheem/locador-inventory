@@ -2309,14 +2309,17 @@ import type {
       .request()
       .input("inventoryId", sql.Int, inventoryId).query(`
         SELECT 
-          id, inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus,
-          count1_found, count2_found, count3_found, count4_found,
-          count1_by, count2_by, count3_by, count4_by,
-          count1_at, count2_at, count3_at, count4_at,
-          status, notes, finalStatus, createdAt, updatedAt
-        FROM inventory_serial_items 
-        WHERE inventoryId = @inventoryId
-        ORDER BY serialNumber
+          isi.id, isi.inventoryId, isi.stockItemId, isi.serialNumber, isi.productId, isi.locationId, isi.expectedStatus,
+          isi.count1_found, isi.count2_found, isi.count3_found, isi.count4_found,
+          isi.count1_by, isi.count2_by, isi.count3_by, isi.count4_by,
+          isi.count1_at, isi.count2_at, isi.count3_at, isi.count4_at,
+          isi.status, isi.notes, isi.finalStatus, isi.createdAt, isi.updatedAt
+        FROM inventory_serial_items isi
+        INNER JOIN inventory_items ii ON isi.inventoryId = ii.inventoryId 
+          AND isi.productId = ii.productId 
+          AND isi.locationId = ii.locationId
+        WHERE isi.inventoryId = @inventoryId
+        ORDER BY isi.serialNumber
       `);
 
     return result.recordset.map((row) => ({
@@ -2885,6 +2888,14 @@ import type {
       .request()
       .input("inventoryId", sql.Int, inventoryId)
       .query(query);
+  }
+
+  // Executar reconciliação de números de série
+  async reconcileInventorySerial(inventoryId: number): Promise<void> {
+    await this.pool
+      .request()
+      .input("inventoryId", sql.Int, inventoryId)
+      .query("EXEC sp_ReconcileInventorySerial @inventoryId");
   }
 
   // Buscar dados de reconciliação

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Calendar, MapPin, Package, Tags, Search, FileText, BarChart3, Clock, User, ChevronDown, ChevronRight, Expand, Minimize, Archive } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Package, Tags, Search, FileText, BarChart3, Clock, User, ChevronDown, ChevronRight, Expand, Minimize, Archive, AlertTriangle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Link } from "wouter";
 import type { Inventory, InventoryItem, Product, Location, Category, InventorySerialItem } from "@shared/schema";
@@ -195,9 +195,17 @@ export default function InventoryDetails() {
           <h1 className="text-3xl font-bold">{inventory.code}</h1>
           <p className="text-muted-foreground">Detalhes do Inventário</p>
         </div>
-        <Badge variant={getStatusVariant(inventory.status)} className="text-sm px-3 py-1">
-          {getStatusText(inventory.status)}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Link href={`/inventories/${inventoryId}/audit`}>
+            <Button variant="outline" size="sm">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Auditoria
+            </Button>
+          </Link>
+          <Badge variant={getStatusVariant(inventory.status)} className="text-sm px-3 py-1">
+            {getStatusText(inventory.status)}
+          </Badge>
+        </div>
       </div>
 
       {/* Overview Cards */}
