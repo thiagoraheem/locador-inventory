@@ -174,14 +174,17 @@ export default function InventoryFinalReportPage() {
         (el as HTMLElement).style.display = 'none';
       });
 
-      // Generate canvas from HTML
+      // Generate canvas from HTML with better quality settings
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         width: element.scrollWidth,
         height: element.scrollHeight,
+        logging: false,
+        removeContainer: true,
+        imageTimeout: 0,
       });
 
       // Restore hidden elements
@@ -189,44 +192,66 @@ export default function InventoryFinalReportPage() {
         (el as HTMLElement).style.display = '';
       });
 
-      // Create PDF
-      const imgData = canvas.toDataURL('image/png');
+      // Create PDF with improved multi-page handling
+      const imgData = canvas.toDataURL('image/png', 0.95);
       const pdf = new jsPDF('p', 'mm', 'a4');
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10; // 10mm margin
+      const contentWidth = pdfWidth - (margin * 2);
+      const contentHeight = pdfHeight - (margin * 2);
+      
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
       
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const finalWidth = imgWidth * ratio;
-      const finalHeight = imgHeight * ratio;
+      // Calculate scale to fit content width
+      const scale = contentWidth / (imgWidth * 0.264583); // Convert pixels to mm
+      const scaledHeight = (imgHeight * 0.264583) * scale; // Convert and scale height
       
-      // If content is longer than one page, split it
-      if (finalHeight > pdfHeight) {
-        let position = 0;
-        const pageHeight = imgHeight * (pdfWidth / imgWidth);
+      // If content fits in one page
+      if (scaledHeight <= contentHeight) {
+        const finalWidth = contentWidth;
+        const finalHeight = scaledHeight;
+        const yPosition = margin + (contentHeight - finalHeight) / 2;
         
-        while (position < imgHeight) {
-          const pageCanvas = document.createElement('canvas');
-          const ctx = pageCanvas.getContext('2d');
-          
-          pageCanvas.width = imgWidth;
-          pageCanvas.height = Math.min(pageHeight, imgHeight - position);
-          
-          ctx?.drawImage(canvas, 0, position, imgWidth, pageCanvas.height, 0, 0, imgWidth, pageCanvas.height);
-          
-          const pageImgData = pageCanvas.toDataURL('image/png');
-          
-          if (position > 0) {
+        pdf.addImage(imgData, 'PNG', margin, yPosition, finalWidth, finalHeight);
+      } else {
+        // Split content across multiple pages
+        const pageContentHeight = contentHeight;
+        const pagesNeeded = Math.ceil(scaledHeight / pageContentHeight);
+        const pixelsPerPage = Math.floor(imgHeight / pagesNeeded);
+        
+        for (let i = 0; i < pagesNeeded; i++) {
+          if (i > 0) {
             pdf.addPage();
           }
           
-          pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, (pageCanvas.height * pdfWidth) / imgWidth);
-          position += pageHeight;
+          const startY = i * pixelsPerPage;
+          const endY = Math.min((i + 1) * pixelsPerPage, imgHeight);
+          const pageHeight = endY - startY;
+          
+          // Create canvas for this page
+          const pageCanvas = document.createElement('canvas');
+          const ctx = pageCanvas.getContext('2d');
+          
+          if (ctx) {
+            pageCanvas.width = imgWidth;
+            pageCanvas.height = pageHeight;
+            
+            // Fill with white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, imgWidth, pageHeight);
+            
+            // Draw the portion of the original canvas
+            ctx.drawImage(canvas, 0, startY, imgWidth, pageHeight, 0, 0, imgWidth, pageHeight);
+            
+            const pageImgData = pageCanvas.toDataURL('image/png', 0.95);
+            const pageScaledHeight = (pageHeight * 0.264583) * scale;
+            
+            pdf.addImage(pageImgData, 'PNG', margin, margin, contentWidth, pageScaledHeight);
+          }
         }
-      } else {
-        pdf.addImage(imgData, 'PNG', (pdfWidth - finalWidth) / 2, (pdfHeight - finalHeight) / 2, finalWidth, finalHeight);
       }
 
       // Save PDF
@@ -328,7 +353,7 @@ export default function InventoryFinalReportPage() {
 
         {/* Report Content */}
         {selectedInventoryId && report && !isLoadingReport ? (
-          <div ref={reportRef} className="print:space-y-4">
+          <div ref={reportRef} className="print:space-y-4" data-print-content>
             {/* Report Header */}
             <Card className="mb-6 print:mb-4">
               <CardHeader className="pb-4">
@@ -625,7 +650,12 @@ export default function InventoryFinalReportPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {report.divergentItems?.map((item) => {
+                        {report.divergentItems?.sort((a, b) => {
+                          // Ordenação alfabética por nome do produto
+                          const nameA = (a.productName || '').toLowerCase();
+                          const nameB = (b.productName || '').toLowerCase();
+                          return nameA.localeCompare(nameB, 'pt-BR');
+                        }).map((item) => {
                           const difference = item.difference || ((item.finalQuantity || 0) - (item.expectedQuantity || 0));
                           const totalImpact = item.totalImpact || (difference * (item.costValue || 0));
                           
