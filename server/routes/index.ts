@@ -11,6 +11,7 @@ import { registerInventoryRoutes } from "./inventory.routes";
 import { registerProductRoutes } from "./product.routes";
 import { registerUserRoutes } from "./user.routes";
 import { registerReportRoutes } from "./report.routes";
+import serialDiscrepanciesRouter from "./serial-discrepancies";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -99,6 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerProductRoutes(app);
   registerUserRoutes(app);
   registerReportRoutes(app);
+  
+  // Serial discrepancies routes
+  app.use("/api/serial-discrepancies", serialDiscrepanciesRouter);
 
   // Dashboard routes
   app.get("/api/dashboard/stats", isAuthenticated, async (req, res) => {

@@ -73,6 +73,13 @@ export default function InventoryFinalReportPage() {
     staleTime: 0,
   });
 
+  // Query para buscar resumo de divergências de números de série
+  const { data: serialDiscrepanciesSummary } = useQuery({
+    queryKey: [`/api/serial-discrepancies/summary?inventoryId=${selectedInventoryId}`],
+    enabled: !!selectedInventoryId,
+    staleTime: 0,
+  });
+
   // Mutation para migração ERP
   const migrationMutation = useMutation({
     mutationFn: async (): Promise<ERPMigrationResponse> => {
@@ -910,6 +917,26 @@ export default function InventoryFinalReportPage() {
                   )}
                   <p>• <strong>Inventário:</strong> {report?.inventoryCode}</p>
                 </div>
+              </div>
+            )}
+
+            {serialDiscrepanciesSummary && (
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  Divergências de Números de Série:
+                </h4>
+                <div className="space-y-1 text-sm">
+                  <p>• <strong>Encontrados em locais diferentes:</strong> {serialDiscrepanciesSummary.foundInDifferentLocation || 0}</p>
+                  <p>• <strong>Esperados não encontrados:</strong> {serialDiscrepanciesSummary.expectedNotFound || 0}</p>
+                  <p>• <strong>Encontrados não esperados:</strong> {serialDiscrepanciesSummary.foundNotExpected || 0}</p>
+                  <p>• <strong>Total de divergências:</strong> {serialDiscrepanciesSummary.total || 0}</p>
+                </div>
+                {serialDiscrepanciesSummary.total > 0 && (
+                  <p className="text-xs text-orange-700 mt-2">
+                    As divergências serão incluídas na migração e marcadas como processadas.
+                  </p>
+                )}
               </div>
             )}
 

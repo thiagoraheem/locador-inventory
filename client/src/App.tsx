@@ -33,6 +33,7 @@ import InventoryFinalReport from "@/pages/inventory-final-report";
 import InventoryTestValidation from "@/pages/inventory-test-validation";
 import InventoryDetails from "@/pages/inventory-details";
 import InventoryAudit from "@/pages/inventory-audit";
+import SerialDiscrepancies from "@/pages/serial-discrepancies";
 import ApiTests from "@/pages/api-tests";
 import MainLayout from "@/components/layout/main-layout";
 
@@ -81,6 +82,7 @@ function Router() {
           <Route path="/inventories" component={Inventories} />
           <Route path="/inventories/:id/details" component={InventoryDetails} />
           <Route path="/inventories/:id/audit" component={InventoryAudit} />
+          <Route path="/serial-discrepancies" component={SerialDiscrepancies} />
           <Route path="/inventory-dashboard" component={InventoryDashboardPage} />
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-control-board-cp" component={InventoryControlBoardCP} />

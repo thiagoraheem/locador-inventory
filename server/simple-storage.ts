@@ -3431,4 +3431,164 @@ import type {
       throw error;
     }
   }
+
+  // ===== SERIAL DISCREPANCIES METHODS =====
+
+  // Buscar divergências de números de série
+  async getSerialDiscrepancies(params: {
+    inventoryId: number;
+    type?: string;
+    status?: string;
+    page: number;
+    limit: number;
+  }): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+    try {
+      let whereClause = 'WHERE inventoryId = @inventoryId';
+      const request = this.pool.request().input('inventoryId', params.inventoryId);
+
+      if (params.type) {
+        whereClause += ' AND discrepancyType = @type';
+        request.input('type', params.type);
+      }
+
+      if (params.status) {
+        whereClause += ' AND status = @status';
+        request.input('status', params.status);
+      }
+
+      // Contar total
+      const countQuery = `SELECT COUNT(*) as total FROM inventory_serial_discrepancies ${whereClause}`;
+      const countResult = await request.query(countQuery);
+      const total = countResult.recordset[0].total;
+
+      // Buscar itens paginados
+      const offset = (params.page - 1) * params.limit;
+      const itemsQuery = `
+        SELECT *
+        FROM inventory_serial_discrepancies
+        ${whereClause}
+        ORDER BY createdAt DESC
+        OFFSET @offset ROWS
+        FETCH NEXT @limit ROWS ONLY
+      `;
+
+      request.input('offset', offset).input('limit', params.limit);
+      const itemsResult = await request.query(itemsQuery);
+
+      return {
+        items: itemsResult.recordset,
+        total,
+        page: params.page,
+        limit: params.limit
+      };
+    } catch (error) {
+      console.error('Erro ao buscar divergências de série:', error);
+      throw error;
+    }
+  }
+
+  // Obter resumo das divergências
+  async getSerialDiscrepanciesSummary(inventoryId: number): Promise<any> {
+    try {
+      const query = `
+        SELECT 
+          COUNT(*) as totalDiscrepancies,
+          SUM(CASE WHEN discrepancyType = 'LOCATION_MISMATCH' THEN 1 ELSE 0 END) as locationMismatches,
+          SUM(CASE WHEN discrepancyType = 'NOT_FOUND' THEN 1 ELSE 0 END) as notFound,
+          SUM(CASE WHEN discrepancyType = 'UNEXPECTED_FOUND' THEN 1 ELSE 0 END) as unexpectedFound,
+          SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending,
+          SUM(CASE WHEN status = 'RESOLVED' THEN 1 ELSE 0 END) as resolved,
+          SUM(CASE WHEN status = 'MIGRATED_TO_ERP' THEN 1 ELSE 0 END) as migratedToERP
+        FROM inventory_serial_discrepancies
+        WHERE inventoryId = @inventoryId
+      `;
+
+      const result = await this.pool
+        .request()
+        .input('inventoryId', inventoryId)
+        .query(query);
+
+      const row = result.recordset[0];
+      return {
+        totalDiscrepancies: row.totalDiscrepancies,
+        locationMismatches: row.locationMismatches,
+        notFound: row.notFound,
+        unexpectedFound: row.unexpectedFound,
+        byStatus: {
+          pending: row.pending,
+          resolved: row.resolved,
+          migratedToERP: row.migratedToERP
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao buscar resumo de divergências:', error);
+      throw error;
+    }
+  }
+
+  // Processar divergências de um inventário
+  async processSerialDiscrepancies(inventoryId: number): Promise<any> {
+    try {
+      const result = await this.pool
+        .request()
+        .input('InventoryId', inventoryId)
+        .execute('sp_ProcessSerialDiscrepancies');
+
+      return result.recordset[0];
+    } catch (error) {
+      console.error('Erro ao processar divergências:', error);
+      throw error;
+    }
+  }
+
+  // Resolver divergência
+  async resolveSerialDiscrepancy(
+    discrepancyId: number,
+    userId: number,
+    resolutionNotes?: string
+  ): Promise<void> {
+    try {
+      const query = `
+        UPDATE inventory_serial_discrepancies
+        SET 
+          status = 'RESOLVED',
+          resolvedBy = @userId,
+          resolvedAt = GETDATE(),
+          resolutionNotes = @resolutionNotes,
+          updatedAt = GETDATE()
+        WHERE id = @discrepancyId
+      `;
+
+      await this.pool
+        .request()
+        .input('discrepancyId', discrepancyId)
+        .input('userId', userId.toString())
+        .input('resolutionNotes', resolutionNotes || null)
+        .query(query);
+    } catch (error) {
+      console.error('Erro ao resolver divergência:', error);
+      throw error;
+    }
+  }
+
+  // Marcar divergências como migradas para ERP
+  async markDiscrepanciesAsMigrated(
+    inventoryId: number,
+    userId: string,
+    erpResponse?: string
+  ): Promise<{ migratedCount: number }> {
+    try {
+      const result = await this.pool
+        .request()
+        .input('InventoryId', inventoryId)
+        .input('UserId', userId)
+        .input('ERPResponse', erpResponse || null)
+        .execute('sp_MarkDiscrepanciesAsMigrated');
+
+      return { migratedCount: result.recordset[0].migratedCount };
+    } catch (error) {
+      console.error('Erro ao marcar divergências como migradas:', error);
+      throw error;
+    }
+  }
 }

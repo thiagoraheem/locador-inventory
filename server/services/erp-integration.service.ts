@@ -137,6 +137,20 @@ export class ERPIntegrationService {
         // Marcar inventário como migrado (criar método dedicado)
         await this.markInventoryAsMigrated(inventoryId, userId);
 
+        // Migrar divergências de números de série para ERP
+        let discrepanciesMigrated = 0;
+        try {
+          const discrepanciesResult = await this.storage.markDiscrepanciesAsMigrated(
+            inventoryId, 
+            userId.toString(), 
+            JSON.stringify(migrationResult)
+          );
+          discrepanciesMigrated = discrepanciesResult.migratedCount;
+        } catch (error) {
+          console.warn('Erro ao migrar divergências de números de série:', error);
+          // Continuar mesmo se houver erro nas divergências
+        }
+
         // Criar log de auditoria
         await auditRepository.create({
           userId,
@@ -145,11 +159,19 @@ export class ERPIntegrationService {
           entityId: inventoryId.toString(),
           metadata: JSON.stringify({
             itemsCount: migrationResult.migratedItems,
+            discrepanciesCount: discrepanciesMigrated,
             timestamp: new Date().toISOString(),
           }),
           oldValues: "",
           newValues: "",
         });
+
+        // Atualizar mensagem de retorno para incluir divergências
+        return {
+          success: true,
+          message: `${migrationResult.migratedItems} itens migrados com sucesso para o ERP${discrepanciesMigrated > 0 ? ` e ${discrepanciesMigrated} divergências de números de série migradas` : ''}`,
+          migratedItems: migrationResult.migratedItems
+        };
       }
 
       return migrationResult;

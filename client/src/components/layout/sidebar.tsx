@@ -28,6 +28,7 @@ import {
   FolderOpen,
   TestTube,
   Globe,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -120,6 +121,11 @@ const navigation: NavigationItem[] = [
             icon: FileText,
           },
         ],
+      },
+      {
+        name: "Divergências de Números de Série",
+        href: "/serial-discrepancies",
+        icon: AlertTriangle,
       },
       {
         name: "Parâmetros / Regras",
