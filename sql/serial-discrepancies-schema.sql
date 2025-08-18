@@ -148,7 +148,7 @@ BEGIN
     JOIN locations l_expected ON si.locationId = l_expected.id
     JOIN locations l_found ON isi.locationId = l_found.id
     WHERE isi.inventoryId = @InventoryId
-    AND isi.status = 'FOUND'
+    AND isi.finalStatus = 1
     AND si.locationId != isi.locationId; -- Encontrado em local diferente
     
     -- 2. NÚMEROS DE SÉRIE ESPERADOS QUE NÃO FORAM ENCONTRADOS

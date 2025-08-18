@@ -113,22 +113,33 @@ export default function InventoryAudit() {
       const key = `${item.productId}-${item.locationId}`;
       const itemSerials = serialsByProductLocation[key] || [];
       
-      // Contar números de série encontrados (com finalStatus = 1)
-      const serialCount = itemSerials.filter(s => s.finalStatus === 1).length;
+      // Contar números de série encontrados no local correto (expectedStatus = 1 e finalStatus = 1)
+      // Seriais com status 'EXTRA' foram encontrados em local diferente
+      const serialsFoundInCorrectLocation = itemSerials.filter(s => 
+        s.finalStatus === 1 && s.status !== 'EXTRA'
+      ).length;
+      
+      // Contar seriais extras (encontrados em local diferente)
+      const serialsFoundInDifferentLocation = itemSerials.filter(s => 
+        s.finalStatus === 1 && s.status === 'EXTRA'
+      ).length;
+      
+      // Total de seriais encontrados (correto + extras)
+      const totalSerialsFound = serialsFoundInCorrectLocation + serialsFoundInDifferentLocation;
       
       // Obter contagem manual (usar a contagem mais recente disponível)
       const manualCount = getCurrentCount(item);
       
       // Se há discrepância, adicionar à lista
-      if (manualCount !== serialCount) {
+      if (manualCount !== totalSerialsFound || serialsFoundInDifferentLocation > 0) {
         discrepanciesList.push({
           productId: item.productId,
           locationId: item.locationId,
           productName: product.name,
           locationName: location.name,
           manualCount,
-          serialCount,
-          difference: manualCount - serialCount,
+          serialCount: totalSerialsFound,
+          difference: manualCount - totalSerialsFound,
           serialItems: itemSerials
         });
       }
@@ -390,26 +401,106 @@ export default function InventoryAudit() {
                 </div>
                 <div className="p-4 border rounded">
                   <h4 className="font-medium mb-2">Análise da Discrepância</h4>
-                  <p className="text-gray-600">
-                    {selectedDiscrepancy.difference > 0
-                      ? `Há ${selectedDiscrepancy.difference} unidade(s) a mais na contagem manual do que números de série encontrados. Isso pode indicar produtos sem controle de série ou números de série não lidos.`
-                      : `Há ${Math.abs(selectedDiscrepancy.difference)} número(s) de série a mais do que a contagem manual. Isso pode indicar contagem insuficiente ou números de série duplicados.`
-                    }
-                  </p>
+                  <div className="space-y-2">
+                    {(() => {
+                      const serialsFoundInDifferentLocation = selectedDiscrepancy.serialItems.filter(s => 
+                        s.finalStatus === 1 && s.status === 'EXTRA'
+                      ).length;
+                      
+                      const serialsFoundInCorrectLocation = selectedDiscrepancy.serialItems.filter(s => 
+                        s.finalStatus === 1 && s.status !== 'EXTRA'
+                      ).length;
+                      
+                      const serialsNotFound = selectedDiscrepancy.serialItems.filter(s => 
+                        s.finalStatus !== 1
+                      ).length;
+                      
+                      return (
+                        <>
+                          <p className="text-gray-600">
+                            {selectedDiscrepancy.difference > 0
+                              ? `Há ${selectedDiscrepancy.difference} unidade(s) a mais na contagem manual do que números de série encontrados. Isso pode indicar produtos sem controle de série ou números de série não lidos.`
+                              : selectedDiscrepancy.difference < 0
+                              ? `Há ${Math.abs(selectedDiscrepancy.difference)} número(s) de série a mais do que a contagem manual. Isso pode indicar contagem insuficiente ou números de série duplicados.`
+                              : "A contagem manual coincide com o número de séries encontradas, mas há outras discrepâncias."
+                            }
+                          </p>
+                          
+                          {serialsFoundInDifferentLocation > 0 && (
+                            <div className="p-3 bg-red-50 border border-red-200 rounded">
+                              <p className="text-red-800 font-medium">
+                                ⚠️ {serialsFoundInDifferentLocation} número(s) de série encontrado(s) em local diferente do esperado
+                              </p>
+                              <p className="text-red-600 text-sm mt-1">
+                                Estes itens foram marcados como "EXTRA" e devem ser verificados para possível transferência de local.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {serialsNotFound > 0 && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                              <p className="text-yellow-800 font-medium">
+                                📋 {serialsNotFound} número(s) de série não encontrado(s) neste local
+                              </p>
+                              <p className="text-yellow-600 text-sm mt-1">
+                                Estes itens podem ter sido movidos para outro local ou não foram contados ainda.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {serialsFoundInCorrectLocation > 0 && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded">
+                              <p className="text-green-800 font-medium">
+                                ✅ {serialsFoundInCorrectLocation} número(s) de série encontrado(s) no local correto
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </TabsContent>
               <TabsContent value="serials">
                 <div className="space-y-2">
                   <h4 className="font-medium">Números de Série ({selectedDiscrepancy.serialItems.length})</h4>
                   <div className="max-h-64 overflow-y-auto">
-                    {selectedDiscrepancy.serialItems.map((serial, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded text-sm">
-                        <span className="font-mono">{serial.serialNumber}</span>
-                        <Badge variant={serial.finalStatus === 1 ? "default" : "secondary"}>
-                          {serial.finalStatus === 1 ? "Encontrado" : "Pendente"}
-                        </Badge>
-                      </div>
-                    ))}
+                    {selectedDiscrepancy.serialItems.map((serial, index) => {
+                      // Determinar o status correto baseado na lógica de negócio
+                      const isFound = serial.finalStatus === 1;
+                      const isExtra = serial.status === 'EXTRA';
+                      const wasFoundInDifferentLocation = isExtra && isFound;
+                      
+                      let statusText = "Pendente";
+                      let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "secondary";
+                      
+                      if (wasFoundInDifferentLocation) {
+                        statusText = "EXTRA";
+                        badgeVariant = "destructive";
+                      } else if (isFound) {
+                        statusText = "Encontrado";
+                        badgeVariant = "default";
+                      } else {
+                        statusText = "Não Encontrado";
+                        badgeVariant = "outline";
+                      }
+                      
+                      return (
+                        <div key={index} className="flex items-center justify-between p-2 border rounded text-sm">
+                          <div className="flex flex-col">
+                            <span className="font-mono">{serial.serialNumber}</span>
+                            {wasFoundInDifferentLocation && (
+                              <span className="text-xs text-muted-foreground">
+                                Encontrado em local diferente
+                              </span>
+                            )}
+                          </div>
+                          <Badge variant={badgeVariant}>
+                            {statusText}
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </TabsContent>

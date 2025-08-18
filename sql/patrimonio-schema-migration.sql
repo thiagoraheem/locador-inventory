@@ -359,12 +359,14 @@ BEGIN
     SET finalStatus = CASE 
         -- Se expectedStatus = 1 (deveria estar presente)
         WHEN expectedStatus = 1 THEN 
-            CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
-                 THEN 1 ELSE 0 END
+			CASE WHEN (count1_found = 1 AND count2_found = 1) --AND (ISNULL(count3_found, 1) = 1 OR ISNULL(count4_found, 1) = 1)
+					THEN 1
+				WHEN (count1_found = 1 OR count2_found = 1) AND (count3_found = 1 OR count4_found = 1)
+					THEN 1 ELSE 0 END
         -- Se expectedStatus = 0 (não deveria estar presente)
         WHEN expectedStatus = 0 THEN 
             CASE WHEN count1_found = 1 OR count2_found = 1 OR count3_found = 1 OR count4_found = 1 
-                 THEN 0 ELSE 1 END
+                 THEN 1 ELSE 0 END
         ELSE 0
     END,
     status = CASE 
