@@ -39,7 +39,31 @@ router.get('/:inventoryId', async (req, res) => {
   }
 });
 
-// POST /api/serial-discrepancies/:inventoryId/process - Processar divergências
+// POST /api/serial-discrepancies/process - Processar divergências
+router.post('/process', async (req, res) => {
+  try {
+    const controller = await getController();
+    const { inventoryId } = req.body;
+    const parsedInventoryId = parseInt(inventoryId);
+
+    if (!inventoryId || isNaN(parsedInventoryId)) {
+      return res.status(400).json({ error: 'ID do inventário inválido' });
+    }
+
+    // Criar um objeto request modificado para o controller
+    const modifiedReq = {
+      ...req,
+      params: { inventoryId: parsedInventoryId.toString() }
+    };
+
+    await controller.processDiscrepancies(modifiedReq as any, res);
+  } catch (error) {
+    console.error('Erro ao processar divergências:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// POST /api/serial-discrepancies/:inventoryId/process - Processar divergências (rota alternativa)
 router.post('/:inventoryId/process', async (req, res) => {
   try {
     const controller = await getController();
@@ -49,13 +73,12 @@ router.post('/:inventoryId/process', async (req, res) => {
       return res.status(400).json({ error: 'ID do inventário inválido' });
     }
 
-    const result = await controller.processDiscrepancies(inventoryId);
-    res.json(result);
+    await controller.processDiscrepancies(req, res);
   } catch (error) {
     console.error('Erro ao processar divergências:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
-});
+})
 
 // PUT /api/serial-discrepancies/:discrepancyId/resolve - Resolver divergência
 router.put('/:discrepancyId/resolve', async (req, res) => {
