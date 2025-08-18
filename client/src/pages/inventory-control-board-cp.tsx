@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Package, Barcode, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCw } from "lucide-react";
+import { Search, Package, Barcode, CheckCircle, XCircle, AlertTriangle, Clock, RefreshCw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import Header from "@/components/layout/header";
@@ -108,6 +108,8 @@ const FinalResultIndicator = ({ finalStatus, status }: FinalResultIndicatorProps
 export default function InventoryControlBoardCP() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
 
@@ -157,6 +159,24 @@ export default function InventoryControlBoardCP() {
     return user ? user.username : `User ${userId}`;
   };
 
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-4 w-4" />;
+    }
+    return sortOrder === 'asc' ? 
+      <ArrowUp className="h-4 w-4" /> : 
+      <ArrowDown className="h-4 w-4" />;
+  };
+
   const filteredItems = serialItems?.filter(item => {
     const productSku = getProductBySku(item.productId);
     const locationName = getLocationName(item.locationId);
@@ -170,15 +190,69 @@ export default function InventoryControlBoardCP() {
 
     return matchesSearch && matchesStatus;
   })?.sort((a, b) => {
-    // Ordenação: primeiro pela descrição do produto, depois pelo número de série
-    const productA = products?.find(p => p.id === a.productId)?.name || '';
-    const productB = products?.find(p => p.id === b.productId)?.name || '';
+    if (!sortBy) {
+      // Ordenação padrão: primeiro pela descrição do produto, depois pelo número de série
+      const productA = products?.find(p => p.id === a.productId)?.name || '';
+      const productB = products?.find(p => p.id === b.productId)?.name || '';
 
-    if (productA !== productB) {
-      return productA.localeCompare(productB);
+      if (productA !== productB) {
+        return productA.localeCompare(productB);
+      }
+
+      return a.serialNumber.localeCompare(b.serialNumber);
     }
 
-    return a.serialNumber.localeCompare(b.serialNumber);
+    let valueA: any, valueB: any;
+
+    switch (sortBy) {
+      case 'product':
+        valueA = getProductBySku(a.productId);
+        valueB = getProductBySku(b.productId);
+        break;
+      case 'serialNumber':
+        valueA = a.serialNumber;
+        valueB = b.serialNumber;
+        break;
+      case 'location':
+        valueA = getLocationName(a.locationId);
+        valueB = getLocationName(b.locationId);
+        break;
+      case 'status':
+        valueA = a.status;
+        valueB = b.status;
+        break;
+      case 'count1':
+         valueA = a.count1_found !== undefined ? (a.count1_found ? 1 : 0) : -1;
+         valueB = b.count1_found !== undefined ? (b.count1_found ? 1 : 0) : -1;
+         break;
+       case 'count2':
+         valueA = a.count2_found !== undefined ? (a.count2_found ? 1 : 0) : -1;
+         valueB = b.count2_found !== undefined ? (b.count2_found ? 1 : 0) : -1;
+         break;
+       case 'count3':
+         valueA = a.count3_found !== undefined ? (a.count3_found ? 1 : 0) : -1;
+         valueB = b.count3_found !== undefined ? (b.count3_found ? 1 : 0) : -1;
+         break;
+       case 'count4':
+         valueA = a.count4_found !== undefined ? (a.count4_found ? 1 : 0) : -1;
+         valueB = b.count4_found !== undefined ? (b.count4_found ? 1 : 0) : -1;
+         break;
+      case 'finalStatus':
+        valueA = a.finalStatus !== undefined ? (a.finalStatus ? 1 : 0) : -1;
+        valueB = b.finalStatus !== undefined ? (b.finalStatus ? 1 : 0) : -1;
+        break;
+      default:
+        return 0;
+    }
+
+    if (typeof valueA === 'string' && typeof valueB === 'string') {
+      const comparison = valueA.localeCompare(valueB);
+      return sortOrder === 'asc' ? comparison : -comparison;
+    }
+
+    if (valueA < valueB) return sortOrder === 'asc' ? -1 : 1;
+    if (valueA > valueB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   }) || [];
 
   const handleExport = () => {
@@ -363,14 +437,78 @@ export default function InventoryControlBoardCP() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU/Produto</TableHead>
-                        <TableHead>CP (Código de Patrimônio)</TableHead>
-                        <TableHead>Estoque</TableHead>
-                        <TableHead>C1</TableHead>
-                        <TableHead>C2</TableHead>
-                        <TableHead>C3</TableHead>
-                        <TableHead>C4</TableHead>
-                        <TableHead>Resultado Final</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("product")}
+                        >
+                          <div className="flex items-center gap-1">
+                            SKU/Produto
+                            {getSortIcon("product")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("serialNumber")}
+                        >
+                          <div className="flex items-center gap-1">
+                            CP (Código de Patrimônio)
+                            {getSortIcon("serialNumber")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("location")}
+                        >
+                          <div className="flex items-center gap-1">
+                            Estoque
+                            {getSortIcon("location")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count1")}
+                        >
+                          <div className="flex items-center gap-1">
+                            C1
+                            {getSortIcon("count1")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count2")}
+                        >
+                          <div className="flex items-center gap-1">
+                            C2
+                            {getSortIcon("count2")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count3")}
+                        >
+                          <div className="flex items-center gap-1">
+                            C3
+                            {getSortIcon("count3")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count4")}
+                        >
+                          <div className="flex items-center gap-1">
+                            C4
+                            {getSortIcon("count4")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("finalStatus")}
+                        >
+                          <div className="flex items-center gap-1">
+                            Resultado Final
+                            {getSortIcon("finalStatus")}
+                          </div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

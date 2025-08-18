@@ -55,6 +55,9 @@ import {
   AlertTriangle,
   Calendar,
   Plus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 // Temporary type definitions - replace with actual shared schema
@@ -169,6 +172,8 @@ export default function InventoryControlBoard() {
   }>({});
   const [isAddCategoriesModalOpen, setIsAddCategoriesModalOpen] = useState(false);
   const [selectedCategoriesToAdd, setSelectedCategoriesToAdd] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const { toast } = useToast();
 
@@ -767,6 +772,26 @@ export default function InventoryControlBoard() {
     }
   };
 
+  // Função para ordenar itens
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(column);
+      setSortOrder("asc");
+    }
+  };
+
+  // Função para obter ícone de ordenação
+  const getSortIcon = (column: string) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-4 w-4" />;
+    }
+    return sortOrder === "asc" ? 
+      <ArrowUp className="h-4 w-4" /> : 
+      <ArrowDown className="h-4 w-4" />;
+  };
+
   const filteredItems =
     inventoryItems?.filter((item) => {
       const productName = getProductName(item.productId);
@@ -787,6 +812,67 @@ export default function InventoryControlBoard() {
         (divergenceFilter === "no_divergence" && !hasDiscrepancy(item));
 
       return matchesSearch && matchesStatus && matchesDivergence;
+    }).sort((a, b) => {
+      if (!sortBy) return 0;
+      
+      let aValue: any;
+      let bValue: any;
+      
+      switch (sortBy) {
+        case "product":
+          aValue = getProductName(a.productId);
+          bValue = getProductName(b.productId);
+          break;
+        case "location":
+          aValue = getLocationName(a.locationId);
+          bValue = getLocationName(b.locationId);
+          break;
+        case "expectedQuantity":
+          aValue = a.expectedQuantity;
+          bValue = b.expectedQuantity;
+          break;
+        case "count1":
+          aValue = a.count1 ?? -1;
+          bValue = b.count1 ?? -1;
+          break;
+        case "count2":
+          aValue = a.count2 ?? -1;
+          bValue = b.count2 ?? -1;
+          break;
+        case "count3":
+          aValue = a.count3 ?? -1;
+          bValue = b.count3 ?? -1;
+          break;
+        case "count4":
+          aValue = a.count4 ?? -1;
+          bValue = b.count4 ?? -1;
+          break;
+        case "finalQuantity":
+          aValue = a.finalQuantity ?? -1;
+          bValue = b.finalQuantity ?? -1;
+          break;
+        case "difference":
+          const aDiff = (a.finalQuantity ?? a.count3 ?? a.count2 ?? a.count1 ?? 0) - a.expectedQuantity;
+          const bDiff = (b.finalQuantity ?? b.count3 ?? b.count2 ?? b.count1 ?? 0) - b.expectedQuantity;
+          aValue = aDiff;
+          bValue = bDiff;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        const comparison = aValue.localeCompare(bValue);
+        return sortOrder === "asc" ? comparison : -comparison;
+      }
+      
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
     }) || [];
 
   // Helper functions for counting status
@@ -1266,20 +1352,96 @@ export default function InventoryControlBoard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>Local de Estoque</TableHead>
-                        <TableHead className="text-center">
-                          Qtd. Estoque
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("product")}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Produto</span>
+                            {getSortIcon("product")}
+                          </div>
                         </TableHead>
-                        <TableHead className="text-center">C1</TableHead>
-                        <TableHead className="text-center">C2</TableHead>
-                        <TableHead className="text-center">C3</TableHead>
-                        <TableHead className="text-center">C4</TableHead>
-                        <TableHead className="text-center">
-                          Qtd. Final
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("location")}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Local de Estoque</span>
+                            {getSortIcon("location")}
+                          </div>
                         </TableHead>
-                        <TableHead className="text-center">Diferença</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("expectedQuantity")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>Qtd. Estoque</span>
+                            {getSortIcon("expectedQuantity")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count1")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>C1</span>
+                            {getSortIcon("count1")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count2")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>C2</span>
+                            {getSortIcon("count2")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count3")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>C3</span>
+                            {getSortIcon("count3")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("count4")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>C4</span>
+                            {getSortIcon("count4")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("finalQuantity")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>Qtd. Final</span>
+                            {getSortIcon("finalQuantity")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("difference")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>Diferença</span>
+                            {getSortIcon("difference")}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="text-center cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleSort("status")}
+                        >
+                          <div className="flex items-center justify-center space-x-1">
+                            <span>Status</span>
+                            {getSortIcon("status")}
+                          </div>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1492,15 +1654,87 @@ export default function InventoryControlBoard() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Produto</TableHead>
-                              <TableHead>Local</TableHead>
-                              <TableHead>Estoque</TableHead>
-                              <TableHead>C1</TableHead>
-                              <TableHead>C2</TableHead>
-                              <TableHead>C3</TableHead>
-                              <TableHead>C4 (Auditoria)</TableHead>
-                              <TableHead>Qtd. Final</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("product")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Produto
+                                  {getSortIcon("product")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("location")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Local
+                                  {getSortIcon("location")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("expectedQuantity")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Estoque
+                                  {getSortIcon("expectedQuantity")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("count1")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  C1
+                                  {getSortIcon("count1")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("count2")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  C2
+                                  {getSortIcon("count2")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("count3")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  C3
+                                  {getSortIcon("count3")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("count4")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  C4 (Auditoria)
+                                  {getSortIcon("count4")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("finalQuantity")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Qtd. Final
+                                  {getSortIcon("finalQuantity")}
+                                </div>
+                              </TableHead>
+                              <TableHead 
+                                className="cursor-pointer hover:bg-muted/50"
+                                onClick={() => handleSort("status")}
+                              >
+                                <div className="flex items-center gap-1">
+                                  Status
+                                  {getSortIcon("status")}
+                                </div>
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
