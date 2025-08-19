@@ -3441,7 +3441,7 @@ import type {
     status?: string;
     page: number;
     limit: number;
-  }): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+  }): Promise<{ discrepancies: any[]; total: number; page: number; limit: number; totalPages: number }> {
     try {
       let whereClause = 'WHERE inventoryId = @inventoryId';
       const request = this.pool.request().input('inventoryId', params.inventoryId);
@@ -3475,11 +3475,14 @@ import type {
       request.input('offset', offset).input('limit', params.limit);
       const itemsResult = await request.query(itemsQuery);
 
+      const totalPages = Math.ceil(total / params.limit);
+
       return {
-        items: itemsResult.recordset,
+        discrepancies: itemsResult.recordset,
         total,
         page: params.page,
-        limit: params.limit
+        limit: params.limit,
+        totalPages
       };
     } catch (error) {
       console.error('Erro ao buscar divergências de série:', error);

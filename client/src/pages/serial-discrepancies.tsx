@@ -88,8 +88,7 @@ export default function SerialDiscrepanciesPage() {
   // Query para buscar divergências
   const { data: discrepanciesData, isLoading, refetch } = useQuery<SerialDiscrepanciesResponse>({
     queryKey: [
-      `/api/serial-discrepancies`,
-      selectedInventoryId,
+      `/api/serial-discrepancies/${selectedInventoryId}`,
       searchTerm,
       statusFilter,
       typeFilter,
@@ -99,7 +98,6 @@ export default function SerialDiscrepanciesPage() {
       if (!selectedInventoryId) throw new Error("Nenhum inventário selecionado");
       
       const params = new URLSearchParams({
-        inventoryId: selectedInventoryId.toString(),
         page: page.toString(),
         limit: "20"
       });
@@ -108,7 +106,7 @@ export default function SerialDiscrepanciesPage() {
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (typeFilter !== "all") params.append("type", typeFilter);
       
-      return await apiRequest(`/api/serial-discrepancies?${params.toString()}`);
+      return await apiRequest(`/api/serial-discrepancies/${selectedInventoryId}?${params.toString()}`);
     },
     enabled: !!selectedInventoryId,
     staleTime: 30000,
@@ -470,7 +468,7 @@ export default function SerialDiscrepanciesPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
                 <span className="ml-2">Carregando divergências...</span>
               </div>
-            ) : discrepanciesData?.discrepancies.length ? (
+            ) : discrepanciesData?.discrepancies?.length ? (
               <>
                 <Table>
                   <TableHeader>

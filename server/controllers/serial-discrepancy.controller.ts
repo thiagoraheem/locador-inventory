@@ -57,7 +57,7 @@ export class SerialDiscrepancyController {
     }
 
     try {
-      const discrepancies = await this.storage.getSerialDiscrepancies({
+      const result = await this.storage.getSerialDiscrepancies({
         inventoryId,
         type: type as string,
         status: status as string,
@@ -65,7 +65,7 @@ export class SerialDiscrepancyController {
         limit: parseInt(limit as string)
       });
 
-      res.json(discrepancies);
+      res.json(result);
     } catch (error) {
       console.error('Erro ao buscar divergências:', error);
       res.status(500).json({ error: 'Erro interno do servidor' });

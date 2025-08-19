@@ -110,46 +110,48 @@ BEGIN
         discrepancyType, foundBy, foundAt, countStage
     )
     SELECT 
-        isi.inventoryId,
-        isi.serialNumber,
-        isi.productId,
+        isi_found.inventoryId,
+        isi_found.serialNumber,
+        isi_found.productId,
         p.sku,
         p.name,
-        -- Local esperado (onde deveria estar)
-        si.locationId,
+        -- Local esperado (onde deveria estar - baseado no inventory_serial_items com expectedStatus = 1)
+        isi_expected.locationId,
         l_expected.code,
         l_expected.name,
         -- Local encontrado (onde foi encontrado)
-        isi.locationId,
+        isi_found.locationId,
         l_found.code,
         l_found.name,
         'LOCATION_MISMATCH',
         CASE 
-            WHEN isi.count1_found = 1 THEN isi.count1_by
-            WHEN isi.count2_found = 1 THEN isi.count2_by
-            WHEN isi.count3_found = 1 THEN isi.count3_by
-            WHEN isi.count4_found = 1 THEN isi.count4_by
+            WHEN isi_found.count1_found = 1 THEN isi_found.count1_by
+            WHEN isi_found.count2_found = 1 THEN isi_found.count2_by
+            WHEN isi_found.count3_found = 1 THEN isi_found.count3_by
+            WHEN isi_found.count4_found = 1 THEN isi_found.count4_by
         END,
         CASE 
-            WHEN isi.count1_found = 1 THEN isi.count1_at
-            WHEN isi.count2_found = 1 THEN isi.count2_at
-            WHEN isi.count3_found = 1 THEN isi.count3_at
-            WHEN isi.count4_found = 1 THEN isi.count4_at
+            WHEN isi_found.count1_found = 1 THEN isi_found.count1_at
+            WHEN isi_found.count2_found = 1 THEN isi_found.count2_at
+            WHEN isi_found.count3_found = 1 THEN isi_found.count3_at
+            WHEN isi_found.count4_found = 1 THEN isi_found.count4_at
         END,
         CASE 
-            WHEN isi.count1_found = 1 THEN 'count1'
-            WHEN isi.count2_found = 1 THEN 'count2'
-            WHEN isi.count3_found = 1 THEN 'count3'
-            WHEN isi.count4_found = 1 THEN 'count4'
+            WHEN isi_found.count1_found = 1 THEN 'count1'
+            WHEN isi_found.count2_found = 1 THEN 'count2'
+            WHEN isi_found.count3_found = 1 THEN 'count3'
+            WHEN isi_found.count4_found = 1 THEN 'count4'
         END
-    FROM inventory_serial_items isi
-    JOIN products p ON isi.productId = p.id
-    JOIN stock_items si ON isi.stockItemId = si.id
-    JOIN locations l_expected ON si.locationId = l_expected.id
-    JOIN locations l_found ON isi.locationId = l_found.id
-    WHERE isi.inventoryId = @InventoryId
-    AND isi.finalStatus = 1
-    AND si.locationId != isi.locationId; -- Encontrado em local diferente
+    FROM inventory_serial_items isi_found
+    JOIN products p ON isi_found.productId = p.id
+    JOIN inventory_serial_items isi_expected ON isi_found.serialNumber = isi_expected.serialNumber 
+        AND isi_found.inventoryId = isi_expected.inventoryId 
+        AND isi_expected.expectedStatus = 1
+    JOIN locations l_expected ON isi_expected.locationId = l_expected.id
+    JOIN locations l_found ON isi_found.locationId = l_found.id
+    WHERE isi_found.inventoryId = @InventoryId
+    AND isi_found.finalStatus = 1
+    AND isi_expected.locationId != isi_found.locationId; -- Encontrado em local diferente do esperado
     
     -- 2. NÚMEROS DE SÉRIE ESPERADOS QUE NÃO FORAM ENCONTRADOS
     INSERT INTO inventory_serial_discrepancies (
@@ -163,14 +165,13 @@ BEGIN
         isi.productId,
         p.sku,
         p.name,
-        si.locationId,
+        isi.locationId, -- Local esperado baseado no inventory_serial_items
         l.code,
         l.name,
         'NOT_FOUND'
     FROM inventory_serial_items isi
     JOIN products p ON isi.productId = p.id
-    JOIN stock_items si ON isi.stockItemId = si.id
-    JOIN locations l ON si.locationId = l.id
+    JOIN locations l ON isi.locationId = l.id
     WHERE isi.inventoryId = @InventoryId
     AND isi.expectedStatus = 1 -- Deveria estar presente
     AND isi.status = 'PENDING'; -- Não foi encontrado
