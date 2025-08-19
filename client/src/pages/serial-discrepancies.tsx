@@ -30,6 +30,7 @@ import Header from "@/components/layout/header";
 import SelectedInventoryInfo from "@/components/selected-inventory-info";
 import { apiRequest } from "@/lib/queryClient";
 import type { Inventory } from "@shared/schema";
+import jsPDF from "jspdf";
 
 interface SerialDiscrepancy {
   id: number;
@@ -67,6 +68,110 @@ interface SerialDiscrepanciesResponse {
   limit: number;
   totalPages: number;
 }
+
+// Função para gerar PDF das divergências
+const generatePDF = (discrepancies: SerialDiscrepancy[], inventoryId: number) => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const lineHeight = 7;
+  let yPosition = margin;
+
+  // Função para adicionar nova página
+  const addNewPage = () => {
+    pdf.addPage();
+    yPosition = margin;
+  };
+
+  // Função para verificar se precisa de nova página
+  const checkPageBreak = (requiredHeight: number) => {
+    if (yPosition + requiredHeight > pageHeight - margin) {
+      addNewPage();
+    }
+  };
+
+  // Cabeçalho
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Relatório de Divergências de Números de Série', margin, yPosition);
+  yPosition += lineHeight * 2;
+
+  pdf.setFontSize(12);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Inventário ID: ${inventoryId}`, margin, yPosition);
+  yPosition += lineHeight;
+  pdf.text(`Data de Geração: ${new Date().toLocaleString('pt-BR')}`, margin, yPosition);
+  yPosition += lineHeight;
+  pdf.text(`Total de Divergências: ${discrepancies.length}`, margin, yPosition);
+  yPosition += lineHeight * 2;
+
+  // Resumo por tipo
+  const summary = discrepancies.reduce((acc, d) => {
+    acc[d.discrepancyType] = (acc[d.discrepancyType] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Resumo por Tipo:', margin, yPosition);
+  yPosition += lineHeight;
+  
+  pdf.setFont('helvetica', 'normal');
+  Object.entries(summary).forEach(([type, count]) => {
+    const typeLabel = type === 'LOCATION_MISMATCH' ? 'Local Diferente' : 
+                     type === 'NOT_FOUND' ? 'Não Encontrado' : 'Encontrado Inesperado';
+    pdf.text(`• ${typeLabel}: ${count}`, margin + 5, yPosition);
+    yPosition += lineHeight;
+  });
+  yPosition += lineHeight;
+
+  // Lista de divergências
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Detalhes das Divergências:', margin, yPosition);
+  yPosition += lineHeight * 1.5;
+
+  discrepancies.forEach((discrepancy, index) => {
+    checkPageBreak(lineHeight * 8); // Espaço necessário para uma divergência
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`${index + 1}. ${discrepancy.serialNumber}`, margin, yPosition);
+    yPosition += lineHeight;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Produto: ${discrepancy.productName} (${discrepancy.productSku})`, margin + 5, yPosition);
+    yPosition += lineHeight;
+
+    const typeLabel = discrepancy.discrepancyType === 'LOCATION_MISMATCH' ? 'Local Diferente' : 
+                     discrepancy.discrepancyType === 'NOT_FOUND' ? 'Não Encontrado' : 'Encontrado Inesperado';
+    pdf.text(`Tipo: ${typeLabel}`, margin + 5, yPosition);
+    yPosition += lineHeight;
+
+    if (discrepancy.expectedLocationName) {
+      pdf.text(`Local Esperado: ${discrepancy.expectedLocationName}`, margin + 5, yPosition);
+      yPosition += lineHeight;
+    }
+
+    if (discrepancy.foundLocationName) {
+      pdf.text(`Local Encontrado: ${discrepancy.foundLocationName}`, margin + 5, yPosition);
+      yPosition += lineHeight;
+    }
+
+    const statusLabel = discrepancy.status === 'PENDING' ? 'Pendente' : 
+                       discrepancy.status === 'RESOLVED' ? 'Resolvido' : 'Migrado';
+    pdf.text(`Status: ${statusLabel}`, margin + 5, yPosition);
+    yPosition += lineHeight;
+
+    if (discrepancy.notes) {
+      pdf.text(`Observações: ${discrepancy.notes}`, margin + 5, yPosition);
+      yPosition += lineHeight;
+    }
+
+    yPosition += lineHeight * 0.5; // Espaço entre divergências
+  });
+
+  // Salvar PDF
+  pdf.save(`divergencias-serie-${inventoryId}.pdf`);
+};
 
 export default function SerialDiscrepanciesPage() {
   const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
@@ -186,21 +291,34 @@ export default function SerialDiscrepanciesPage() {
 
   // Mutation para exportar divergências
   const exportDiscrepanciesMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (format: 'csv' | 'pdf' = 'csv') => {
       if (!selectedInventoryId) throw new Error("Nenhum inventário selecionado");
-      const response = await fetch(`/api/serial-discrepancies/export?inventoryId=${selectedInventoryId}`);
+      const response = await fetch(`/api/serial-discrepancies/${selectedInventoryId}/export?format=${format}`, {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error("Falha ao exportar");
-      return response.blob();
+      
+      if (format === 'pdf') {
+        return response.json();
+      } else {
+        return response.blob();
+      }
     },
-    onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `divergencias-serie-${selectedInventoryId}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+    onSuccess: (data, format) => {
+      if (format === 'pdf') {
+        // Gerar PDF no frontend
+        generatePDF(data.data, selectedInventoryId!);
+      } else {
+        // Download CSV
+        const url = window.URL.createObjectURL(data as Blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `divergencias-serie-${selectedInventoryId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
       
       toast({
         title: "Exportação concluída",
@@ -436,19 +554,34 @@ export default function SerialDiscrepanciesPage() {
                   Processar
                 </Button>
                 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => exportDiscrepanciesMutation.mutate()}
-                  disabled={exportDiscrepanciesMutation.isPending}
-                >
-                  {exportDiscrepanciesMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Exportar
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportDiscrepanciesMutation.mutate('csv')}
+                    disabled={exportDiscrepanciesMutation.isPending}
+                  >
+                    {exportDiscrepanciesMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    CSV
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportDiscrepanciesMutation.mutate('pdf')}
+                    disabled={exportDiscrepanciesMutation.isPending}
+                  >
+                    {exportDiscrepanciesMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-2" />
+                    )}
+                    PDF
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

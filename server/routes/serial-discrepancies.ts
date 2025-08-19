@@ -17,8 +17,6 @@ router.use(isAuthenticated);
 // GET /api/serial-discrepancies/summary?inventoryId=X - Obter resumo das divergências
 // IMPORTANTE: Esta rota deve vir ANTES da rota /:inventoryId para evitar conflitos
 router.get('/summary', async (req, res) => {
-  console.log('=== ROUTE /summary CALLED ===');
-  console.log('Route query params:', req.query);
   try {
     const controller = await getController();
     await controller.getDiscrepanciesSummary(req, res);
@@ -108,23 +106,7 @@ router.put('/:discrepancyId/resolve', async (req, res) => {
 router.get('/:inventoryId/export', async (req, res) => {
   try {
     const controller = await getController();
-    const inventoryId = parseInt(req.params.inventoryId);
-    const format = req.query.format as string || 'json';
-
-    if (isNaN(inventoryId)) {
-      return res.status(400).json({ error: 'ID do inventário inválido' });
-    }
-
-    const exportData = await controller.exportDiscrepancies(inventoryId, format);
-
-    if (format === 'csv') {
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="divergencias-${inventoryId}.csv"`);
-    } else {
-      res.setHeader('Content-Type', 'application/json');
-    }
-
-    res.send(exportData);
+    await controller.exportDiscrepancies(req, res);
   } catch (error) {
     console.error('Erro ao exportar divergências:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });

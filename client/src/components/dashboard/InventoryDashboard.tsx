@@ -537,11 +537,11 @@ export const InventoryDashboardDemo: React.FC<{
   };
 
   const handleItemClick = (item: DashboardItem) => {
-    console.log('Item clicked:', item);
+    // Item click handler - implementar navegação se necessário
   };
 
   const handleExport = (data: DashboardSnapshot, items?: DashboardItem[]) => {
-    console.log('Export requested:', { data, items });
+    // Export handler - implementar lógica de exportação se necessário
   };
 
   return (

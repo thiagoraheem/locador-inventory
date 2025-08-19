@@ -74,15 +74,10 @@ export class SerialDiscrepancyController {
 
   // Obter resumo das divergências
   getDiscrepanciesSummary = asyncHandler(async (req: Request, res: Response) => {
-    console.log('=== DEBUG SUMMARY ENDPOINT ===');
-    console.log('Query params:', req.query);
     const inventoryIdStr = req.query.inventoryId as string;
-    console.log('inventoryId string:', inventoryIdStr);
     const inventoryId = parseInt(inventoryIdStr);
-    console.log('inventoryId parsed:', inventoryId);
 
     if (!inventoryIdStr || !inventoryId || isNaN(inventoryId)) {
-      console.log('Validation failed:', { inventoryIdStr, inventoryId, isNaN: isNaN(inventoryId) });
       return res.status(400).json({ error: 'ID do inventário inválido' });
     }
 
@@ -112,8 +107,6 @@ export class SerialDiscrepancyController {
       const result = await this.storage.processSerialDiscrepancies(inventoryId);
       
       // Log da operação
-      console.log(`Divergências processadas para inventário ${inventoryId} por usuário ${userId}:`, result);
-      
       res.json({
         success: true,
         message: 'Divergências processadas com sucesso',
@@ -152,7 +145,7 @@ export class SerialDiscrepancyController {
     }
   });
 
-  // Exportar divergências para Excel/CSV
+  // Exportar divergências para Excel/CSV/PDF
   exportDiscrepancies = asyncHandler(async (req: Request, res: Response) => {
     const inventoryId = parseInt(req.params.inventoryId);
     const { format = 'csv', type, status } = req.query;
@@ -171,13 +164,21 @@ export class SerialDiscrepancyController {
       });
 
       if (format === 'csv') {
-        const csvContent = this.generateCSV(discrepancies.items);
+        const items = discrepancies?.discrepancies || [];
+        const csvContent = this.generateCSV(items);
         
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="divergencias-serie-${inventoryId}.csv"`);
         res.send(csvContent);
+      } else if (format === 'pdf') {
+        // Para PDF, retornamos os dados em JSON para o frontend processar
+        res.json({
+          data: discrepancies?.discrepancies || [],
+          format: 'pdf',
+          inventoryId
+        });
       } else {
-        res.json(discrepancies.items);
+        res.json(discrepancies?.discrepancies || []);
       }
     } catch (error) {
       console.error('Erro ao exportar divergências:', error);
