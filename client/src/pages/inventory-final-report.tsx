@@ -12,6 +12,7 @@ import {
   Printer, 
   Download, 
   FileText, 
+  FileSpreadsheet,
   Users, 
   Clock, 
   Target, 
@@ -36,10 +37,12 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import * as XLSX from "xlsx";
 
 export default function InventoryFinalReportPage() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [showMigrationDialog, setShowMigrationDialog] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -298,6 +301,75 @@ export default function InventoryFinalReportPage() {
       });
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!report || !report.divergentItems || report.divergentItems.length === 0) {
+      toast({
+        title: "Nenhum dado para exportar",
+        description: "Não há itens com divergência para exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExportingExcel(true);
+
+    try {
+      // Preparar dados para exportação
+      const exportData = report.divergentItems.map((item) => {
+        const difference = item.difference || ((item.finalQuantity || 0) - (item.expectedQuantity || 0));
+        const totalImpact = item.totalImpact || (difference * (item.costValue || 0));
+        
+        return {
+          'SKU': item.productSku || 'N/A',
+          'Produto': item.productName || 'N/A',
+          'Esperado': item.expectedQuantity || 0,
+          'Contado': item.finalQuantity || 0,
+          'Diferença': difference,
+          'Custo Unitário': item.costValue || 0,
+          'Impacto Total': totalImpact
+        };
+      });
+
+      // Criar workbook e worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Definir larguras das colunas
+      const colWidths = [
+        { wch: 15 }, // SKU
+        { wch: 40 }, // Produto
+        { wch: 10 }, // Esperado
+        { wch: 10 }, // Contado
+        { wch: 10 }, // Diferença
+        { wch: 15 }, // Custo Unitário
+        { wch: 15 }  // Impacto Total
+      ];
+      ws['!cols'] = colWidths;
+
+      // Adicionar worksheet ao workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Itens com Divergência');
+
+      // Gerar nome do arquivo
+      const fileName = `divergencias-inventario-${report.inventoryCode}-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+      // Salvar arquivo
+      XLSX.writeFile(wb, fileName);
+
+      toast({
+        title: "Excel exportado",
+        description: `Arquivo ${fileName} foi gerado com sucesso`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao exportar Excel",
+        description: "Ocorreu um erro ao gerar o arquivo Excel. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingExcel(false);
     }
   };
 
@@ -665,13 +737,31 @@ export default function InventoryFinalReportPage() {
             {report.accuracy.divergentItems > 0 && (
               <Card className="mb-6 border-orange-200 bg-orange-50/50">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-800">
-                    <AlertTriangle className="h-5 w-5" />
-                    Itens com Divergência - Análise Detalhada
-                  </CardTitle>
-                  <CardDescription className="text-orange-700">
-                    Lista completa dos itens que apresentaram diferenças entre o estoque esperado e o contado
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-orange-800">
+                        <AlertTriangle className="h-5 w-5" />
+                        Itens com Divergência - Análise Detalhada
+                      </CardTitle>
+                      <CardDescription className="text-orange-700 mt-2">
+                        Lista completa dos itens que apresentaram diferenças entre o estoque esperado e o contado
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportExcel}
+                      disabled={isExportingExcel || !report?.divergentItems?.length}
+                      className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200 hover:border-green-300"
+                    >
+                      {isExportingExcel ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      )}
+                      {isExportingExcel ? 'Exportando...' : 'Exportar Excel'}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
