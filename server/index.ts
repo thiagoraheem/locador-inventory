@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import "dotenv/config";
 import express from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -9,33 +9,33 @@ import { rateLimiter } from "./middlewares/rate-limit.middleware";
 // Função para obter o IP externo
 async function getExternalIP(): Promise<string | null> {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    const response = await fetch("https://api.ipify.org?format=json");
     const data = await response.json();
     return data.ip;
   } catch (error) {
-    console.error('❌ Erro ao obter IP externo:', error);
+    console.error("❌ Erro ao obter IP externo:", error);
     return null;
   }
 }
 
 // Função para exibir informações do IP no console
 async function displayServerInfo(port: number) {
-  console.log('\n' + '='.repeat(60));
-  console.log('🚀 SERVIDOR INICIADO COM SUCESSO');
-  console.log('='.repeat(60));
+  console.log("\n" + "=".repeat(60));
+  console.log("🚀 SERVIDOR INICIADO COM SUCESSO");
+  console.log("=".repeat(60));
   console.log(`📍 Porta local: ${port}`);
   console.log(`🌐 Endereço local: http://localhost:${port}`);
-  
+
   // Obter e exibir IP externo
   const externalIP = await getExternalIP();
   if (externalIP) {
     console.log(`🌍 IP EXTERNO DO SERVIDOR: ${externalIP}`);
     console.log(`🔗 Acesso externo: http://${externalIP}:${port}`);
   } else {
-    console.log('⚠️  Não foi possível obter o IP externo');
+    console.log("⚠️  Não foi possível obter o IP externo");
   }
-  
-  console.log('='.repeat(60) + '\n');
+
+  console.log("=".repeat(60) + "\n");
 }
 
 const app = express();
@@ -45,6 +45,9 @@ app.use(rateLimiter);
 app.use(loggingMiddleware);
 
 (async () => {
+  const port = parseInt(process.env.PORT || "5000", 10);
+  await displayServerInfo(port);
+
   const server = await registerRoutes(app);
 
   app.use(errorHandler);
@@ -58,20 +61,14 @@ app.use(loggingMiddleware);
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
     {
       port,
-      host: "0.0.0.0"
+      host: "0.0.0.0",
     },
     async () => {
       log(`serving on port ${port}`);
       // Exibir informações detalhadas do servidor incluindo IP externo
-      await displayServerInfo(port);
     },
   );
 })();
