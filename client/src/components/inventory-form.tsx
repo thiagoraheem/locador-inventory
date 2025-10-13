@@ -138,6 +138,8 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      console.log('🚀 MUTATION START - Dados do formulário:', data);
+      
       // Generate unique code if not provided
       const code =
         data.code ||
@@ -160,15 +162,24 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         selectedProductIds: data.selectedProductIds,
       };
 
-      const inventory = await apiRequest(
-        "/api/inventories",
-        "POST",
-        inventoryPayload,
-      );
+      console.log('📦 PAYLOAD PREPARADO:', inventoryPayload);
 
-      return inventory;
+      try {
+        const inventory = await apiRequest(
+          "/api/inventories",
+          "POST",
+          inventoryPayload,
+        );
+        
+        console.log('✅ RESPOSTA DA API:', inventory);
+        return inventory;
+      } catch (error) {
+        console.error('❌ ERRO NA API REQUEST:', error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('🎉 MUTATION SUCCESS - Dados retornados:', data);
       queryClient.invalidateQueries({ queryKey: ["/api/inventories"] });
       toast({
         title: "Sucesso",
@@ -177,6 +188,10 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       onSuccess?.();
     },
     onError: (error) => {
+      console.error('💥 MUTATION ERROR:', error);
+      console.error('💥 ERROR STACK:', error.stack);
+      console.error('💥 ERROR MESSAGE:', error.message);
+      
       if (isUnauthorizedError(error)) {
         toast({
           title: "Não autorizado",
@@ -190,7 +205,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       }
       toast({
         title: "Erro",
-        description: "Erro ao criar inventário",
+        description: `Erro ao criar inventário: ${error.message}`,
         variant: "destructive",
       });
     },

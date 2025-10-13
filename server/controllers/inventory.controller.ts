@@ -25,7 +25,7 @@ export class InventoryController {
   });
 
   create = asyncHandler(async (req: any, res: Response) => {
-    const storage = getStorage();
+    const storage = await getStorage();
     
     // Debug logs para verificar dados recebidos
     console.log('DEBUG: Dados recebidos no controller:', JSON.stringify(req.body, null, 2));
