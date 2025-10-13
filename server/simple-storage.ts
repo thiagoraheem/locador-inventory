@@ -250,6 +250,51 @@ import type {
     return result.recordset;
   }
 
+  async getProductsByCategories(categoryIds: number[]): Promise<Product[]> {
+    if (!categoryIds || categoryIds.length === 0) return [];
+    
+    const placeholders = categoryIds.map((_, index) => `@categoryId${index}`).join(',');
+    const request = this.pool.request();
+    
+    categoryIds.forEach((id, index) => {
+      request.input(`categoryId${index}`, id);
+    });
+    
+    const queryText = `
+      SELECT p.*, c.name as categoryName, c.description as categoryDescription
+      FROM products p
+      LEFT JOIN categories c ON p.categoryId = c.id
+      WHERE p.categoryId IN (${placeholders}) AND p.isActive = 1
+      ORDER BY p.name
+    `;
+
+    const result = await request.query(queryText);
+
+    console.log('Query executed:', queryText);
+    console.log('Category IDs:', categoryIds);
+    console.log('Result count:', result.recordset.length);
+
+    return result.recordset.map((row) => ({
+      id: row.id,
+      sku: row.sku,
+      name: row.name,
+      description: row.description,
+      categoryId: row.categoryId,
+      costValue: row.costValue,
+      isActive: row.isActive,
+      createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
+      updatedAt: row.updatedAt ? new Date(row.updatedAt).getTime() : Date.now(),
+      category: row.categoryName ? {
+        id: row.categoryId,
+        name: row.categoryName,
+        description: row.categoryDescription,
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      } : undefined
+    }));
+  }
+
   // Stock operations
   async getStock(): Promise<
     (Stock & { product?: Product; location?: Location })[]

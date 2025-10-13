@@ -10,9 +10,6 @@ export function registerProductRoutes(app: Express) {
   // Search products
   app.get("/api/products/search", isAuthenticated, productController.search);
 
-  // Get product by id
-  app.get("/api/products/:id", isAuthenticated, productController.get);
-
   // Get products with serial control information
   app.get(
     "/api/products/with-serial-control",
@@ -20,11 +17,21 @@ export function registerProductRoutes(app: Express) {
     productController.withSerialControl,
   );
 
-  // Buscar produto por n\u00famero de s\u00e9rie
+  // Get products by categories
+  app.get(
+    "/api/products/by-categories",
+    isAuthenticated,
+    productController.getByCategory,
+  );
+
+  // Buscar produto por número de série
   app.get(
     "/api/products/by-serial/:serial",
     isAuthenticated,
     productController.findBySerial,
   );
+
+  // Get product by id (must be last to avoid conflicts)
+  app.get("/api/products/:id", isAuthenticated, productController.get);
 }
 

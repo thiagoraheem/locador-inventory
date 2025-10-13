@@ -25,38 +25,26 @@ export class InventoryController {
   });
 
   create = asyncHandler(async (req: any, res: Response) => {
-    const storage = await getStorage();
+    const storage = getStorage();
+    
+    // Debug logs para verificar dados recebidos
+    console.log('DEBUG: Dados recebidos no controller:', JSON.stringify(req.body, null, 2));
+    console.log('DEBUG: selectedProductIds:', req.body.selectedProductIds);
+    console.log('DEBUG: selectedCategoryIds:', req.body.selectedCategoryIds);
+    console.log('DEBUG: selectedLocationIds:', req.body.selectedLocationIds);
+    console.log('DEBUG: type:', req.body.type);
 
     const inventoryData: any = {
       code: req.body.code,
       typeId: req.body.typeId,
-      startDate:
-        typeof req.body.startDate === "string"
-          ? new Date(req.body.startDate).getTime()
-          : req.body.startDate,
+      startDate: req.body.startDate,
+      endDate: req.body.endDate,
+      predictedEndDate: req.body.predictedEndDate,
+      description: req.body.description,
       status: req.body.status || "open",
-      isToBlockSystem:
-        req.body.isToBlockSystem === true || req.body.isToBlockSystem === "true",
+      isToBlockSystem: req.body.isToBlockSystem || false,
       createdBy: req.user.id,
     };
-
-    if (req.body.endDate) {
-      inventoryData.endDate =
-        typeof req.body.endDate === "string"
-          ? new Date(req.body.endDate).getTime()
-          : req.body.endDate;
-    }
-
-    if (req.body.predictedEndDate) {
-      inventoryData.predictedEndDate =
-        typeof req.body.predictedEndDate === "string"
-          ? new Date(req.body.predictedEndDate).getTime()
-          : req.body.predictedEndDate;
-    }
-
-    if (req.body.description) {
-      inventoryData.description = req.body.description;
-    }
 
     if (req.body.selectedLocationIds && Array.isArray(req.body.selectedLocationIds)) {
       inventoryData.selectedLocationIds = req.body.selectedLocationIds;
@@ -66,10 +54,24 @@ export class InventoryController {
       inventoryData.selectedCategoryIds = req.body.selectedCategoryIds;
     }
 
+    if (req.body.selectedProductIds && Array.isArray(req.body.selectedProductIds)) {
+      inventoryData.selectedProductIds = req.body.selectedProductIds;
+    }
+
+    console.log('DEBUG: inventoryData antes da validação:', JSON.stringify(inventoryData, null, 2));
+
     const validatedData = insertInventorySchema.partial().parse(inventoryData);
+    
+    console.log('DEBUG: validatedData após validação:', JSON.stringify(validatedData, null, 2));
+    
     const inventory = await inventoryService.createInventory(validatedData);
 
-    if (req.body.selectedLocationIds && req.body.selectedCategoryIds) {
+    // Only create inventory items for non-Rotativo types here
+    // Rotativo types are handled in inventoryService.generateRotativeInventoryItems
+    const types = await inventoryService.getInventoryTypes();
+    const inventoryType = types.find((t: any) => t.id === validatedData.typeId);
+    
+    if (inventoryType?.name !== 'Rotativo' && req.body.selectedLocationIds && req.body.selectedCategoryIds) {
       const { selectedLocationIds, selectedCategoryIds } = req.body;
       const stockItems = await storage.getStock();
       const products = await storage.getProducts();
@@ -105,9 +107,9 @@ export class InventoryController {
       action: "CREATE",
       entityType: "INVENTORY",
       entityId: inventory.id.toString(),
-      oldValues: undefined,
+      oldValues: null,
       newValues: JSON.stringify(validatedData),
-      metadata: undefined,
+      metadata: null,
     });
 
     res.status(201).json(inventory);

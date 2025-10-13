@@ -13,9 +13,8 @@ export const login = asyncHandler(async (
   session.userId = user.id;
 
   // Debug logs for login tracking
-  if (process.env.NODE_ENV === 'development') {
-    // User logged in successfully
-  }
+  console.log('DEBUG: User logged in successfully:', user.id, user.username);
+  console.log('DEBUG: Session userId set to:', session.userId);
 
   res.json({ user });
 });

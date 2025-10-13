@@ -20,6 +20,10 @@ export class ProductService {
   async findProductBySerial(serial: string) {
     return productRepository.findBySerial(serial);
   }
+
+  async getProductsByCategories(categoryIds: number[]) {
+    return productRepository.findByCategories(categoryIds);
+  }
 }
 
 export const productService = new ProductService();

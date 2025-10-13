@@ -54,6 +54,11 @@ export class ProductRepository extends BaseRepository<Product> {
     const storage = await this.getStorage();
     return storage.findProductBySerial(serial);
   }
+
+  async findByCategories(categoryIds: number[]) {
+    const storage = await this.getStorage();
+    return storage.getProductsByCategories(categoryIds);
+  }
 }
 
 export const productRepository = new ProductRepository();

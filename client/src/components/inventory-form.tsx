@@ -1,6 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -9,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useInventoryTypes } from "@/hooks/use-inventory-types";
+import { useLocations } from "@/hooks/use-locations";
+import { useCategories } from "@/hooks/use-categories";
+import { ProductSelector } from "@/components/ProductSelector";
 import {
   Form,
   FormControl,
@@ -29,7 +34,7 @@ import {
 import { insertInventorySchema } from "@shared/schema";
 import { z } from "zod";
 
-const formSchema = insertInventorySchema
+const createFormSchema = (inventoryTypes: any[]) => insertInventorySchema
   .extend({
     startDate: z.string().min(1, "Data de início é obrigatória"),
     endDate: z.string().optional(),
@@ -40,9 +45,35 @@ const formSchema = insertInventorySchema
     selectedCategoryIds: z
       .array(z.number())
       .min(1, "Selecione pelo menos uma categoria"),
+    selectedProductIds: z.array(z.number()).optional(),
     isToBlockSystem: z.boolean().optional(),
   })
-  .omit({ createdBy: true });
+  .omit({ createdBy: true })
+  .refine(
+    (data) => {
+      const startDate = new Date(data.startDate);
+      const endDate = new Date(data.predictedEndDate);
+      return endDate >= startDate;
+    },
+    {
+      message: "Data de término deve ser igual ou posterior à data de início",
+      path: ["predictedEndDate"],
+    },
+  )
+  .refine(
+    (data) => {
+      const inventoryType = inventoryTypes?.find(type => type.id === data.typeId);
+      
+      if (inventoryType?.name === 'Rotativo') {
+        return data.selectedProductIds && data.selectedProductIds.length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Selecione pelo menos um produto para inventário rotativo",
+      path: ["selectedProductIds"],
+    },
+  );
 
 interface InventoryFormProps {
   onSuccess?: () => void;
@@ -51,6 +82,15 @@ interface InventoryFormProps {
 export default function InventoryForm({ onSuccess }: InventoryFormProps) {
   const { toast } = useToast();
 
+  const { data: inventoryTypes } = useQuery({
+    queryKey: ["/api/inventory-types"],
+    retry: false,
+  });
+
+  const formSchema = useMemo(() => {
+    return createFormSchema(inventoryTypes || []);
+  }, [inventoryTypes]);
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -63,12 +103,8 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
       isToBlockSystem: false,
       selectedLocationIds: [],
       selectedCategoryIds: [],
+      selectedProductIds: [],
     },
-  });
-
-  const { data: inventoryTypes } = useQuery({
-    queryKey: ["/api/inventory-types"],
-    retry: false,
   });
 
   const { data: locations } = useQuery({
@@ -100,7 +136,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
 
       // Create inventory
       const inventoryPayload = {
-        code,
+        code: data.code,
         typeId: data.typeId,
         startDate: new Date(data.startDate).getTime(),
         endDate: data.endDate ? new Date(data.endDate).getTime() : null,
@@ -112,6 +148,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         isToBlockSystem: data.isToBlockSystem || false,
         selectedLocationIds: data.selectedLocationIds,
         selectedCategoryIds: data.selectedCategoryIds,
+        selectedProductIds: data.selectedProductIds,
       };
 
       const inventory = await apiRequest(
@@ -379,6 +416,27 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
             )}
           />
         </div>
+
+        {/* Product Selector - Only for Rotativo inventory type */}
+        {inventoryTypes?.find(type => type.id === form.watch('typeId'))?.name === 'Rotativo' && (
+          <FormField
+            control={form.control}
+            name="selectedProductIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Produtos Específicos *</FormLabel>
+                <FormControl>
+                  <ProductSelector
+                    selectedCategoryIds={form.watch('selectedCategoryIds')}
+                    selectedProductIds={field.value || []}
+                    onProductSelectionChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}

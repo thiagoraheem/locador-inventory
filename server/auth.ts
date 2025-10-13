@@ -29,7 +29,7 @@ export function getSession() {
     name: 'inventory.sid', // Unique session name to avoid conflicts
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Disable secure for localhost testing
       maxAge: sessionTtl,
       sameSite: 'lax', // Prevent CSRF attacks
       domain: undefined, // Don't share across subdomains

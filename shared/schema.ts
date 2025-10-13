@@ -91,6 +91,7 @@ export interface Inventory {
   description?: string;
   selectedLocationIds?: number[];  // JSON array of selected location IDs
   selectedCategoryIds?: number[];  // JSON array of selected category IDs
+  selectedProductIds?: number[];  // JSON array of selected product IDs
   createdBy: number;
   createdAt: number;
   updatedAt: number;
@@ -406,6 +407,7 @@ export const insertInventorySchema = z.object({
   isToBlockSystem: z.boolean().optional().default(false),
   selectedLocationIds: z.array(z.number()).optional(),
   selectedCategoryIds: z.array(z.number()).optional(),
+  selectedProductIds: z.array(z.number()).optional(),
   createdBy: z.number(),
 });
 

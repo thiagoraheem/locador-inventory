@@ -347,12 +347,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Companies routes (read-only)
   app.get("/api/companies", isAuthenticated, async (req: any, res) => {
     try {
+      console.log('DEBUG: Fetching companies...');
       storage = await getStorage();
+      console.log('DEBUG: Storage obtained successfully');
       const companies = await storage.getCompanies();
+      console.log('DEBUG: Companies fetched:', companies?.length || 0, 'records');
       res.json(companies);
     } catch (error) {
+      console.error('ERROR: Failed to fetch companies:', error);
       // Error fetching companies
-      res.status(500).json({ message: "Failed to fetch companies" });
+      res.status(500).json({ message: "Failed to fetch companies", error: error.message });
     }
   });
 

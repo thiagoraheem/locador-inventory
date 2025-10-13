@@ -43,6 +43,28 @@ export class ProductController {
     }
     res.json(product);
   });
+
+  getByCategory = asyncHandler(async (req: Request, res: Response) => {
+    const categoryIds = req.query.categoryIds as string;
+    if (!categoryIds) {
+      return res.status(400).json({ message: "Category IDs are required" });
+    }
+    
+    const categoryIdArray = categoryIds.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+    if (categoryIdArray.length === 0) {
+      return res.status(400).json({ message: "Valid category IDs are required" });
+    }
+    
+    console.log('Controller - Category IDs received:', categoryIdArray);
+    const products = await this.service.getProductsByCategories(categoryIdArray);
+    console.log('Controller - Products found:', products.length);
+    
+    if (products.length === 0) {
+      return res.status(404).json({ message: "No products found for the specified categories" });
+    }
+    
+    res.json(products);
+  });
 }
 
 export const productController = new ProductController();
