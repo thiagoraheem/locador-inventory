@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Checkbox } from './ui/checkbox';
 import { Button } from './ui/button';
@@ -49,14 +49,17 @@ export function ProductSelector({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
+  // Memoize the selectedCategoryIds to prevent unnecessary re-renders
+  const memoizedCategoryIds = useMemo(() => selectedCategoryIds, [selectedCategoryIds.join(',')]);
+
   const {
     data: products = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['products-by-categories', selectedCategoryIds],
-    queryFn: () => fetchProductsByCategories(selectedCategoryIds),
-    enabled: selectedCategoryIds.length > 0,
+    queryKey: ['products-by-categories', memoizedCategoryIds],
+    queryFn: () => fetchProductsByCategories(memoizedCategoryIds),
+    enabled: memoizedCategoryIds.length > 0,
   });
 
   useEffect(() => {

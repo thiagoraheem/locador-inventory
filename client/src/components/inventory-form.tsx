@@ -107,6 +107,15 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
     },
   });
 
+  // Watch values and memoize them to prevent unnecessary re-renders
+  const watchedTypeId = form.watch('typeId');
+  const watchedCategoryIds = form.watch('selectedCategoryIds');
+  
+  const memoizedCategoryIds = useMemo(() => watchedCategoryIds, [JSON.stringify(watchedCategoryIds)]);
+  const isRotativoType = useMemo(() => {
+    return inventoryTypes?.find(type => type.id === watchedTypeId)?.name === 'Rotativo';
+  }, [inventoryTypes, watchedTypeId]);
+
   const { data: locations } = useQuery({
     queryKey: ["/api/locations"],
     retry: false,
@@ -418,7 +427,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
         </div>
 
         {/* Product Selector - Only for Rotativo inventory type */}
-        {inventoryTypes?.find(type => type.id === form.watch('typeId'))?.name === 'Rotativo' && (
+        {isRotativoType && (
           <FormField
             control={form.control}
             name="selectedProductIds"
@@ -427,7 +436,7 @@ export default function InventoryForm({ onSuccess }: InventoryFormProps) {
                 <FormLabel>Produtos Específicos *</FormLabel>
                 <FormControl>
                   <ProductSelector
-                    selectedCategoryIds={form.watch('selectedCategoryIds')}
+                    selectedCategoryIds={memoizedCategoryIds}
                     selectedProductIds={field.value || []}
                     onProductSelectionChange={field.onChange}
                   />

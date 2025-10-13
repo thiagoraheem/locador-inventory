@@ -1,0 +1,36 @@
+{
+  "users": {
+    "admin": {
+      "email": "admin@test.locador.com",
+      "password": "Test123!",
+      "role": "administrator",
+      "permissions": ["all"],
+      "name": "Administrador Teste",
+      "id": 1
+    },
+    "operator": {
+      "email": "operator@test.locador.com", 
+      "password": "Test123!",
+      "role": "operator",
+      "permissions": ["inventory.read", "inventory.count"],
+      "name": "Operador Teste",
+      "id": 2
+    },
+    "auditor": {
+      "email": "auditor@test.locador.com",
+      "password": "Test123!", 
+      "role": "auditor",
+      "permissions": ["inventory.read", "inventory.audit"],
+      "name": "Auditor Teste",
+      "id": 3
+    },
+    "invalid": {
+      "email": "invalid@test.com",
+      "password": "WrongPass123",
+      "role": "none",
+      "permissions": [],
+      "name": "Usuário Inválido",
+      "id": 999
+    }
+  }
+}

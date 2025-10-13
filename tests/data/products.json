@@ -1,0 +1,54 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "code": "PROD001",
+      "name": "Notebook Dell Inspiron",
+      "category": "Equipamentos TI",
+      "serialNumber": "NB001234",
+      "value": 2500.00,
+      "location": "Almoxarifado A",
+      "status": "active"
+    },
+    {
+      "id": 2,
+      "code": "PROD002", 
+      "name": "Furadeira Bosch",
+      "category": "Ferramentas",
+      "serialNumber": "FU005678",
+      "value": 350.00,
+      "location": "Oficina B",
+      "status": "active"
+    },
+    {
+      "id": 3,
+      "code": "PROD003",
+      "name": "Monitor Samsung 24\"",
+      "category": "Equipamentos TI",
+      "serialNumber": "MON789012",
+      "value": 800.00,
+      "location": "Almoxarifado A",
+      "status": "active"
+    },
+    {
+      "id": 4,
+      "code": "PROD004",
+      "name": "Impressora HP LaserJet",
+      "category": "Equipamentos TI",
+      "serialNumber": "IMP345678",
+      "value": 1200.00,
+      "location": "Escritório Central",
+      "status": "active"
+    },
+    {
+      "id": 5,
+      "code": "PROD005",
+      "name": "Martelo Profissional",
+      "category": "Ferramentas",
+      "serialNumber": "MAR901234",
+      "value": 85.00,
+      "location": "Oficina B",
+      "status": "active"
+    }
+  ]
+}
