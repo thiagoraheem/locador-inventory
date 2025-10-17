@@ -7,9 +7,9 @@ export interface Product {
 }
 
 export class ProductRepository extends BaseRepository<Product> {
-  async findAll(): Promise<Product[]> {
+  async findAll(search?: string, limit?: number, offset?: number, includeInactive?: boolean): Promise<Product[]> {
     const storage = await this.getStorage();
-    return storage.getProducts();
+    return storage.getProducts(search, limit, offset, includeInactive);
   }
 
   async findById(id: string): Promise<Product | null> {

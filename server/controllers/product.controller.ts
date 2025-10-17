@@ -5,8 +5,14 @@ import { asyncHandler } from "../utils/async-handler";
 export class ProductController {
   constructor(private service = productService) {}
 
-  list = asyncHandler(async (_req: Request, res: Response) => {
-    const products = await this.service.getProducts();
+  list = asyncHandler(async (req: Request, res: Response) => {
+    const { search, includeInactive } = req.query as any;
+    const products = await this.service.getProducts(
+      search?.toString(),
+      undefined, // limit
+      undefined, // offset
+      includeInactive === 'true'
+    );
     res.json(products);
   });
 

@@ -23,6 +23,7 @@ interface Product {
   name: string;
   categoryName: string;
   hasSerialControl: boolean;
+  partNumber?: string;
 }
 
 interface ProductSearchComboboxProps {
@@ -166,6 +167,7 @@ export default function ProductSearchCombobox({
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {product.categoryName} • SKU: {product.sku}
+                          {product.partNumber && ` • PN: ${product.partNumber}`}
                         </div>
                       </div>
                     </CommandItem>

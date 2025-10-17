@@ -171,6 +171,12 @@ export default function ProductListingReport() {
                               <TableHead className="text-xs print:text-xs py-2 print:py-1 font-semibold">
                                 Descrição
                               </TableHead>
+                              <TableHead className="w-[120px] print:w-[100px] text-xs print:text-xs py-2 print:py-1 font-semibold">
+                                Part Number
+                              </TableHead>
+                              <TableHead className="w-[100px] print:w-[80px] text-xs print:text-xs py-2 print:py-1 font-semibold text-center border-l-2 border-gray-300 print:border-l-2 print:border-gray-400">
+                                Quantidade
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -191,6 +197,14 @@ export default function ProductListingReport() {
                                       </div>
                                     )}
                                   </div>
+                                </TableCell>
+                                <TableCell className="w-[120px] print:w-[100px] py-1.5 print:py-0.5 align-top">
+                                  <div className="text-xs print:text-xs font-mono">
+                                    {product.partNumber || "-"}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="w-[100px] print:w-[80px] py-1.5 print:py-0.5 align-top text-center border-l-2 border-gray-300 print:border-l-2 print:border-gray-400">
+                                  {/* Coluna em branco para preenchimento manual */}
                                 </TableCell>
                               </TableRow>
                             ))}

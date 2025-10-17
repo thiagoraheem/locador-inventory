@@ -41,7 +41,7 @@ export default function CategoryFilter({
           <SelectItem value="loading" disabled>Carregando...</SelectItem>
         ) : (
           categories?.map((category) => (
-            <SelectItem key={category.id} value={category.name}>
+            <SelectItem key={category.id} value={category.id.toString()}>
               {category.name}
             </SelectItem>
           ))

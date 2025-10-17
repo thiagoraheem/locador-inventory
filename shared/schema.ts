@@ -30,6 +30,7 @@ export interface Product {
   description?: string;
   categoryId?: number;
   costValue?: number;
+  partNumber?: string;
   isActive: boolean;
   createdAt: number;
   updatedAt: number;

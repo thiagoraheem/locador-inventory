@@ -1,8 +1,8 @@
 import { productRepository } from "../repositories/product.repository";
 
 export class ProductService {
-  async getProducts() {
-    return productRepository.findAll();
+  async getProducts(search?: string, limit?: number, offset?: number, includeInactive?: boolean) {
+    return productRepository.findAll(search, limit, offset, includeInactive);
   }
 
   async searchProducts(query: string, limit: number) {

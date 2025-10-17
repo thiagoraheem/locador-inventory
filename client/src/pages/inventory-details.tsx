@@ -599,6 +599,7 @@ export default function InventoryDetails() {
                               <TableRow>
                                 <TableHead>Produto</TableHead>
                                 <TableHead>SKU</TableHead>
+                                <TableHead>Part Number</TableHead>
                                 <TableHead>Local</TableHead>
                                 <TableHead>Qtd. Esperada</TableHead>
                                 <TableHead>Números de Série</TableHead>
@@ -620,6 +621,9 @@ export default function InventoryDetails() {
                                     </TableCell>
                                     <TableCell className="font-mono text-sm">
                                       {item.product?.sku || 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {item.product?.partNumber || '-'}
                                     </TableCell>
                                     <TableCell>
                                       <Badge variant="outline" className="text-xs">

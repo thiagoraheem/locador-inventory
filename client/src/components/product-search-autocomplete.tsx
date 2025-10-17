@@ -200,6 +200,12 @@ export default function ProductSearchAutocomplete({
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
                       <span className="font-medium">SKU:</span> {product.sku}
+                      {product.partNumber && (
+                        <>
+                          {" • "}
+                          <span className="font-medium">PN:</span> {product.partNumber}
+                        </>
+                      )}
                       {product.categoryId && (
                         <>
                           {" • "}

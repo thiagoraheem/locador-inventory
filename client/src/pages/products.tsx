@@ -93,6 +93,14 @@ export default function Products() {
       },
     },
     {
+      header: "Part Number",
+      accessorKey: "partNumber",
+      sortable: true,
+      cell: (value: string) => {
+        return value || "-";
+      },
+    },
+    {
       header: "Valor do Bem",
       accessorKey: "costValue",
       sortable: true,

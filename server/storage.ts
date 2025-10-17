@@ -187,6 +187,48 @@ export class MemStorage implements IStorage {
       updatedAt: Date.now(),
     };
     this.locations.set(location.id, location);
+
+    // Seed some test products (active and inactive)
+    const activeProduct: Product = {
+      id: this.nextId.product++,
+      sku: "PROD001",
+      name: "Produto Ativo",
+      description: "Produto ativo para teste",
+      categoryId: category.id,
+      costValue: 100.00,
+      isActive: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    this.products.set(activeProduct.id, activeProduct);
+
+    const inactiveProduct: Product = {
+      id: this.nextId.product++,
+      sku: "PROD002",
+      name: "Produto Inativo",
+      description: "Produto inativo para teste do toggle",
+      categoryId: category.id,
+      costValue: 50.00,
+      isActive: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    this.products.set(inactiveProduct.id, inactiveProduct);
+
+    const anotherActiveProduct: Product = {
+      id: this.nextId.product++,
+      sku: "PROD003",
+      name: "Outro Produto Ativo",
+      description: "Outro produto ativo para teste",
+      categoryId: category.id,
+      costValue: 75.00,
+      isActive: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    this.products.set(anotherActiveProduct.id, anotherActiveProduct);
+
+    this.seeded = true;
   }
 
   // User operations

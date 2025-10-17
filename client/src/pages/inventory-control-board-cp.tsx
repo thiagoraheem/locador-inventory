@@ -146,7 +146,10 @@ export default function InventoryControlBoardCP() {
 
   const getProductBySku = (productId: number) => {
     const product = products?.find(p => p.id === productId);
-    return product ? `${product.sku} - ${product.name}` : `Product ${productId}`;
+    if (!product) return `Product ${productId}`;
+    
+    const partNumberText = product.partNumber ? ` (PN: ${product.partNumber})` : '';
+    return `${product.sku} - ${product.name}${partNumberText}`;
   };
 
   const getLocationName = (locationId: number) => {
