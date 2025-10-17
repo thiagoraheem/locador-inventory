@@ -78,18 +78,42 @@ export class InventoryService {
       selectedProductIds.includes(p.id) && p.isActive
     );
 
+    console.log('DEBUG: Produtos selecionados para inventário rotativo:', selectedProducts.map(p => ({ id: p.id, sku: p.sku, name: p.name })));
+
     // Get locations (use selected ones or all active)
     const allLocations = await storage.getLocations();
     const locations = selectedLocationIds && selectedLocationIds.length > 0
       ? allLocations.filter((l: any) => selectedLocationIds.includes(l.id) && l.isActive)
       : allLocations.filter((l: any) => l.isActive);
 
+    console.log('DEBUG: Locais selecionados:', locations.map(l => ({ id: l.id, name: l.name })));
+
     // Create inventory items only for selected products
     for (const product of selectedProducts) {
+      console.log(`\nDEBUG: Processando produto ${product.sku} - ${product.name} (ID: ${product.id})`);
+      
       for (const location of locations) {
+        console.log(`  DEBUG: Verificando estoque no local ${location.name} (ID: ${location.id})`);
+        
         // Get current stock for this product-location combination
         const stockItems = await storage.getStock(product.id, location.id);
-        const expectedQuantity = stockItems.reduce((sum: number, stock: any) => sum + (stock.quantity || 0), 0);
+        
+        console.log(`  DEBUG: Itens de estoque encontrados:`, stockItems.map(s => ({
+          id: s.id,
+          productId: s.productId,
+          locationId: s.locationId,
+          quantity: s.quantity,
+          quantityType: typeof s.quantity,
+          quantityAsNumber: Number(s.quantity)
+        })));
+        
+        const expectedQuantity = stockItems.reduce((sum: number, stock: any) => {
+          const qty = Number(stock.quantity) || 0;
+          console.log(`    DEBUG: Somando quantidade ${stock.quantity} (tipo: ${typeof stock.quantity}) -> ${qty}`);
+          return sum + qty;
+        }, 0);
+
+        console.log(`  DEBUG: Quantidade esperada calculada: ${expectedQuantity}`);
 
         // Create inventory item
         await storage.createInventoryItem({
@@ -99,6 +123,8 @@ export class InventoryService {
           expectedQuantity,
           status: 'PENDING'
         });
+
+        console.log(`  DEBUG: Item de inventário criado com quantidade esperada: ${expectedQuantity}`);
       }
     }
   }

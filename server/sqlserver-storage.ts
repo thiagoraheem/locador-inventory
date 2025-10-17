@@ -355,7 +355,23 @@ export class SqlServerStorage implements IStorage {
 
     query += ' ORDER BY p.name, l.name';
 
-    return this.query(query, params);
+    console.log('DEBUG: getStock SQL Query:', query);
+    console.log('DEBUG: getStock Parameters:', params);
+
+    const result = await this.query(query, params);
+    
+    console.log('DEBUG: getStock Result:', result.map(r => ({
+      id: r.id,
+      productId: r.productId,
+      locationId: r.locationId,
+      quantity: r.quantity,
+      quantityType: typeof r.quantity,
+      sku: r.sku,
+      productName: r.productName,
+      locationName: r.locationName
+    })));
+
+    return result;
   }
 
   async getStockItem(id: number): Promise<Stock | undefined> {

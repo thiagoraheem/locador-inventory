@@ -296,16 +296,42 @@ import type {
   }
 
   // Stock operations
-  async getStock(): Promise<
+  async getStock(productId?: number, locationId?: number): Promise<
     (Stock & { product?: Product; location?: Location })[]
   > {
-    const result = await this.pool.request().query(`
+    const request = this.pool.request();
+    let whereClause = '';
+    const conditions: string[] = [];
+
+    if (productId !== undefined) {
+      conditions.push('s.productId = @productId');
+      request.input('productId', sql.Int, productId);
+    }
+
+    if (locationId !== undefined) {
+      conditions.push('s.locationId = @locationId');
+      request.input('locationId', sql.Int, locationId);
+    }
+
+    if (conditions.length > 0) {
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+    }
+
+    const query = `
       SELECT s.*, p.name as productName, p.sku, CAST(l.sequence AS varchar) + l.name as locationName, l.code as locationCode
       FROM stock s
       LEFT JOIN products p ON s.productId = p.id
       LEFT JOIN locations l ON s.locationId = l.id
+      ${whereClause}
       ORDER BY p.name, l.name
-    `);
+    `;
+
+    console.log('SimpleStorage getStock SQL:', query);
+    console.log('SimpleStorage getStock params:', { productId, locationId });
+
+    const result = await request.query(query);
+
+    console.log('SimpleStorage getStock result count:', result.recordset.length);
 
     return result.recordset.map((row) => ({
       id: row.id,
