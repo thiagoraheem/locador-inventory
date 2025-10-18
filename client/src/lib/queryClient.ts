@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { logger } from "./logger";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -51,10 +52,10 @@ export async function apiRequest(url: string, method: string = "GET", data?: unk
   
   try {
     const jsonResult = await res.json();
-    console.log('DEBUG: JSON parsed successfully:', jsonResult);
+    logger.debug('JSON parsed successfully:', jsonResult);
     return jsonResult;
   } catch (jsonError) {
-    console.error('DEBUG: Failed to parse JSON response:', {
+    logger.error('Failed to parse JSON response:', {
       error: jsonError,
       responseText,
       status: res.status,

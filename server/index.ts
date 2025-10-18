@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler } from "./middlewares/error.middleware";
 import { loggingMiddleware } from "./middlewares/logging.middleware";
 import { rateLimiter } from "./middlewares/rate-limit.middleware";
+import { logger } from "./utils/logger";
 
 // Função para obter o IP externo
 async function getExternalIP(): Promise<string | null> {
@@ -20,22 +21,22 @@ async function getExternalIP(): Promise<string | null> {
 
 // Função para exibir informações do IP no console
 async function displayServerInfo(port: number) {
-  console.log("\n" + "=".repeat(60));
-  console.log("🚀 SERVIDOR INICIADO COM SUCESSO");
-  console.log("=".repeat(60));
-  console.log(`📍 Porta local: ${port}`);
-  console.log(`🌐 Endereço local: http://localhost:${port}`);
+  logger.info("\n" + "=".repeat(60));
+  logger.info("🚀 SERVIDOR INICIADO COM SUCESSO");
+  logger.info("=".repeat(60));
+  logger.info(`📍 Porta local: ${port}`);
+  logger.info(`🌐 Endereço local: http://localhost:${port}`);
 
   // Obter e exibir IP externo
   const externalIP = await getExternalIP();
   if (externalIP) {
-    console.log(`🌍 IP EXTERNO DO SERVIDOR: ${externalIP}`);
-    console.log(`🔗 Acesso externo: http://${externalIP}:${port}`);
+    logger.info(`🌍 IP EXTERNO DO SERVIDOR: ${externalIP}`);
+    logger.info(`🔗 Acesso externo: http://${externalIP}:${port}`);
   } else {
-    console.log("⚠️  Não foi possível obter o IP externo");
+    logger.warn("⚠️  Não foi possível obter o IP externo");
   }
 
-  console.log("=".repeat(60) + "\n");
+  logger.info("=".repeat(60) + "\n");
 }
 
 const app = express();

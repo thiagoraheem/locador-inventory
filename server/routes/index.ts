@@ -12,6 +12,7 @@ import { registerProductRoutes } from "./product.routes";
 import { registerUserRoutes } from "./user.routes";
 import { registerReportRoutes } from "./report.routes";
 import serialDiscrepanciesRouter from "./serial-discrepancies";
+import { logger } from "../utils/logger";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -347,14 +348,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Companies routes (read-only)
   app.get("/api/companies", isAuthenticated, async (req: any, res) => {
     try {
-      console.log('DEBUG: Fetching companies...');
+      logger.debug('Fetching companies...');
       storage = await getStorage();
-      console.log('DEBUG: Storage obtained successfully');
+      logger.debug('Storage obtained successfully');
       const companies = await storage.getCompanies();
-      console.log('DEBUG: Companies fetched:', companies?.length || 0, 'records');
+      logger.debug('Companies fetched:', companies?.length || 0, 'records');
       res.json(companies);
     } catch (error) {
-      console.error('ERROR: Failed to fetch companies:', error);
+      logger.error('Failed to fetch companies:', error);
       // Error fetching companies
       res.status(500).json({ message: "Failed to fetch companies", error: error.message });
     }

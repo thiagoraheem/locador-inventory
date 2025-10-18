@@ -1,6 +1,7 @@
 import sql from "mssql";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
+import { logger } from "./utils/logger";
 import type {
   User,
   InsertUser,
@@ -142,6 +143,7 @@ import type {
       description: row.description,
       categoryId: row.categoryId,
       costValue: row.costValue,
+      partNumber: row.partNumber,
       isActive: row.isActive,
       createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
       updatedAt: row.updatedAt ? new Date(row.updatedAt).getTime() : Date.now(),
@@ -270,9 +272,9 @@ import type {
 
     const result = await request.query(queryText);
 
-    console.log('Query executed:', queryText);
-    console.log('Category IDs:', categoryIds);
-    console.log('Result count:', result.recordset.length);
+    logger.debug('Query executed:', queryText);
+    logger.debug('Category IDs:', categoryIds);
+    logger.debug('Result count:', result.recordset.length);
 
     return result.recordset.map((row) => ({
       id: row.id,
@@ -281,6 +283,7 @@ import type {
       description: row.description,
       categoryId: row.categoryId,
       costValue: row.costValue,
+      partNumber: row.partNumber,
       isActive: row.isActive,
       createdAt: row.createdAt ? new Date(row.createdAt).getTime() : Date.now(),
       updatedAt: row.updatedAt ? new Date(row.updatedAt).getTime() : Date.now(),
@@ -3009,6 +3012,7 @@ import type {
           p.sku,
           p.name,
           ISNULL(p.description, '') as description,
+          p.partNumber,
           ISNULL(c.name, '') as categoryName,
           ISNULL(p.hasSerialControl, 0) as hasSerialControl
         FROM products p
@@ -3040,6 +3044,7 @@ import type {
             p.sku,
             p.name,
             p.description,
+            p.partNumber,
             ISNULL(c.name, '') as categoryName,
             0 as hasSerialControl
           FROM products p
@@ -3048,6 +3053,7 @@ import type {
             LOWER(p.sku) LIKE @searchTerm 
             OR LOWER(p.name) LIKE @searchTerm
             OR LOWER(ISNULL(p.description, '')) LIKE @searchTerm
+            OR LOWER(ISNULL(p.partNumber, '')) LIKE @searchTerm
           )
           AND p.isActive = 1
           ORDER BY 
@@ -3608,7 +3614,7 @@ import type {
 
       return result.recordset[0];
     } catch (error) {
-      console.error('Erro ao processar divergências:', error);
+      logger.error('Erro ao processar divergências:', error);
       throw error;
     }
   }

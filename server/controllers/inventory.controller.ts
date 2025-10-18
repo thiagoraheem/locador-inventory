@@ -3,6 +3,7 @@ import { inventoryService } from "../services/inventory.service";
 import { getStorage } from "../db";
 import { insertInventorySchema } from "@shared/schema";
 import { asyncHandler } from "../utils/async-handler";
+import { logger } from "../utils/logger";
 
 export class InventoryController {
   getTypes = asyncHandler(async (_req: Request, res: Response) => {
@@ -28,11 +29,11 @@ export class InventoryController {
     const storage = await getStorage();
     
     // Debug logs para verificar dados recebidos
-    console.log('DEBUG: Dados recebidos no controller:', JSON.stringify(req.body, null, 2));
-    console.log('DEBUG: selectedProductIds:', req.body.selectedProductIds);
-    console.log('DEBUG: selectedCategoryIds:', req.body.selectedCategoryIds);
-    console.log('DEBUG: selectedLocationIds:', req.body.selectedLocationIds);
-    console.log('DEBUG: type:', req.body.type);
+    logger.debug('Dados recebidos no controller:', JSON.stringify(req.body, null, 2));
+    logger.debug('selectedProductIds:', req.body.selectedProductIds);
+    logger.debug('selectedCategoryIds:', req.body.selectedCategoryIds);
+    logger.debug('selectedLocationIds:', req.body.selectedLocationIds);
+    logger.debug('type:', req.body.type);
 
     const inventoryData: any = {
       code: req.body.code,
@@ -58,11 +59,11 @@ export class InventoryController {
       inventoryData.selectedProductIds = req.body.selectedProductIds;
     }
 
-    console.log('DEBUG: inventoryData antes da validação:', JSON.stringify(inventoryData, null, 2));
+    logger.debug('inventoryData antes da validação:', JSON.stringify(inventoryData, null, 2));
 
     const validatedData = insertInventorySchema.partial().parse(inventoryData);
     
-    console.log('DEBUG: validatedData após validação:', JSON.stringify(validatedData, null, 2));
+    logger.debug('validatedData após validação:', JSON.stringify(validatedData, null, 2));
     
     const inventory = await inventoryService.createInventory(validatedData);
 

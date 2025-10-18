@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { asyncHandler } from "../utils/async-handler";
+import { logger } from "../utils/logger";
 
 export const login = asyncHandler(async (
   req: Request,
@@ -13,8 +14,8 @@ export const login = asyncHandler(async (
   session.userId = user.id;
 
   // Debug logs for login tracking
-  console.log('DEBUG: User logged in successfully:', user.id, user.username);
-  console.log('DEBUG: Session userId set to:', session.userId);
+  logger.debug('User logged in successfully:', user.id, user.username);
+  logger.debug('Session userId set to:', session.userId);
 
   res.json({ user });
 });
