@@ -952,6 +952,21 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  app.post(
+    "/api/inventories/:id/correct-serials",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const inventoryId = parseInt(req.params.id);
+        const result = await storage.correctInventorySerials(inventoryId, req.user.id);
+        res.json(result);
+      } catch (error) {
+        res.status(400).json({ message: (error as Error).message });
+      }
+    },
+  );
+
   // Registrar leitura de número de série
   app.post(
     "/api/inventories/:id/serial-reading",

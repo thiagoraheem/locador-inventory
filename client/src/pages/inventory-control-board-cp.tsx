@@ -14,6 +14,7 @@ import type { Inventory, InventorySerialItem, Product } from "@shared/schema";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, Target, Filter, Download } from "lucide-react";
 import type { Location, Category, ControlPanelStats } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface KPICardProps {
   title: string;
@@ -296,6 +297,32 @@ export default function InventoryControlBoardCP() {
   const stats = getSerialStatsForInventory();
   const completionPercentage = stats.total > 0 ? ((stats.found + stats.missing) / stats.total) * 100 : 0;
 
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionResult, setCorrectionResult] = useState<any | null>(null);
+  const correctionMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedInventoryId) throw new Error("Inventário não selecionado");
+      const res = await fetch(`/api/inventories/${selectedInventoryId}/correct-serials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Falha ao corrigir inventário");
+      }
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      setCorrectionResult(data);
+      await Promise.all([refetchSerialItems(), queryClient.invalidateQueries({ queryKey: ["/api/inventories"] })]);
+      toast({ title: "Correção aplicada", description: `Foram incluídos ${data.insertedCount} números de série.` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  });
+
   return (
     <div>
       <Header 
@@ -352,6 +379,12 @@ export default function InventoryControlBoardCP() {
                     <Download className="h-4 w-4" />
                     Exportar Relatório
                   </Button>
+                  {selectedInventory?.status === 'open' && (
+                    <Button variant="default" onClick={() => { setCorrectionOpen(true); setCorrectionResult(null); }} className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Corrigir Séries
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -592,6 +625,63 @@ export default function InventoryControlBoardCP() {
           </Card>
         )}
       </div>
+
+      <Dialog open={correctionOpen} onOpenChange={setCorrectionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Correção</DialogTitle>
+            <DialogDescription>
+              A operação incluirá números de série ausentes neste inventário. Disponível apenas para inventários abertos e sem contagens iniciadas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!correctionResult ? (
+              <div className="text-sm text-muted-foreground">Deseja aplicar a correção agora?</div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-sm">Inseridos: {correctionResult.insertedCount}</div>
+                <div className="text-sm">Já existentes: {correctionResult.existingCount}</div>
+                {Array.isArray(correctionResult.details) && correctionResult.details.length > 0 ? (
+                  <div className="max-h-64 overflow-auto border rounded">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead>CP</TableHead>
+                          <TableHead>Local</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {correctionResult.details.slice(0, 100).map((d: any, idx: number) => (
+                          <TableRow key={idx}>
+                            <TableCell>{getProductBySku(d.productId)}</TableCell>
+                            <TableCell>{d.serialNumber}</TableCell>
+                            <TableCell>{getLocationName(d.locationId)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Nenhum número de série novo para inclusão.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            {!correctionResult ? (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setCorrectionOpen(false)}>Cancelar</Button>
+                <Button onClick={() => correctionMutation.mutate()} disabled={correctionMutation.isPending}>Confirmar</Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button onClick={() => setCorrectionOpen(false)}>Fechar</Button>
+              </div>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

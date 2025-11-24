@@ -2407,6 +2407,134 @@ import type {
     }));
   }
 
+  async correctInventorySerials(inventoryId: number, userId: number): Promise<{ insertedCount: number; existingCount: number; details: { stockItemId: number; serialNumber: string; productId: number; locationId: number; }[]; timestamp: number; }> {
+    const transaction = this.pool.transaction();
+    await transaction.begin();
+    try {
+      const invRes = await transaction.request().input("inventoryId", sql.Int, inventoryId).query(`
+        SELECT id, status FROM inventories WHERE id = @inventoryId
+      `);
+      if (invRes.recordset.length === 0) {
+        throw new Error("Inventário não encontrado");
+      }
+      const status = invRes.recordset[0].status;
+      if (status !== "open") {
+        throw new Error("Correção permitida apenas para inventários abertos");
+      }
+
+      const countsStartedRes = await transaction.request().input("inventoryId", sql.Int, inventoryId).query(`
+        SELECT COUNT(1) as cnt
+        FROM counts c
+        WHERE c.inventoryItemId IN (
+          SELECT id FROM inventory_items WHERE inventoryId = @inventoryId
+        )
+      `);
+      const countsStarted = countsStartedRes.recordset[0]?.cnt || 0;
+      if (countsStarted > 0) {
+        throw new Error("Inventário com contagem iniciada não pode ser corrigido");
+      }
+
+      const missingRes = await transaction.request().input("inventoryId", sql.Int, inventoryId).query(`
+        SELECT 
+          si.id as stockItemId,
+          si.serialNumber,
+          si.productId,
+          si.locationId
+        FROM stock_items si
+        INNER JOIN inventory_items ii ON si.productId = ii.productId AND si.locationId = ii.locationId
+        WHERE ii.inventoryId = @inventoryId
+        AND NOT EXISTS (
+          SELECT 1 FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = @inventoryId 
+          AND isi.serialNumber = si.serialNumber
+          AND isi.productId = si.productId
+          AND isi.locationId = si.locationId
+        )
+      `);
+
+      const existingRes = await transaction.request().input("inventoryId", sql.Int, inventoryId).query(`
+        SELECT COUNT(*) as cnt
+        FROM stock_items si
+        INNER JOIN inventory_items ii ON si.productId = ii.productId AND si.locationId = ii.locationId
+        WHERE ii.inventoryId = @inventoryId
+        AND EXISTS (
+          SELECT 1 FROM inventory_serial_items isi 
+          WHERE isi.inventoryId = @inventoryId 
+          AND isi.serialNumber = si.serialNumber
+          AND isi.productId = si.productId
+          AND isi.locationId = si.locationId
+        )
+      `);
+
+      const details = missingRes.recordset.map((r: any) => ({
+        stockItemId: r.stockItemId,
+        serialNumber: r.serialNumber,
+        productId: r.productId,
+        locationId: r.locationId,
+      }));
+
+      if (details.length > 0) {
+        await transaction.request().input("inventoryId", sql.Int, inventoryId).query(`
+          INSERT INTO inventory_serial_items (
+            inventoryId, stockItemId, serialNumber, productId, locationId, expectedStatus
+          )
+          SELECT 
+            @inventoryId,
+            si.id,
+            si.serialNumber,
+            si.productId,
+            si.locationId,
+            1
+          FROM stock_items si
+          INNER JOIN inventory_items ii ON si.productId = ii.productId AND si.locationId = ii.locationId
+          WHERE ii.inventoryId = @inventoryId
+          AND NOT EXISTS (
+            SELECT 1 FROM inventory_serial_items isi 
+            WHERE isi.inventoryId = @inventoryId 
+            AND isi.serialNumber = si.serialNumber
+            AND isi.productId = si.productId
+            AND isi.locationId = si.locationId
+          );
+
+          UPDATE ii
+          SET serialItemsCount = (
+            SELECT COUNT(*)
+            FROM inventory_serial_items isi
+            WHERE isi.inventoryId = ii.inventoryId
+            AND isi.productId = ii.productId
+            AND isi.locationId = ii.locationId
+          )
+          FROM inventory_items ii
+          WHERE ii.inventoryId = @inventoryId;
+        `);
+      }
+
+      await transaction.request()
+        .input("userId", sql.Int, userId)
+        .input("action", sql.NVarChar, "CORRECT_SERIAL_ITEMS")
+        .input("entityType", sql.NVarChar, "inventory")
+        .input("entityId", sql.NVarChar, inventoryId.toString())
+        .input("metadata", sql.NVarChar, JSON.stringify({ insertedCount: details.length }))
+        .input("timestamp", sql.DateTime, new Date())
+        .query(`
+          INSERT INTO audit_logs (userId, action, entityType, entityId, metadata, timestamp)
+          VALUES (@userId, @action, @entityType, @entityId, @metadata, @timestamp)
+        `);
+
+      await transaction.commit();
+
+      return {
+        insertedCount: details.length,
+        existingCount: existingRes.recordset[0]?.cnt || 0,
+        details,
+        timestamp: Date.now(),
+      };
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  }
+
   // Buscar itens de série por usuário
   async getInventorySerialItemsByUser(
     inventoryId: number,

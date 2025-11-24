@@ -1,4 +1,5 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
 import express from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -46,7 +47,7 @@ app.use(rateLimiter);
 app.use(loggingMiddleware);
 
 (async () => {
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "3000", 10);
   await displayServerInfo(port);
 
   const server = await registerRoutes(app);

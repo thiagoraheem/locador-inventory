@@ -1,4 +1,5 @@
 import { inventoryRepository } from '../repositories/inventory.repository';
+import { getStorage } from "../db";
 import { productRepository } from '../repositories/product.repository';
 import { locationRepository } from '../repositories/location.repository';
 import { stockRepository } from '../repositories/stock.repository';
@@ -56,6 +57,11 @@ export class InventoryService {
       
       if (inventoryType?.name === 'Rotativo') {
         await this.generateRotativeInventoryItems(inventory.id, data.selectedProductIds, data.selectedLocationIds);
+        try {
+          const storage = await getStorage();
+          await storage.createInventorySerialItems(inventory.id);
+        } catch (_err) {
+        }
       }
     }
     
