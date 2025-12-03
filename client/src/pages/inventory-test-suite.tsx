@@ -76,7 +76,7 @@ export default function InventoryTestSuite() {
     {
       id: 'validation_1',
       name: 'Validação: Transições de Status',
-      description: 'Valida transições count2_closed → count2_completed/count3_required',
+      description: 'Valida transição count2_open → count2_closed na finalização',
       type: 'validation',
       status: 'pending'
     },

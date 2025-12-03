@@ -1833,7 +1833,7 @@ async function testScenario4(storage: any, user: any) {
       id: "status-1",
       status: "passed",
       message:
-        "count2_closed → count2_completed quando todos têm finalQuantity (implementado)",
+        "Finalizar na 2ª contagem registra count2_closed (implementado)",
     });
 
     results.push({
@@ -1913,16 +1913,16 @@ async function runScenario1(storage: any, inventoryId: number, userId: number) {
       userId,
     );
 
-    // Check if inventory automatically transitioned to completed
+    // Check that inventory status is correctly set to count2_closed
     const updatedInventory = await storage.getInventory(inventoryId);
-    const shouldBeCompleted = updatedInventory.status === "count2_completed";
+    const shouldBeClosed = updatedInventory.status === "count2_closed";
 
     return {
       scenarioId: "scenario_1",
-      passed: shouldBeCompleted,
-      message: shouldBeCompleted
-        ? "Test passed: Inventory automatically completed when C1=C2=Stock"
-        : `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`,
+      passed: shouldBeClosed,
+      message: shouldBeClosed
+        ? "Test passed: Inventory correctly closed at 2nd count"
+        : `Test failed: Expected status 'count2_closed', got '${updatedInventory.status}'`,
     };
   } catch (error) {
     return {
@@ -1977,16 +1977,16 @@ async function runScenario2(storage: any, inventoryId: number, userId: number) {
       userId,
     );
 
-    // Check if inventory transitioned to completed (C1=C2 even if different from stock)
+    // Check that inventory status is correctly set to count2_closed
     const updatedInventory = await storage.getInventory(inventoryId);
-    const shouldBeCompleted = updatedInventory.status === "count2_completed";
+    const shouldBeClosed = updatedInventory.status === "count2_closed";
 
     return {
       scenarioId: "scenario_2",
-      passed: shouldBeCompleted,
-      message: shouldBeCompleted
-        ? "Test passed: Inventory completed when C1=C2 (consistent discrepancy)"
-        : `Test failed: Expected status 'count2_completed', got '${updatedInventory.status}'`,
+      passed: shouldBeClosed,
+      message: shouldBeClosed
+        ? "Test passed: Inventory correctly closed at 2nd count (consistent discrepancy)"
+        : `Test failed: Expected status 'count2_closed', got '${updatedInventory.status}'`,
     };
   } catch (error) {
     return {

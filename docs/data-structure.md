@@ -96,7 +96,7 @@ export type InventoryStatus =
   | "count1_closed"  // 1ª contagem fechada
   | "count2_open"    // 2ª contagem aberta
   | "count2_closed"  // 2ª contagem fechada
-  | "count2_completed" // 2ª contagem concluída (C1=C2)
+  | "count2_completed" // 2ª contagem concluída (C1=C2) [não utilizado no fechamento]
   | "count3_required" // 3ª contagem necessária (C1≠C2)
   | "count3_open"    // 3ª contagem aberta
   | "count3_closed"  // 3ª contagem fechada
@@ -108,7 +108,7 @@ export type InventoryStatus =
 Os status adicionais controlam cada etapa das contagens e da auditoria:
 - `count1_open`/`count1_closed`: abertura e fechamento da 1ª contagem.
 - `count2_open`/`count2_closed`: abertura e fechamento da 2ª contagem.
-- `count2_completed`: indica que a 2ª contagem foi concluída sem divergências.
+- `count2_completed`: indica que a 2ª contagem foi concluída sem divergências. Não é gravado ao finalizar; o sistema registra `count2_closed` no fechamento da 2ª contagem.
 - `count3_required`: sinaliza necessidade de uma 3ª contagem devido a divergências.
 - `count3_open`/`count3_closed`: abertura e fechamento da 3ª contagem.
 - `audit_mode`: inventário em auditoria pela mesa de controle.

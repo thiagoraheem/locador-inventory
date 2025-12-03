@@ -62,14 +62,14 @@ export default function InventoryTestValidation() {
       id: 'scenario-1',
       name: 'Cenário 1: C1=C2=Estoque (Aprovação Automática)',
       description: 'Testa inventário onde primeira e segunda contagem batem com o estoque esperado',
-      expectedOutcome: 'Status deve ir direto para count2_completed sem precisar de terceira contagem',
+      expectedOutcome: 'Finalização da 2ª contagem deve registrar count2_closed',
       status: 'pending'
     },
     {
       id: 'scenario-2', 
       name: 'Cenário 2: C1=C2≠Estoque (Discrepância Consistente)',
       description: 'Testa inventário onde C1 e C2 são iguais mas diferentes do estoque',
-      expectedOutcome: 'Status deve ir para count2_completed com finalQuantity = C2',
+      expectedOutcome: 'Finalização da 2ª contagem deve registrar count2_closed',
       status: 'pending'
     },
     {
@@ -127,7 +127,7 @@ export default function InventoryTestValidation() {
     {
       id: 'status-1',
       category: 'Status Transitions',
-      test: 'count2_closed → count2_completed (quando todos têm finalQuantity)',
+      test: 'count2_open → count2_closed (ao finalizar 2ª contagem)',
       status: 'pending'
     },
     {

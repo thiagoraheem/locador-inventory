@@ -1038,24 +1038,8 @@ import type {
     newStatus: InventoryStatus,
     userId: number,
   ): Promise<void> {
-    // If closing count2, check if 3rd count is needed
     if (newStatus === "count2_closed") {
       await this.calculateFinalQuantities(inventoryId);
-
-      // Check if any items still need 3rd count (have null finalQuantity)
-      const items = await this.getInventoryItemsByInventory(inventoryId);
-      const itemsNeedingThirdCount = items.filter(
-        (item) =>
-          item.finalQuantity === null || item.finalQuantity === undefined,
-      );
-
-      // If items need 3rd count, set to count3_required
-      // If no items need 3rd count, move to completed
-      if (itemsNeedingThirdCount.length > 0) {
-        newStatus = "count3_required";
-      } else {
-        newStatus = "count2_completed";
-      }
     }
     // If closing count3, automatically move to audit mode
     else if (newStatus === "count3_closed") {
