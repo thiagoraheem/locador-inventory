@@ -525,13 +525,55 @@ export default function InventoryFinalReportPage() {
                       <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Perdas Totais</p>
+                      <p className="text-sm text-muted-foreground">Diferença</p>
                       <p className="text-xl font-bold">{formatCurrency(report.kpis?.totalLossValue || 0)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Financial Summary */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Valores dos Bens Inventariados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Esperado</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.expectedValue || 0)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Valor Final</p>
+                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.finalValue || 0)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Diferença</p>
+                    <p className={`text-lg font-semibold ${
+                      report.financial.differenceValue >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {formatCurrency(report.financial.differenceValue)}
+                    </p>
+                  </div>
+                </div>
+                {report.financial.impactPercentage !== 0 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Impacto: <span className={`font-semibold ${
+                        report.financial.impactPercentage >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {report.financial.impactPercentage > 0 ? '+' : ''}
+                        {report.financial.impactPercentage.toFixed(2)}%
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Summary Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -688,48 +730,6 @@ export default function InventoryFinalReportPage() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Financial Summary */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Valores dos Bens Inventariados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Valor Esperado</p>
-                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.expectedValue || 0)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Valor Final</p>
-                    <p className="text-lg font-semibold">{formatCurrency(report.inventoryValues?.finalValue || 0)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-1">Diferença</p>
-                    <p className={`text-lg font-semibold ${
-                      report.financial.differenceValue >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(report.financial.differenceValue)}
-                    </p>
-                  </div>
-                </div>
-                {report.financial.impactPercentage !== 0 && (
-                  <div className="mt-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Impacto: <span className={`font-semibold ${
-                        report.financial.impactPercentage >= 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {report.financial.impactPercentage > 0 ? '+' : ''}
-                        {report.financial.impactPercentage.toFixed(2)}%
-                      </span>
-                    </p>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
