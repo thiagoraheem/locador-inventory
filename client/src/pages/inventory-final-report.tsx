@@ -38,6 +38,11 @@ import { ptBR } from "date-fns/locale";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
+import {
+  formatCurrency,
+  formatSignedCurrency,
+  getDifferenceVisualState,
+} from "@/pages/inventory-final-report-difference";
 
 export default function InventoryFinalReportPage() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(null);
@@ -373,13 +378,6 @@ export default function InventoryFinalReportPage() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
   const formatDate = (timestamp: number) => {
     return format(new Date(timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   };
@@ -392,6 +390,8 @@ export default function InventoryFinalReportPage() {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+  const differenceValue = report?.financial?.differenceValue ?? 0;
+  const differenceVisual = getDifferenceVisualState(differenceValue);
 
   return (
     <div>
@@ -521,12 +521,24 @@ export default function InventoryFinalReportPage() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    <div className={`p-2 rounded-lg transition-colors duration-300 ease-in-out ${differenceVisual.iconContainerClassName}`}>
+                      {differenceValue >= 0 ? (
+                        <TrendingUp className={`h-5 w-5 ${differenceVisual.textClassName}`} />
+                      ) : (
+                        <TrendingDown className={`h-5 w-5 ${differenceVisual.textClassName}`} />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Diferença</p>
-                      <p className="text-xl font-bold">{formatCurrency(report.kpis?.totalLossValue || 0)}</p>
+                      <p
+                        className={`text-xl font-bold transition-colors duration-300 ease-in-out ${differenceVisual.textClassName}`}
+                        aria-label={`${differenceVisual.label}: ${formatSignedCurrency(differenceValue)}`}
+                      >
+                        {formatSignedCurrency(differenceValue)}
+                      </p>
+                      <Badge className={`mt-1 transition-colors duration-300 ease-in-out ${differenceVisual.badgeClassName}`}>
+                        {differenceVisual.label}
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -553,10 +565,16 @@ export default function InventoryFinalReportPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-1">Diferença</p>
-                    <p className={`text-lg font-semibold ${
-                      report.financial.differenceValue >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatCurrency(report.financial.differenceValue)}
+                    <p
+                      className={`text-lg font-semibold transition-colors duration-300 ease-in-out ${differenceVisual.textClassName}`}
+                      aria-label={`${differenceVisual.label}: ${formatSignedCurrency(differenceValue)}`}
+                    >
+                      {formatSignedCurrency(differenceValue)}
+                    </p>
+                    <p className="mt-1">
+                      <Badge className={`transition-colors duration-300 ease-in-out ${differenceVisual.badgeClassName}`}>
+                        {differenceVisual.label}
+                      </Badge>
                     </p>
                   </div>
                 </div>
