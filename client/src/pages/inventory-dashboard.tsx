@@ -62,6 +62,15 @@ export default function InventoryDashboardPage() {
 
   const selectedInventoryStatus = selectedInventory?.status || null;
   const selectedInventoryClosed = isClosedInventoryStatus(selectedInventoryStatus);
+  const selectedInventoryContext = useMemo(
+    () => ({
+      id: selectedInventory?.id ?? selectedInventoryId ?? null,
+      code: selectedInventory?.code ?? null,
+      status: selectedInventory?.status ?? null,
+    }),
+    [selectedInventory?.id, selectedInventory?.code, selectedInventory?.status, selectedInventoryId],
+  );
+  const hasSelectedInventory = selectedInventoryContext.id != null;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -103,13 +112,9 @@ export default function InventoryDashboardPage() {
     startPolling,
     stopPolling,
   } = useDashboardPolling({
-    enabled: !demoMode && isAuthenticated && Boolean(selectedInventory),
+    enabled: !demoMode && isAuthenticated && hasSelectedInventory,
     pollingInterval: 30000,
-    inventoryContext: {
-      id: selectedInventory?.id,
-      code: selectedInventory?.code,
-      status: selectedInventory?.status,
-    },
+    inventoryContext: selectedInventoryContext,
     onError: (error) => {
       toast({
         title: "Erro ao carregar dados",
@@ -146,7 +151,7 @@ export default function InventoryDashboardPage() {
   const handleRefresh = () => {
     const refreshValidation = validateManualRefresh({
       demoMode,
-      hasSelectedInventory: Boolean(selectedInventory),
+      hasSelectedInventory,
       inventoryStatus: selectedInventoryStatus,
     });
 
@@ -294,7 +299,7 @@ export default function InventoryDashboardPage() {
                 onClick={handleRefresh} 
                 variant="outline" 
                 size="sm"
-                disabled={dashboardLoading || selectedInventoryClosed || (!demoMode && !selectedInventory)}
+                disabled={dashboardLoading || selectedInventoryClosed || (!demoMode && !hasSelectedInventory)}
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={cn("h-4 w-4", dashboardLoading && "animate-spin")} />
@@ -407,6 +412,14 @@ export default function InventoryDashboardPage() {
         ) : (
           <InventoryDashboard 
             data={dashboardData}
+            config={{
+              showMoney: true,
+              autoRefresh: false,
+              refreshInterval: 30000,
+              showFilters: true,
+              showExport: true,
+              compactMode: false,
+            }}
             showMoney={showMoney}
             loading={dashboardLoading}
             error={dashboardError}

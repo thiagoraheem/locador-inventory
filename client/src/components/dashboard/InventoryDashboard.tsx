@@ -49,6 +49,17 @@ export const normalizeDashboardSnapshot = (data: DashboardSnapshot) => {
     accuracyPct: Number(data.totals?.accuracyPct ?? 0),
     divergenceValueBRL: Number(data.totals?.divergenceValueBRL ?? 0),
   };
+  const safeCompliance = {
+    scheduleAdherencePct: Number((data as any).compliance?.scheduleAdherencePct ?? 0),
+    movementsBlocked: Boolean((data as any).compliance?.movementsBlocked ?? false),
+    preInventoryDone: Boolean((data as any).compliance?.preInventoryDone ?? false),
+    needsBOOver20k: Boolean((data as any).compliance?.needsBOOver20k ?? false),
+    inventoryType: (data as any).compliance?.inventoryType,
+    blockSystemMovements: Boolean((data as any).compliance?.blockSystemMovements ?? false),
+    signedLists: Boolean((data as any).compliance?.signedLists ?? false),
+    doubleBlindCounting: Boolean((data as any).compliance?.doubleBlindCounting ?? false),
+  };
+  const safeItems = Array.isArray((data as any).items) ? data.items : [];
   const safePending = Number(data.pendingVsDone?.pending ?? 0);
   const safeDone = Number(data.pendingVsDone?.done ?? 0);
   const safeInProgress = Number(data.pendingVsDone?.inProgress ?? 0);
@@ -67,12 +78,12 @@ export const normalizeDashboardSnapshot = (data: DashboardSnapshot) => {
     items: Number((round as any).items ?? round.counted ?? 0),
   }));
   const safeSnapshotAt = data.snapshotAt ? new Date(data.snapshotAt) : new Date();
-  const noDivergenceCount = data.items.filter(item => Number(item.divergence?.quantity ?? 0) === 0).length;
-  const minorDivergenceCount = data.items.filter(item => {
+  const noDivergenceCount = safeItems.filter((item) => Number(item.divergence?.quantity ?? 0) === 0).length;
+  const minorDivergenceCount = safeItems.filter((item) => {
     const value = Math.abs(Number(item.divergence?.quantity ?? 0));
     return value > 0 && value <= 2;
   }).length;
-  const majorDivergenceCount = Math.max(0, data.items.length - noDivergenceCount - minorDivergenceCount);
+  const majorDivergenceCount = Math.max(0, safeItems.length - noDivergenceCount - minorDivergenceCount);
   const adjustmentCards = [
     { type: "Ajustes Imediatos", count: Number(data.adjustments?.totalAdjustments ?? 0), totalValue: Number(data.adjustments?.immediatePct ?? 0) },
     { type: "Ajustes Postergados", count: Number(data.adjustments?.pendingAdjustments ?? 0), totalValue: Number(data.adjustments?.postponedPct ?? 0) },
@@ -80,6 +91,8 @@ export const normalizeDashboardSnapshot = (data: DashboardSnapshot) => {
 
   return {
     safeTotals,
+    safeCompliance,
+    safeItems,
     safePending,
     safeDone,
     safeInProgress,
@@ -249,9 +262,13 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
     }).format(date);
   };
 
-  const getOverallStatus = () => {
-    const { totals, compliance } = data;
-    
+  const getOverallStatus = ({
+    totals,
+    compliance,
+  }: {
+    totals: { progressPct: number; accuracyPct: number; divergenceValueBRL: number };
+    compliance: { preInventoryDone: boolean; movementsBlocked: boolean };
+  }) => {
     if (totals.progressPct >= 100) {
       return { status: "completed", label: "Concluído", color: "text-green-600" };
     }
@@ -267,10 +284,11 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
     return { status: "in_progress", label: "Em Andamento", color: "text-blue-600" };
   };
 
-  const overallStatus = getOverallStatus();
   const normalizedData = normalizeDashboardSnapshot(data);
   const {
     safeTotals,
+    safeCompliance,
+    safeItems,
     safePending,
     safeDone,
     safeInProgress,
@@ -283,6 +301,7 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
     majorDivergenceCount,
     adjustmentCards,
   } = normalizedData;
+  const overallStatus = getOverallStatus({ totals: safeTotals, compliance: safeCompliance });
 
   return (
     <div className={cn("space-y-4 sm:space-y-6 p-4 sm:p-6", className)}>
@@ -473,18 +492,18 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
           
           <div className="space-y-6">
             <DivergentItemsTable
-              items={data.items}
+              items={safeItems}
               onItemClick={onItemClick}
             />
             
             <PendingItemsTable
-              items={data.items}
+              items={safeItems}
               onItemClick={onItemClick}
             />
             
             {showMoney && (
               <HighValueItemsTable
-                items={data.items}
+                items={safeItems}
                 minValue={5000}
                 onItemClick={onItemClick}
               />
@@ -498,13 +517,13 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <CompliancePanel
-              data={data.compliance}
+              data={safeCompliance as any}
               title="Conformidade do Processo"
             />
             
             <ProcessStatusPanel
               inventoryStarted={true}
-              inventoryCompleted={data.totals.progressPct >= 100}
+              inventoryCompleted={safeTotals.progressPct >= 100}
               reportsGenerated={false}
               auditCompleted={false}
             />
@@ -553,7 +572,7 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
 
       {/* Full Items Table (always visible at bottom) */}
       <ItemsTable
-        items={data.items}
+        items={safeItems}
         title="Todos os Itens"
         showFilters={config.showFilters}
         showExport={config.showExport}
