@@ -1,13 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DashboardSnapshot } from '../../../shared/dashboard-types';
 import { mockDashboardData } from '../data/mockDashboardData';
 
 interface UseDashboardPollingOptions {
   enabled?: boolean;
-  pollingInterval?: number; // em milissegundos
+  pollingInterval?: number;
   onError?: (error: Error) => void;
   onSuccess?: (data: DashboardSnapshot) => void;
+  inventoryContext?: {
+    id?: number | null;
+    code?: string | null;
+    status?: string | null;
+  };
 }
 
 interface UseDashboardPollingReturn {
@@ -21,35 +26,61 @@ interface UseDashboardPollingReturn {
   stopPolling: () => void;
 }
 
-// Função simulada para buscar dados do dashboard
-// TODO: Substituir por chamada real à API quando o endpoint estiver disponível
-const fetchDashboardData = async (): Promise<DashboardSnapshot> => {
-  // Simula delay de rede
+const isClosedInventoryStatus = (status?: string | null) => {
+  if (!status) return false;
+  const normalizedStatus = status.toLowerCase();
+  return (
+    normalizedStatus === 'closed' ||
+    normalizedStatus === 'cancelled' ||
+    normalizedStatus.includes('closed') ||
+    normalizedStatus.includes('completed')
+  );
+};
+
+const fetchDashboardData = async (
+  inventoryContext?: UseDashboardPollingOptions['inventoryContext'],
+): Promise<DashboardSnapshot> => {
   await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-  
-  // Simula possível erro de rede (5% de chance)
+
   if (Math.random() < 0.05) {
     throw new Error('Erro de conexão com o servidor');
   }
-  
-  // Retorna dados mock com pequenas variações para simular dados em tempo real
+
   const baseData = mockDashboardData;
-  const variation = () => Math.random() * 0.1 - 0.05; // ±5% de variação
-  
+  const seed = Math.max(0, Number(inventoryContext?.id ?? baseData.inventoryId ?? 0));
+  const variation = () => Math.random() * 0.1 - 0.05;
+  const selectedStatus = inventoryContext?.status || baseData.inventoryStatus;
+  const selectedCode = inventoryContext?.code?.trim()
+    ? inventoryContext.code.trim()
+    : `${baseData.inventoryCode}-${seed || 1}`;
+  const isClosed = isClosedInventoryStatus(selectedStatus);
+  const plannedItems = Math.max(1, Math.floor(baseData.totals.itemsPlanned * (1 + ((seed % 7) - 3) * 0.03)));
+  const countedForOpen = Math.max(0, Math.floor(plannedItems * (0.55 + (seed % 35) / 100)));
+  const countedForClosed = plannedItems;
+  const countedItems = isClosed ? countedForClosed : Math.min(plannedItems, countedForOpen);
+  const pendingItems = Math.max(0, plannedItems - countedItems);
+  const doneItems = Math.max(0, countedItems - Math.floor((seed % 9) * 0.5));
+
   return {
     ...baseData,
+    inventoryId: seed || baseData.inventoryId,
+    inventoryCode: selectedCode,
+    inventoryStatus: (selectedStatus || baseData.inventoryStatus) as DashboardSnapshot['inventoryStatus'],
     totals: {
       ...baseData.totals,
-      itemsPlanned: Math.max(0, Math.floor(baseData.totals.itemsPlanned * (1 + variation()))),
-      itemsCounted: Math.max(0, Math.floor(baseData.totals.itemsCounted * (1 + variation()))),
-      progressPct: Math.min(100, Math.max(0, baseData.totals.progressPct + variation() * 10)),
-      accuracyPct: Math.min(100, Math.max(0, baseData.totals.accuracyPct + variation() * 5)),
+      itemsPlanned: plannedItems,
+      itemsCounted: countedItems,
+      progressPct: plannedItems > 0 ? Number(((countedItems / plannedItems) * 100).toFixed(1)) : 0,
+      accuracyPct: isClosed
+        ? Math.min(100, Math.max(0, baseData.totals.accuracyPct + 1.5))
+        : Math.min(100, Math.max(0, baseData.totals.accuracyPct + variation() * 5)),
       divergenceValueBRL: Math.max(0, baseData.totals.divergenceValueBRL * (1 + variation())),
     },
     pendingVsDone: {
       ...baseData.pendingVsDone,
-      pending: Math.max(0, Math.floor(baseData.pendingVsDone.pending * (1 + variation()))),
-      done: Math.max(0, Math.floor(baseData.pendingVsDone.done * (1 + variation()))),
+      pending: pendingItems,
+      done: doneItems,
+      inProgress: Math.max(0, countedItems - doneItems),
     },
     snapshotAt: new Date().toISOString(),
   };
@@ -60,9 +91,10 @@ export const useDashboardPolling = ({
   pollingInterval = 30000, // 30 segundos por padrão
   onError,
   onSuccess,
+  inventoryContext,
 }: UseDashboardPollingOptions = {}): UseDashboardPollingReturn => {
-  const lastUpdatedRef = useRef<Date | null>(null);
-  const isPollingRef = useRef(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
 
   const {
     data,
@@ -70,14 +102,14 @@ export const useDashboardPolling = ({
     error,
     refetch,
   } = useQuery({
-    queryKey: ['dashboard-data'],
-    queryFn: fetchDashboardData,
+    queryKey: ['dashboard-data', inventoryContext?.id ?? 'default'],
+    queryFn: () => fetchDashboardData(inventoryContext),
     enabled,
-    refetchInterval: isPollingRef.current ? pollingInterval : false,
+    refetchInterval: enabled && isPolling ? pollingInterval : false,
     refetchIntervalInBackground: true,
-    staleTime: pollingInterval / 2, // Considera dados obsoletos após metade do intervalo
+    staleTime: pollingInterval / 2,
     onSuccess: (data) => {
-      lastUpdatedRef.current = new Date();
+      setLastUpdated(new Date());
       onSuccess?.(data);
     },
     onError: (error) => {
@@ -86,14 +118,13 @@ export const useDashboardPolling = ({
   });
 
   const startPolling = () => {
-    isPollingRef.current = true;
+    setIsPolling(true);
   };
 
   const stopPolling = () => {
-    isPollingRef.current = false;
+    setIsPolling(false);
   };
 
-  // Inicia o polling automaticamente se habilitado
   useEffect(() => {
     if (enabled) {
       startPolling();
@@ -102,7 +133,6 @@ export const useDashboardPolling = ({
     }
   }, [enabled]);
 
-  // Cleanup ao desmontar o componente
   useEffect(() => {
     return () => {
       stopPolling();
@@ -113,9 +143,11 @@ export const useDashboardPolling = ({
     data,
     isLoading,
     error: error as Error | null,
-    refetch,
-    lastUpdated: lastUpdatedRef.current,
-    isPolling: isPollingRef.current,
+    refetch: () => {
+      void refetch();
+    },
+    lastUpdated,
+    isPolling,
     startPolling,
     stopPolling,
   };

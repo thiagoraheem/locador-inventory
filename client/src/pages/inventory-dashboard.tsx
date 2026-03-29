@@ -1,8 +1,14 @@
-import React from "react";
-import { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardPolling } from "@/hooks/useDashboardPolling";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
+import {
+  getInventoryLifecycleLabel,
+  isClosedInventoryStatus,
+  validateManualRefresh,
+} from "@/pages/inventory-dashboard-control";
 import Header from "@/components/layout/header";
 import { InventoryDashboard, InventoryDashboardDemo } from "@/components/dashboard/InventoryDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, 
   RefreshCw, 
@@ -21,18 +28,41 @@ import {
   Database,
   TrendingUp,
   Wifi,
-  WifiOff
+  WifiOff,
+  CircleDot,
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type InventorySummary = {
+  id: number;
+  code?: string;
+  description?: string;
+  status?: string;
+};
 
 export default function InventoryDashboardPage() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { selectedInventoryId, setSelectedInventoryId } = useSelectedInventory();
   const [showMoney, setShowMoney] = React.useState(true);
   const [demoMode, setDemoMode] = React.useState(false);
   const [autoRefresh, setAutoRefresh] = React.useState(true);
 
-  // Redirect to home if not authenticated
+  const { data: inventories = [], isLoading: inventoriesLoading } = useQuery<InventorySummary[]>({
+    queryKey: ["/api/inventories"],
+    enabled: isAuthenticated,
+  });
+
+  const selectedInventory = useMemo(() => {
+    if (!inventories.length) return null;
+    if (selectedInventoryId == null) return inventories[0];
+    return inventories.find((inventory) => inventory.id === selectedInventoryId) || inventories[0];
+  }, [inventories, selectedInventoryId]);
+
+  const selectedInventoryStatus = selectedInventory?.status || null;
+  const selectedInventoryClosed = isClosedInventoryStatus(selectedInventoryStatus);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -47,7 +77,22 @@ export default function InventoryDashboardPage() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Hook de polling para dados em tempo real
+  useEffect(() => {
+    if (inventories.length > 0 && selectedInventoryId == null) {
+      setSelectedInventoryId(inventories[0].id);
+    }
+  }, [inventories, selectedInventoryId, setSelectedInventoryId]);
+
+  useEffect(() => {
+    if (selectedInventoryClosed && autoRefresh) {
+      setAutoRefresh(false);
+      toast({
+        title: "Atualização automática desabilitada",
+        description: "Inventários fechados não permitem atualização automática.",
+      });
+    }
+  }, [selectedInventoryClosed, autoRefresh, toast]);
+
   const {
     data: dashboardData,
     isLoading: dashboardLoading,
@@ -58,8 +103,13 @@ export default function InventoryDashboardPage() {
     startPolling,
     stopPolling,
   } = useDashboardPolling({
-    enabled: !demoMode && isAuthenticated,
-    pollingInterval: 30000, // 30 segundos
+    enabled: !demoMode && isAuthenticated && Boolean(selectedInventory),
+    pollingInterval: 30000,
+    inventoryContext: {
+      id: selectedInventory?.id,
+      code: selectedInventory?.code,
+      status: selectedInventory?.status,
+    },
     onError: (error) => {
       toast({
         title: "Erro ao carregar dados",
@@ -67,22 +117,17 @@ export default function InventoryDashboardPage() {
         variant: "destructive",
       });
     },
-    onSuccess: () => {
-      // Opcional: mostrar toast de sucesso na primeira carga
-    },
   });
 
-  // Controle do polling baseado no autoRefresh
   useEffect(() => {
-    if (autoRefresh && !demoMode) {
+    if (autoRefresh && !demoMode && !selectedInventoryClosed) {
       startPolling();
     } else {
       stopPolling();
     }
-  }, [autoRefresh, demoMode, startPolling, stopPolling]);
+  }, [autoRefresh, demoMode, selectedInventoryClosed, startPolling, stopPolling]);
 
-  // Formatação da última atualização
-  const formatLastUpdated = (date) => {
+  const formatLastUpdated = (date: Date | null) => {
     if (!date) return 'Nunca';
     const now = new Date();
     const diff = now.getTime() - date.getTime();
@@ -94,15 +139,43 @@ export default function InventoryDashboardPage() {
     return date.toLocaleTimeString();
   };
 
+  const handleInventoryChange = (inventoryId: string) => {
+    setSelectedInventoryId(Number(inventoryId));
+  };
+
   const handleRefresh = () => {
-    if (demoMode) {
+    const refreshValidation = validateManualRefresh({
+      demoMode,
+      hasSelectedInventory: Boolean(selectedInventory),
+      inventoryStatus: selectedInventoryStatus,
+    });
+
+    if (refreshValidation.reason === "demo_mode") {
       toast({
         title: "Modo Demo",
         description: "Os dados são simulados no modo demo.",
       });
       return;
     }
-    
+
+    if (refreshValidation.reason === "missing_inventory") {
+      toast({
+        title: "Selecione um inventário",
+        description: "Escolha um inventário para visualizar os dados no dashboard.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (refreshValidation.reason === "inventory_closed") {
+      toast({
+        title: "Inventário fechado",
+        description: "Não é permitido atualizar dados de inventários fechados.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     refetchDashboard();
     toast({
       title: "Atualizando dados",
@@ -120,23 +193,31 @@ export default function InventoryDashboardPage() {
     });
   };
 
-  const toggleDemoMode = () => {
-    setDemoMode(!demoMode);
+  const toggleDemoMode = (checked: boolean) => {
+    setDemoMode(checked);
     toast({
-      title: demoMode ? "Modo Produção" : "Modo Demo",
-      description: demoMode 
-        ? "Conectado aos dados reais do sistema." 
-        : "Usando dados simulados para demonstração.",
+      title: checked ? "Modo Demo" : "Modo Produção",
+      description: checked
+        ? "Usando dados simulados para demonstração."
+        : "Conectado aos dados reais do sistema.",
     });
   };
 
-  const toggleAutoRefresh = () => {
-    setAutoRefresh(!autoRefresh);
+  const toggleAutoRefresh = (checked: boolean) => {
+    if (selectedInventoryClosed && checked) {
+      toast({
+        title: "Inventário fechado",
+        description: "A atualização automática permanece desabilitada para inventários fechados.",
+      });
+      return;
+    }
+
+    setAutoRefresh(checked);
     toast({
-      title: autoRefresh ? "Atualização automática desabilitada" : "Atualização automática habilitada",
-      description: autoRefresh 
-        ? "Os dados não serão atualizados automaticamente." 
-        : "Os dados serão atualizados a cada 30 segundos.",
+      title: checked ? "Atualização automática habilitada" : "Atualização automática desabilitada",
+      description: checked
+        ? "Os dados serão atualizados a cada 30 segundos."
+        : "Os dados não serão atualizados automaticamente.",
     });
   };
 
@@ -166,12 +247,54 @@ export default function InventoryDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center gap-2 min-w-[260px]">
+                <Label htmlFor="inventory-selector">Inventário</Label>
+                <Select
+                  value={selectedInventory ? selectedInventory.id.toString() : ""}
+                  onValueChange={handleInventoryChange}
+                  disabled={inventoriesLoading || inventories.length === 0}
+                >
+                  <SelectTrigger id="inventory-selector" className="w-[320px]">
+                    <SelectValue placeholder="Selecione um inventário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {inventories.map((inventory) => {
+                      const statusLabel = getInventoryLifecycleLabel(inventory.status);
+                      const closed = isClosedInventoryStatus(inventory.status);
+                      return (
+                        <SelectItem key={inventory.id} value={inventory.id.toString()}>
+                          <div className="flex items-center justify-between gap-3 w-full">
+                            <span className="font-medium">{inventory.code || `Inventário ${inventory.id}`}</span>
+                            <Badge
+                              variant={closed ? "secondary" : "default"}
+                              className={closed ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-700"}
+                            >
+                              {closed ? <Lock className="h-3 w-3 mr-1" /> : <CircleDot className="h-3 w-3 mr-1" />}
+                              {statusLabel}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {selectedInventory && (
+                  <Badge
+                    variant={selectedInventoryClosed ? "secondary" : "default"}
+                    className={selectedInventoryClosed ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-700"}
+                  >
+                    {selectedInventoryClosed ? <Lock className="h-3 w-3 mr-1" /> : <CircleDot className="h-3 w-3 mr-1" />}
+                    {getInventoryLifecycleLabel(selectedInventoryStatus)}
+                  </Badge>
+                )}
+              </div>
+
               {/* Refresh Button */}
               <Button 
                 onClick={handleRefresh} 
                 variant="outline" 
                 size="sm"
-                disabled={dashboardLoading}
+                disabled={dashboardLoading || selectedInventoryClosed || (!demoMode && !selectedInventory)}
                 className="flex items-center gap-2"
               >
                 <RefreshCw className={cn("h-4 w-4", dashboardLoading && "animate-spin")} />
@@ -196,13 +319,18 @@ export default function InventoryDashboardPage() {
                 <Switch
                   id="auto-refresh"
                   checked={autoRefresh}
-                  onCheckedChange={setAutoRefresh}
-                  disabled={demoMode}
+                  onCheckedChange={toggleAutoRefresh}
+                  disabled={demoMode || selectedInventoryClosed}
                 />
                 <Label htmlFor="auto-refresh" className="flex items-center gap-2">
                   {isPolling ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-gray-400" />}
                   Atualização automática
                 </Label>
+                {selectedInventoryClosed && !demoMode && (
+                  <Badge variant="outline" className="ml-1">
+                    Bloqueada para fechado
+                  </Badge>
+                )}
                 {!demoMode && lastUpdated && (
                   <Badge variant="outline" className="ml-2">
                     {formatLastUpdated(lastUpdated)}

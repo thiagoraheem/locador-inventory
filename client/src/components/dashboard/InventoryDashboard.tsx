@@ -41,6 +41,59 @@ import {
 } from "../../../../shared/dashboard-types";
 import { mockDashboardData, mockEmptyDashboard, mockHighDivergenceDashboard } from "../../data/mockDashboardData";
 
+export const normalizeDashboardSnapshot = (data: DashboardSnapshot) => {
+  const safeTotals = {
+    itemsPlanned: Number(data.totals?.itemsPlanned ?? 0),
+    itemsCounted: Number(data.totals?.itemsCounted ?? 0),
+    progressPct: Number(data.totals?.progressPct ?? 0),
+    accuracyPct: Number(data.totals?.accuracyPct ?? 0),
+    divergenceValueBRL: Number(data.totals?.divergenceValueBRL ?? 0),
+  };
+  const safePending = Number(data.pendingVsDone?.pending ?? 0);
+  const safeDone = Number(data.pendingVsDone?.done ?? 0);
+  const safeInProgress = Number(data.pendingVsDone?.inProgress ?? 0);
+  const safeDivergences = (data.divergences || []).map((divergence) => ({
+    type: divergence?.type || "Não informado",
+    count: Number((divergence as any)?.count ?? (divergence as any)?.qty ?? 0),
+    value: Number((divergence as any)?.value ?? (divergence as any)?.valueBRL ?? 0),
+  }));
+  const safeByLocation = (data.byLocation || []).map((location, index) => ({
+    location: location.locationName || location.locationCode || `Local ${index + 1}`,
+    counted: Number(location.itemsCounted ?? 0),
+    total: Number(location.itemsPlanned ?? 0),
+  }));
+  const safeCounts = (data.counts || []).map((round) => ({
+    round: Number(round.round || 0),
+    items: Number((round as any).items ?? round.counted ?? 0),
+  }));
+  const safeSnapshotAt = data.snapshotAt ? new Date(data.snapshotAt) : new Date();
+  const noDivergenceCount = data.items.filter(item => Number(item.divergence?.quantity ?? 0) === 0).length;
+  const minorDivergenceCount = data.items.filter(item => {
+    const value = Math.abs(Number(item.divergence?.quantity ?? 0));
+    return value > 0 && value <= 2;
+  }).length;
+  const majorDivergenceCount = Math.max(0, data.items.length - noDivergenceCount - minorDivergenceCount);
+  const adjustmentCards = [
+    { type: "Ajustes Imediatos", count: Number(data.adjustments?.totalAdjustments ?? 0), totalValue: Number(data.adjustments?.immediatePct ?? 0) },
+    { type: "Ajustes Postergados", count: Number(data.adjustments?.pendingAdjustments ?? 0), totalValue: Number(data.adjustments?.postponedPct ?? 0) },
+  ];
+
+  return {
+    safeTotals,
+    safePending,
+    safeDone,
+    safeInProgress,
+    safeDivergences,
+    safeByLocation,
+    safeCounts,
+    safeSnapshotAt,
+    noDivergenceCount,
+    minorDivergenceCount,
+    majorDivergenceCount,
+    adjustmentCards,
+  };
+};
+
 const DashboardContent: React.FC<InventoryDashboardProps> = ({
   data,
   config = {
@@ -215,6 +268,21 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
   };
 
   const overallStatus = getOverallStatus();
+  const normalizedData = normalizeDashboardSnapshot(data);
+  const {
+    safeTotals,
+    safePending,
+    safeDone,
+    safeInProgress,
+    safeDivergences,
+    safeByLocation,
+    safeCounts,
+    safeSnapshotAt,
+    noDivergenceCount,
+    minorDivergenceCount,
+    majorDivergenceCount,
+    adjustmentCards,
+  } = normalizedData;
 
   return (
     <div className={cn("space-y-4 sm:space-y-6 p-4 sm:p-6", className)}>
@@ -225,7 +293,7 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
           <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center space-x-1">
               <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate">Snapshot: {new Date(data.snapshotAt).toLocaleString('pt-BR')}</span>
+              <span className="truncate">Snapshot: {safeSnapshotAt.toLocaleString('pt-BR')}</span>
             </div>
             <div className="flex items-center space-x-1">
               <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -314,28 +382,27 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <ProgressKpiCard
               title="Progresso Geral"
-              value={data.totals.progressPct}
-              subtitle={`${data.totals.itemsCounted} de ${data.totals.itemsPlanned} itens`}
-              icon={<TrendingUp className="h-5 w-5" />}
+              progress={safeTotals.itemsCounted}
+              total={safeTotals.itemsPlanned}
             />
             
             <AccuracyKpiCard
               title="Acuracidade"
-              accuracy={data.totals.accuracyPct}
+              accuracy={safeTotals.accuracyPct}
             />
             
             {showMoney && (
               <MoneyKpiCard
                 title="Divergência Financeira"
-                value={data.totals.divergenceValueBRL}
+                value={safeTotals.divergenceValueBRL}
                 showMoney={showMoney}
               />
             )}
             
             <KpiCard
               title="Itens Pendentes"
-              value={data.pendingVsDone.pending}
-              subtitle={`${((data.pendingVsDone.pending / data.totals.itemsPlanned) * 100).toFixed(1)}% do total`}
+              value={safePending}
+              subtitle={`${safeTotals.itemsPlanned > 0 ? ((safePending / safeTotals.itemsPlanned) * 100).toFixed(1) : "0.0"}% do total`}
               icon={<Clock className="h-5 w-5" />}
             />
           </div>
@@ -343,13 +410,13 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
           {/* Progress Bars */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             <CountingProgressBar
-              counted={data.totals.itemsCounted}
-              total={data.totals.itemsPlanned}
+              counted={safeTotals.itemsCounted}
+              total={safeTotals.itemsPlanned}
               title="Progresso de Contagem"
             />
             
             <AccuracyProgressBar
-              accuracy={data.totals.accuracyPct}
+              accuracy={safeTotals.accuracyPct}
               title="Nível de Acuracidade"
             />
           </div>
@@ -357,20 +424,19 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             <StatusDonutChart
-              data={[
-                { name: "Concluídos", value: data.pendingVsDone.done, color: "#22c55e" },
-                { name: "Pendentes", value: data.pendingVsDone.pending, color: "#f59e0b" }
-              ]}
+              pending={safePending}
+              inProgress={safeInProgress}
+              completed={safeDone}
               title="Status dos Itens"
             />
             
             <DivergenceBarChart
-              data={data.divergences}
+              data={safeDivergences}
               title="Divergências por Tipo"
             />
             
             <LocationProgressBarChart
-              data={data.byLocation}
+              data={safeByLocation}
               title="Progresso por Localização"
             />
             
@@ -393,17 +459,14 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <CountRoundsBarChart
-              data={data.counts}
+              data={safeCounts}
               title="Itens por Rodada de Contagem"
             />
             
             <DivergenceDonutChart
-              data={data.divergences.map(d => ({
-                name: d.type,
-                value: d.count,
-                color: d.type === "missing" ? "#ef4444" : 
-                       d.type === "extra" ? "#f59e0b" : "#8b5cf6"
-              }))}
+              noDivergence={noDivergenceCount}
+              minorDivergence={minorDivergenceCount}
+              majorDivergence={majorDivergenceCount}
               title="Distribuição de Divergências"
             />
           </div>
@@ -462,7 +525,7 @@ const DashboardContent: React.FC<InventoryDashboardProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {data.adjustments.map((adjustment, index) => (
+                  {adjustmentCards.map((adjustment, index) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <p className="font-medium">{adjustment.type}</p>
@@ -515,8 +578,9 @@ export default InventoryDashboard;
 // Demo component with mock data
 export const InventoryDashboardDemo: React.FC<{
   scenario?: "normal" | "empty" | "high_divergence";
+  showMoney?: boolean;
   className?: string;
-}> = ({ scenario = "normal", className }) => {
+}> = ({ scenario = "normal", showMoney = true, className }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(() => {
     switch (scenario) {
@@ -547,6 +611,7 @@ export const InventoryDashboardDemo: React.FC<{
   return (
     <InventoryDashboard
       data={data}
+      config={{ showMoney, autoRefresh: true, refreshInterval: 30000, showFilters: true, showExport: true, compactMode: false }}
       loading={loading}
       onRefresh={handleRefresh}
       onItemClick={handleItemClick}
