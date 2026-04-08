@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSelectedInventory } from "@/hooks/useSelectedInventory";
 import {
   Card,
   CardContent,
@@ -113,14 +114,6 @@ interface ControlPanelStats {
   accuracyRate: number;
   divergenceCount: number;
 }
-
-// Temporary hook - replace with actual implementation
-const useSelectedInventory = () => {
-  const [selectedInventoryId, setSelectedInventoryId] = useState<number | null>(
-    null,
-  );
-  return { selectedInventoryId, setSelectedInventoryId };
-};
 
 interface CountIndicatorProps {
   count?: number;

@@ -64,11 +64,11 @@ export default function InventoryDashboardPage() {
   const selectedInventoryClosed = isClosedInventoryStatus(selectedInventoryStatus);
   const selectedInventoryContext = useMemo(
     () => ({
-      id: selectedInventory?.id ?? selectedInventoryId ?? null,
+      id: selectedInventory?.id ?? null,
       code: selectedInventory?.code ?? null,
       status: selectedInventory?.status ?? null,
     }),
-    [selectedInventory?.id, selectedInventory?.code, selectedInventory?.status, selectedInventoryId],
+    [selectedInventory?.id, selectedInventory?.code, selectedInventory?.status],
   );
   const hasSelectedInventory = selectedInventoryContext.id != null;
 
@@ -87,7 +87,15 @@ export default function InventoryDashboardPage() {
   }, [isAuthenticated, isLoading, toast]);
 
   useEffect(() => {
-    if (inventories.length > 0 && selectedInventoryId == null) {
+    if (inventories.length === 0) return;
+
+    if (selectedInventoryId == null) {
+      setSelectedInventoryId(inventories[0].id);
+      return;
+    }
+
+    const exists = inventories.some((inventory) => inventory.id === selectedInventoryId);
+    if (!exists) {
       setSelectedInventoryId(inventories[0].id);
     }
   }, [inventories, selectedInventoryId, setSelectedInventoryId]);

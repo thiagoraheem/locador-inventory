@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { DashboardSnapshot } from '../../../shared/dashboard-types';
-import { mockDashboardData } from '../data/mockDashboardData';
 
 interface UseDashboardPollingOptions {
   enabled?: boolean;
@@ -26,64 +25,24 @@ interface UseDashboardPollingReturn {
   stopPolling: () => void;
 }
 
-const isClosedInventoryStatus = (status?: string | null) => {
-  if (!status) return false;
-  const normalizedStatus = status.toLowerCase();
-  return (
-    normalizedStatus === 'closed' ||
-    normalizedStatus === 'cancelled' ||
-    normalizedStatus.includes('closed') ||
-    normalizedStatus.includes('completed')
-  );
-};
-
 const fetchDashboardData = async (
   inventoryContext?: UseDashboardPollingOptions['inventoryContext'],
 ): Promise<DashboardSnapshot> => {
-  await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
-
-  if (Math.random() < 0.05) {
-    throw new Error('Erro de conexão com o servidor');
+  const inventoryId = inventoryContext?.id;
+  if (!inventoryId) {
+    throw new Error('Inventário não selecionado');
   }
 
-  const baseData = mockDashboardData;
-  const seed = Math.max(0, Number(inventoryContext?.id ?? baseData.inventoryId ?? 0));
-  const variation = () => Math.random() * 0.1 - 0.05;
-  const selectedStatus = inventoryContext?.status || baseData.inventoryStatus;
-  const selectedCode = inventoryContext?.code?.trim()
-    ? inventoryContext.code.trim()
-    : `${baseData.inventoryCode}-${seed || 1}`;
-  const isClosed = isClosedInventoryStatus(selectedStatus);
-  const plannedItems = Math.max(1, Math.floor(baseData.totals.itemsPlanned * (1 + ((seed % 7) - 3) * 0.03)));
-  const countedForOpen = Math.max(0, Math.floor(plannedItems * (0.55 + (seed % 35) / 100)));
-  const countedForClosed = plannedItems;
-  const countedItems = isClosed ? countedForClosed : Math.min(plannedItems, countedForOpen);
-  const pendingItems = Math.max(0, plannedItems - countedItems);
-  const doneItems = Math.max(0, countedItems - Math.floor((seed % 9) * 0.5));
+  const res = await fetch(`/api/inventories/${inventoryId}/dashboard-snapshot`, {
+    credentials: 'include',
+  });
 
-  return {
-    ...baseData,
-    inventoryId: seed || baseData.inventoryId,
-    inventoryCode: selectedCode,
-    inventoryStatus: (selectedStatus || baseData.inventoryStatus) as DashboardSnapshot['inventoryStatus'],
-    totals: {
-      ...baseData.totals,
-      itemsPlanned: plannedItems,
-      itemsCounted: countedItems,
-      progressPct: plannedItems > 0 ? Number(((countedItems / plannedItems) * 100).toFixed(1)) : 0,
-      accuracyPct: isClosed
-        ? Math.min(100, Math.max(0, baseData.totals.accuracyPct + 1.5))
-        : Math.min(100, Math.max(0, baseData.totals.accuracyPct + variation() * 5)),
-      divergenceValueBRL: Math.max(0, baseData.totals.divergenceValueBRL * (1 + variation())),
-    },
-    pendingVsDone: {
-      ...baseData.pendingVsDone,
-      pending: pendingItems,
-      done: doneItems,
-      inProgress: Math.max(0, countedItems - doneItems),
-    },
-    snapshotAt: new Date().toISOString(),
-  };
+  if (!res.ok) {
+    const text = (await res.text()) || res.statusText;
+    throw new Error(`${res.status}: ${text}`);
+  }
+
+  return await res.json();
 };
 
 export const useDashboardPolling = ({
@@ -102,7 +61,7 @@ export const useDashboardPolling = ({
     error,
     refetch,
   } = useQuery({
-    queryKey: ['dashboard-data', inventoryContext?.id ?? 'default'],
+    queryKey: ['/api/inventories', inventoryContext?.id ?? 'default', 'dashboard-snapshot'],
     queryFn: () => fetchDashboardData(inventoryContext),
     enabled,
     refetchInterval: enabled && isPolling ? pollingInterval : false,
