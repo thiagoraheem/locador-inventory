@@ -23,6 +23,7 @@ import InventoryControlBoardCP from "@/pages/inventory-control-board-cp";
 import InventoryAssetControl from "@/pages/inventory-asset-control";
 import ProductListingReport from "@/pages/product-listing-report";
 import InventoryDashboardPage from "@/pages/inventory-dashboard";
+import ProcessDashboardPage from "@/pages/process-dashboard";
 import AuditLogs from "@/pages/audit-logs";
 import Users from "@/pages/users";
 import Companies from "@/pages/companies";
@@ -84,6 +85,7 @@ function Router() {
           <Route path="/inventories/:id/audit" component={InventoryAudit} />
           <Route path="/serial-discrepancies" component={SerialDiscrepancies} />
           <Route path="/inventory-dashboard" component={InventoryDashboardPage} />
+          <Route path="/process-dashboard" component={ProcessDashboardPage} />
           <Route path="/inventory-control-board" component={InventoryControlBoard} />
           <Route path="/inventory-control-board-cp" component={InventoryControlBoardCP} />
           <Route path="/product-listing-report" component={ProductListingReport} />

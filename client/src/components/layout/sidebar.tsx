@@ -67,6 +67,7 @@ const navigation: NavigationItem[] = [
     children: [
       { name: "Inventários", href: "/inventories", icon: ClipboardList },
       { name: "Dashboard Analítico", href: "/inventory-dashboard", icon: BarChart3 },
+      { name: "Dashboard do Processo", href: "/process-dashboard", icon: BarChart3 },
       {
         name: "Contagens",
         icon: BarChart3,

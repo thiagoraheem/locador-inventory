@@ -613,6 +613,355 @@ export async function registerInventoryRoutes(app: Express) {
     },
   );
 
+  app.get(
+    "/api/process-dashboard-snapshot",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        storage = await getStorage();
+        const { startDate, endDate } = req.query;
+
+        if (!startDate || !endDate) {
+          return res.status(400).json({ message: "startDate and endDate are required query parameters" });
+        }
+
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        
+        // Ensure end date incorporates the entire day
+        end.setHours(23, 59, 59, 999);
+
+        // Optional filter if user wants to get all or filtered inventories, but we use the service or storage directly
+        const allInventories = typeof storage.getInventories === "function" ? await storage.getInventories() : [];
+        const filteredInventories = allInventories.filter((inv: any) => {
+          const invDate = new Date(inv.createdAt || inv.startDate);
+          return invDate >= start && invDate <= end;
+        });
+
+        const categories = typeof storage.getCategories === "function" ? await storage.getCategories() : [];
+        const categoryNameById = new Map<number, string>(
+          (categories || [])
+            .filter((category: any) => category && typeof category.id === "number")
+            .map((category: any) => [category.id, category.name]),
+        );
+
+        const isPresent = (value: any) => value !== null && value !== undefined;
+        const asNumber = (value: any) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+        const getLastCountQty = (item: any) =>
+          [item?.count4, item?.count3, item?.count2, item?.count1].find(isPresent) ?? null;
+
+        const getComputedFinalQty = (item: any) => {
+          if (isPresent(item?.finalQuantity)) return asNumber(item.finalQuantity);
+          return null;
+        };
+
+        const getDiff = (expectedQty: number, finalQty: number | null, item: any) => {
+          if (!isPresent(finalQty)) {
+            const hasCount1 = isPresent(item?.count1);
+            const hasCount2 = isPresent(item?.count2);
+            if (hasCount1 && hasCount2) {
+              const c1 = asNumber(item.count1);
+              const c2 = asNumber(item.count2);
+              if (Math.abs(c1 - c2) > 0) return null;
+              return c2 - expectedQty;
+            }
+            return null;
+          }
+          return finalQty - expectedQty;
+        };
+
+        const classifyItem = ({
+          expectedQty,
+          finalQty,
+          item,
+        }: {
+          expectedQty: number;
+          finalQty: number | null;
+          item: any;
+        }) => {
+          const hasAnyCount = [item?.count1, item?.count2, item?.count3, item?.count4].some(isPresent);
+          if (!hasAnyCount) {
+            return { status: "Pendente", divergenceType: "Nenhuma", diff: 0, isPending: true, isDone: false };
+          }
+
+          const hasCount1 = isPresent(item?.count1);
+          const hasCount2 = isPresent(item?.count2);
+          const hasCount3 = isPresent(item?.count3);
+          const hasFinal = isPresent(finalQty);
+          const c1 = hasCount1 ? asNumber(item.count1) : null;
+          const c2 = hasCount2 ? asNumber(item.count2) : null;
+          const c3 = hasCount3 ? asNumber(item.count3) : null;
+
+          if (!hasFinal && hasCount1 && hasCount2 && Math.abs((c1 ?? 0) - (c2 ?? 0)) > 0 && !hasCount3) {
+            return {
+              status: "Recontagem Necessária",
+              divergenceType: "Divergência de Contagem",
+              diff: null,
+              isPending: false,
+              isDone: false,
+            };
+          }
+
+          const diff = getDiff(expectedQty, finalQty, item);
+          if (!isPresent(diff)) {
+            return { status: "Em Contagem", divergenceType: "Nenhuma", diff: null, isPending: false, isDone: false };
+          }
+
+          if (diff === 0) {
+            return {
+              status: hasFinal ? "Concluído" : "Conforme",
+              divergenceType: "Nenhuma",
+              diff,
+              isPending: false,
+              isDone: hasFinal,
+            };
+          }
+
+          return {
+            status: hasFinal ? "Concluído" : "Divergente",
+            divergenceType: diff > 0 ? "Sobra" : "Falta",
+            diff,
+            isPending: false,
+            isDone: hasFinal,
+          };
+        };
+
+        let dashboardItems: any[] = [];
+        let anyMovementsBlocked = false;
+
+        for (const inventory of filteredInventories) {
+          if (inventory.isToBlockSystem) {
+            anyMovementsBlocked = true;
+          }
+          const rawItems = await storage.getInventoryItemsWithDetails(inventory.id);
+          const itemsForInv = (rawItems || []).map((item: any, index: number) => {
+            const expectedQty = asNumber(item?.expectedQuantity);
+            const finalQty = getComputedFinalQty(item);
+            const computed = classifyItem({ expectedQty, finalQty, item });
+            const costValue = asNumber(item?.product?.costValue);
+            const divergenceQty = computed.diff === null ? 0 : asNumber(computed.diff);
+            const divergenceValueBRL =
+              computed.diff === null ? 0 : Math.abs(divergenceQty) * asNumber(item?.product?.costValue);
+            const categoryId = item?.product?.categoryId;
+            const categoryName = typeof categoryId === "number" ? categoryNameById.get(categoryId) : undefined;
+            const lastCountAt =
+              [item?.count4At, item?.count3At, item?.count2At, item?.count1At].find(isPresent) ?? item?.updatedAt ?? null;
+            const lastCountBy = [item?.count4By, item?.count3By, item?.count2By, item?.count1By].find(isPresent) ?? null;
+            const bestQtyForAccuracy = isPresent(finalQty) ? finalQty : getLastCountQty(item);
+            const bestQty = isPresent(bestQtyForAccuracy) ? asNumber(bestQtyForAccuracy) : null;
+            const accuracy =
+              bestQty === null
+                ? undefined
+                : expectedQty === 0
+                  ? bestQty === 0
+                    ? 100
+                    : 0
+                  : Math.max(0, Math.min(100, Number(((1 - Math.abs(bestQty - expectedQty) / expectedQty) * 100).toFixed(1))));
+            const totalValue = expectedQty * costValue;
+
+            return {
+              itemId: `${inventory.code || inventory.id}-${String(index + 1).padStart(6, "0")}`,
+              inventoryItemId: asNumber(item?.id),
+              productId: asNumber(item?.productId),
+              productSku: item?.product?.sku || "N/A",
+              productName: item?.product?.name || "Produto sem nome",
+              locationId: asNumber(item?.locationId),
+              locationName: item?.location?.name || "Local não definido",
+              categoryId: typeof categoryId === "number" ? categoryId : undefined,
+              categoryName,
+              expectedQty,
+              count1Qty: isPresent(item?.count1) ? asNumber(item.count1) : null,
+              count2Qty: isPresent(item?.count2) ? asNumber(item.count2) : null,
+              count3Qty: isPresent(item?.count3) ? asNumber(item.count3) : null,
+              count4Qty: isPresent(item?.count4) ? asNumber(item.count4) : null,
+              finalQty: isPresent(finalQty) ? finalQty : null,
+              divergence: {
+                type: computed.divergenceType,
+                quantity: computed.diff === null ? 0 : divergenceQty,
+                valueBRL: divergenceValueBRL,
+                percentage: undefined,
+              },
+              status: computed.status,
+              accuracy,
+              costValue,
+              totalValue,
+              lastCountAt: typeof lastCountAt === "number" ? lastCountAt : undefined,
+              lastCountBy: typeof lastCountBy === "number" ? lastCountBy : undefined,
+            };
+          });
+          
+          dashboardItems = dashboardItems.concat(itemsForInv);
+        }
+
+        const itemsPlanned = dashboardItems.length;
+        const itemsCounted = dashboardItems.filter((item: any) =>
+          [item?.count1Qty, item?.count2Qty, item?.count3Qty, item?.count4Qty].some(isPresent),
+        ).length;
+        const itemsDone = dashboardItems.filter((item: any) => isPresent(item?.finalQty)).length;
+        const itemsPending = itemsPlanned - itemsCounted;
+        const itemsInProgress = Math.max(0, itemsCounted - itemsDone);
+
+        const divergenceValueBRL = dashboardItems.reduce((sum: number, item: any) => {
+          const value = asNumber(item?.divergence?.valueBRL);
+          return sum + value;
+        }, 0);
+
+        const countedWithDiff = dashboardItems.filter((item: any) => {
+          const hasAnyCount = [item?.count1Qty, item?.count2Qty, item?.count3Qty, item?.count4Qty].some(isPresent);
+          if (!hasAnyCount) return false;
+          const qty = asNumber(item?.divergence?.quantity);
+          return qty !== 0 || item?.divergence?.type === "Divergência de Contagem";
+        }).length;
+
+        const accuracyPct =
+          itemsCounted > 0 ? Number((((itemsCounted - countedWithDiff) / itemsCounted) * 100).toFixed(1)) : 0;
+
+        const totalValue = dashboardItems.reduce((sum: number, item: any) => sum + asNumber(item?.expectedQty) * asNumber(item?.costValue), 0);
+        const finalValue = dashboardItems.reduce((sum: number, item: any) => {
+          const qty = isPresent(item?.finalQty) ? asNumber(item.finalQty) : [item?.count4Qty, item?.count3Qty, item?.count2Qty, item?.count1Qty].find(isPresent);
+          const numQty = isPresent(qty) ? asNumber(qty) : 0;
+          return sum + numQty * asNumber(item?.costValue);
+        }, 0);
+
+        const progressPct = itemsPlanned > 0 ? Number(((itemsCounted / itemsPlanned) * 100).toFixed(1)) : 0;
+
+        const counts = ([1, 2, 3, 4] as const)
+          .map((round) => {
+            const field = `count${round}Qty`;
+            const counted = dashboardItems.filter((item: any) => isPresent(item?.[field])).length;
+            const consistent = dashboardItems.filter((item: any) => isPresent(item?.[field]) && asNumber(item[field]) === asNumber(item?.expectedQty)).length;
+            const consistentPct = counted > 0 ? Number(((consistent / counted) * 100).toFixed(1)) : 0;
+            return { round, counted, consistentPct };
+          })
+          .filter((row) => row.counted > 0);
+
+        const byLocationMap = new Map<number, any>();
+        for (const item of dashboardItems) {
+          const locationId = asNumber(item?.locationId);
+          const current = byLocationMap.get(locationId) || {
+            locationId,
+            locationName: item?.locationName || `Local ${locationId}`,
+            locationCode: "",
+            itemsPlanned: 0,
+            itemsCounted: 0,
+            divergenceCount: 0,
+            divergenceValue: 0,
+            consistentCount: 0,
+          };
+          current.itemsPlanned += 1;
+          const hasAnyCount = [item?.count1Qty, item?.count2Qty, item?.count3Qty, item?.count4Qty].some(isPresent);
+          if (hasAnyCount) current.itemsCounted += 1;
+          const divergenceQty = asNumber(item?.divergence?.quantity);
+          const divergenceType = item?.divergence?.type;
+          const isDivergent = divergenceQty !== 0 || divergenceType === "Divergência de Contagem";
+          if (isDivergent) {
+            current.divergenceCount += 1;
+            current.divergenceValue += asNumber(item?.divergence?.valueBRL);
+          } else if (hasAnyCount) {
+            current.consistentCount += 1;
+          }
+          byLocationMap.set(locationId, current);
+        }
+
+        const byLocation = Array.from(byLocationMap.values())
+          .map((row: any) => {
+            const progressPct = row.itemsPlanned > 0 ? Number(((row.itemsCounted / row.itemsPlanned) * 100).toFixed(1)) : 0;
+            const accuracyPct = row.itemsCounted > 0 ? Number(((row.consistentCount / row.itemsCounted) * 100).toFixed(1)) : 0;
+            return {
+               locationId: row.locationId,
+               locationName: row.locationName,
+               locationCode: row.locationCode,
+               progressPct,
+               accuracyPct,
+               itemsPlanned: row.itemsPlanned,
+               itemsCounted: row.itemsCounted,
+               divergenceCount: row.divergenceCount,
+               divergenceValue: Number(row.divergenceValue.toFixed(2)),
+            };
+          })
+          .sort((a: any, b: any) => b.itemsPlanned - a.itemsPlanned);
+
+        const divergencesAgg = new Map<string, { qty: number; valueBRL: number }>();
+        for (const item of dashboardItems) {
+          const type = item?.divergence?.type || "Nenhuma";
+          if (type === "Nenhuma") continue;
+          const qty = asNumber(item?.divergence?.quantity);
+          const valueBRL = asNumber(item?.divergence?.valueBRL);
+          const current = divergencesAgg.get(type) || { qty: 0, valueBRL: 0 };
+          if (type === "Divergência de Contagem") {
+            current.qty += 1;
+            current.valueBRL += 0;
+          } else if (type === "Falta") {
+            current.qty += Math.abs(Math.min(0, qty));
+            current.valueBRL += valueBRL;
+          } else if (type === "Sobra") {
+            current.qty += Math.max(0, qty);
+            current.valueBRL += valueBRL;
+          } else {
+            current.qty += Math.abs(qty);
+            current.valueBRL += valueBRL;
+          }
+          divergencesAgg.set(type, current);
+        }
+
+        const divergences = Array.from(divergencesAgg.entries()).map(([type, payload]) => ({
+          type,
+          qty: Number(payload.qty.toFixed(2)),
+          valueBRL: Number(payload.valueBRL.toFixed(2)),
+        }));
+
+        const needsBOOver20k = divergenceValueBRL > 20000;
+
+        res.json({
+          snapshotAt: new Date().toISOString(),
+          inventoryId: 0, // 0 to signify it's an aggregated process
+          inventoryCode: "PROCESS",
+          inventoryStatus: "AGREGADO", // Fake status
+          totals: {
+            itemsPlanned,
+            itemsCounted,
+            progressPct,
+            accuracyPct,
+            divergenceValueBRL: Number(divergenceValueBRL.toFixed(2)),
+            totalValue: Number(totalValue.toFixed(2)),
+            expectedValue: Number(totalValue.toFixed(2)),
+            finalValue: Number(finalValue.toFixed(2)),
+          },
+          counts,
+          byLocation,
+          pendingVsDone: {
+            pending: itemsPending,
+            done: Math.max(0, itemsDone),
+            inProgress: itemsInProgress,
+          },
+          divergences,
+          adjustments: {
+            immediatePct: 0,
+            postponedPct: 0,
+            totalAdjustments: 0,
+            pendingAdjustments: 0,
+          },
+          compliance: {
+            scheduleAdherencePct: 0,
+            movementsBlocked: anyMovementsBlocked,
+            preInventoryDone: true,
+            needsBOOver20k,
+            inventoryType: undefined,
+            blockSystemMovements: anyMovementsBlocked,
+            signedLists: false,
+            doubleBlindCounting: false,
+          },
+          items: dashboardItems,
+        });
+      } catch (error) {
+        res.status(500).json({
+          message: "Failed to fetch process dashboard snapshot",
+          details: (error as Error).message,
+        });
+      }
+    },
+  );
+
   // Get ERP migration status for inventory
   app.get(
     "/api/inventories/:id/erp-status",
